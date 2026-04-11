@@ -1,55 +1,22 @@
 import { expect } from "@playwright/test";
 import { createBdd } from "playwright-bdd";
+import { createUserViaApi, signInViaApi } from "../auth-client.ts";
 import { SHARED_PASSWORD } from "../fixtures/credentials.ts";
+import { waitForHydration } from "../waits.ts";
 
 const { Given: given, When: when, Then: then } = createBdd();
-
-// Sign up via UI. If user already exists, sign in instead.
-async function signUpOrSignIn(
-  page: import("@playwright/test").Page,
-  email: string,
-  password: string,
-) {
-  await page.goto("/login");
-  await page.waitForLoadState("networkidle");
-
-  // Try sign up first
-  await page.getByRole("button", { name: "Sign Up" }).click();
-  await page.getByLabel("Name").fill(email.split("@")[0]);
-  await page.getByLabel("Email").fill(email);
-  await page.getByLabel("Password").fill(password);
-  await page.locator('button[type="submit"]').click();
-
-  // Wait for either dashboard or error
-  const result = await Promise.race([
-    page.waitForURL(/\/dashboard/, { timeout: 5000 }).then(() => "dashboard"),
-    page
-      .getByText(/already exists/i)
-      .waitFor({ timeout: 5000 })
-      .then(() => "exists"),
-  ]);
-
-  if (result === "exists") {
-    // User exists — switch to sign in
-    await page.getByRole("button", { name: "Sign In" }).click();
-    await page.getByLabel("Email").fill(email);
-    await page.getByLabel("Password").fill(password);
-    await page.locator('button[type="submit"]').click();
-    await page.waitForURL(/\/dashboard/, { timeout: 10000 });
-  }
-}
 
 // --- Given ---
 
 given("I am on the login page", async ({ page }) => {
   await page.goto("/login");
-  await page.waitForLoadState("networkidle");
+  await waitForHydration(page);
 });
 
 given(
   "a user exists with email {string} and password {string}",
   async ({ page }, email: string, password: string) => {
-    await signUpOrSignIn(page, email, password);
+    await createUserViaApi(page, email, password);
     await page.context().clearCookies();
   },
 );
@@ -59,13 +26,13 @@ given("I am not signed in", async ({ page }) => {
 });
 
 given("I am signed in as {string}", async ({ page }, email: string) => {
-  await signUpOrSignIn(page, email, SHARED_PASSWORD);
+  await signInViaApi(page, email, SHARED_PASSWORD);
 });
 
 given("I am on the dashboard", async ({ page }) => {
   if (!page.url().includes("/dashboard")) {
     await page.goto("/dashboard");
-    await page.waitForLoadState("networkidle");
+    await waitForHydration(page);
   }
   await expect(page.getByRole("heading", { name: "Dashboard" })).toBeVisible({
     timeout: 5000,
@@ -74,7 +41,7 @@ given("I am on the dashboard", async ({ page }) => {
 
 given("I am on the todo lists page", async ({ page }) => {
   await page.goto("/todo-lists");
-  await page.waitForLoadState("networkidle");
+  await waitForHydration(page);
 });
 
 // --- When ---
@@ -103,7 +70,7 @@ when(
 
 when("I navigate to {string}", async ({ page }, path: string) => {
   await page.goto(path);
-  await page.waitForLoadState("networkidle");
+  await waitForHydration(page);
 });
 
 when(

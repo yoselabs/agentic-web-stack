@@ -1,5 +1,5 @@
+import { afterAll, afterEach, beforeAll, describe, expect, it } from "bun:test";
 import { db } from "@project/db";
-import { afterAll, afterEach, beforeAll, describe, expect, it } from "vitest";
 import {
   createTodoList,
   deleteTodoList,

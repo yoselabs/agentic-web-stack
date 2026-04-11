@@ -9,11 +9,11 @@
     }
   },
   "scripts": {
-    "generate": "prisma generate",
+    "generate": "bun run scripts/generate.ts",
     "push": "prisma db push",
     "studio": "prisma studio",
     "migrate": "prisma migrate dev",
-    "postinstall": "prisma generate"
+    "postinstall": "bun run scripts/generate.ts"
   },
   "dependencies": {
     "@prisma/client": "catalog:",
@@ -21,7 +21,6 @@
   },
   "devDependencies": {
     "@types/node": "catalog:",
-    "prisma": "catalog:",
-    "tsx": "^4.21.0"
+    "prisma": "catalog:"
   }
 }

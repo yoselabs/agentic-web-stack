@@ -14,6 +14,25 @@ services:
       - "${TEST_PORT}:5432"
     tmpfs:
       - /var/lib/postgresql/data
+    # Durability knobs disabled — data is tmpfs (lost on container exit) and
+    # this DB is ephemeral per test suite. fsync=off + synchronous_commit=off
+    # skip disk flush on every commit; full_page_writes=off drops crash-
+    # recovery page writes. wal_level=minimal removes replication overhead.
+    # Do NOT copy these to dev or prod compose.
+    command:
+      - postgres
+      - -c
+      - fsync=off
+      - -c
+      - synchronous_commit=off
+      - -c
+      - full_page_writes=off
+      - -c
+      - wal_level=minimal
+      - -c
+      - max_wal_senders=0
+      - -c
+      - shared_buffers=256MB
     healthcheck:
       test: ["CMD-SHELL", "pg_isready -U postgres"]
       interval: 1s

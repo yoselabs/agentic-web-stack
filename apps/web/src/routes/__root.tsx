@@ -11,7 +11,7 @@ import {
 } from "@tanstack/react-router";
 import type { ErrorComponentProps } from "@tanstack/react-router";
 import type { TRPCOptionsProxy } from "@trpc/tanstack-react-query";
-import type { ReactNode } from "react";
+import { type ReactNode, useEffect } from "react";
 import { Toaster } from "sonner";
 
 import appCss from "../styles.css?url";
@@ -37,6 +37,14 @@ export const Route = createRootRouteWithContext<RouterContext>()({
 
 function RootDocument({ children }: Readonly<{ children: ReactNode }>) {
   const { queryClient } = Route.useRouteContext();
+
+  // Playwright waits for [data-hydrated] before clicking. Without it, a
+  // click can land on a button whose handler isn't wired yet and the test
+  // wedges until the 30s timeout. useEffect runs after React's hydration
+  // completes on the client, so the attribute appearing = "interactive".
+  useEffect(() => {
+    document.documentElement.setAttribute("data-hydrated", "");
+  }, []);
 
   return (
     <html lang="en">

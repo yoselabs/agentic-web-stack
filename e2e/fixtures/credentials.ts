@@ -10,7 +10,10 @@
 // Both accounts share the same password so developers have one value to
 // remember when debugging locally.
 
-export const SHARED_PASSWORD = "testpassword123";
+// Passes any reasonable complexity policy (upper, lower, digit, symbol) so
+// a future Better-Auth config that adds password rules doesn't invalidate
+// every scenario at once.
+export const SHARED_PASSWORD = "TestPassword!123";
 
 export const SEED_USER = {
   email: "demo@example.com",

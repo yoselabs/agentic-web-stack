@@ -56,8 +56,13 @@ export default defineConfig({
     },
   ],
   webServer: [
+    // Hono server runs via `bun src/index.ts` directly — no tsx, no watch,
+    // no build. Bun executes TS natively and the server compiles all routes
+    // once at import (no on-demand compilation like SSR), so it's inherently
+    // stable under parallel test load. ~300ms faster cold start than
+    // `tsx watch` and removes the test-time watcher overhead.
     {
-      command: "pnpm --filter @project/server dev",
+      command: "pnpm --filter @project/server exec bun src/index.ts",
       port: TEST_API_PORT,
       reuseExistingServer: !process.env.CI,
       env: {
@@ -68,12 +73,33 @@ export default defineConfig({
         CORS_ORIGIN: WEB_URL,
       },
     },
+    // Web runs in BUILT mode, not `vite dev`. Dev-server on-demand SSR
+    // compilation can't keep up when N Playwright workers cold-hit routes
+    // in parallel — clicks can land before hydration, tests wedge for the
+    // full timeout. A Nitro production server (built bundle, no on-demand
+    // compile) serves requests with stable latency under contention.
+    // First run pays a ~15–20s build cost; subsequent runs with
+    // `reuseExistingServer` skip it. CI always rebuilds.
     {
-      command: `pnpm --filter @project/web exec vite dev --port ${TEST_WEB_PORT}`,
+      // Pre-existing stderr noise: TanStack Router's SSR `loadMatches` path
+      // throws `Cannot destructure property '__extends'` in the Nitro bundle.
+      // Present under BOTH node and bun runtimes — tslib interop issue in
+      // how Nitro bundles TanStack Router, not a runtime bug. Tests pass
+      // (SSR falls back cleanly). Worth filing upstream at some point.
+      // `rm -rf .output` before build: protects against a partially-written
+      // Nitro bundle from a previously-interrupted build (Ctrl-C, OOM, etc.)
+      // being served silently. vite build should overwrite cleanly, but the
+      // trailing output files from a different source tree are not guaranteed
+      // to be replaced. Cheap (< 100ms) and only runs on cold starts where
+      // reuseExistingServer doesn't kick in.
+      command:
+        "pnpm --filter @project/web exec rm -rf .output && pnpm --filter @project/web build && pnpm --filter @project/web exec bun .output/server/index.mjs",
       port: TEST_WEB_PORT,
       reuseExistingServer: !process.env.CI,
+      timeout: 120_000,
       env: {
         VITE_API_URL: API_URL,
+        PORT: String(TEST_WEB_PORT),
       },
     },
   ],

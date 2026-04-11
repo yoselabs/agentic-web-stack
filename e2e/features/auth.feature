@@ -7,13 +7,13 @@ Feature: Authentication
     And I should see "Test User"
 
   Scenario: Sign in with existing account
-    Given a user exists with email "signin@example.com" and password "testpassword123"
+    Given a user exists with email "signin@example.com" and password "TestPassword!123"
     And I am on the login page
-    When I sign in with email "signin@example.com" and password "testpassword123"
+    When I sign in with email "signin@example.com" and password "TestPassword!123"
     Then I should be on the dashboard
 
   Scenario: Sign in with wrong password
-    Given a user exists with email "wrongpw@example.com" and password "testpassword123"
+    Given a user exists with email "wrongpw@example.com" and password "TestPassword!123"
     And I am on the login page
     When I sign in with email "wrongpw@example.com" and password "wrongpassword"
     Then I should see an error message

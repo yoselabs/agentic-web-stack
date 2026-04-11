@@ -134,6 +134,106 @@ Items marked **[recipe]** should be documented as patterns — added per-project
 
 ---
 
+## Demo mode: `docker compose up` runs the whole app
+
+Current `docker-compose.yml` only runs Postgres (dev DB). For demo purposes, `docker compose up` should start a fully working instance — no `make dev`, no local toolchain — so people can clone + run + click around.
+
+### What's needed
+- **`apps/web/Dockerfile`** — multi-stage: `pnpm install` → `vite build` → runtime image serving `.output/server/index.mjs`. Single-runtime image (bun only — see below).
+- **`apps/server/Dockerfile`** — multi-stage: `pnpm install` → `tsc` → runtime image running the compiled server. Single-runtime image (bun only).
+- **`docker-compose.yml`** gains two services (`web`, `server`) wired to Postgres. Existing `postgres` service stays as-is.
+- **Env wiring** for inter-container comms: `DATABASE_URL=postgresql://postgres:postgres@postgres:5432/app`, `CORS_ORIGIN=http://localhost:3000`, `VITE_API_URL=http://localhost:3001` (baked into web build), `BETTER_AUTH_URL=http://localhost:3001`, `BETTER_AUTH_SECRET` from `.env` or compose env.
+- **Schema provisioning**: `prisma db push` on server container boot (or a one-shot `migrate` sidecar service).
+- **Optional**: `make db-seed` equivalent runs automatically on first boot so a demo user exists.
+
+### Runtime: bun only, not bun + node
+Images should install bun only, not both. Justification:
+- `bun` runs TS natively (`src/index.ts`) — no `tsc` build step needed for the server in the image.
+- `bun` runs the Nitro `.output/server/index.mjs` produced by `vite build` — confirmed in dev.
+- Dropping node + pnpm from runtime images cuts image size ~300MB.
+- Caveat: `vite build` itself (in the build stage) still needs node. So the **build stage** uses `node + pnpm + bun`; the **runtime stage** uses bun only. Multi-stage builds ship only the runtime layer.
+
+### Trigger
+- When we want to hand someone "try this locally in 1 minute" or put this on a demo server without the dev toolchain.
+- Before any public release or conference demo.
+
+### Est effort
+2–3 hours. Not cleanup — a real feature, deserves its own branch.
+
+---
+
+## `spike/bun-test-migration` — deferred ideas
+
+Surfaced during the bun-test + build-for-test + e2e-hardening spike (branch `spike/bun-test-migration`). Each item: what it is, why we didn't do it, what would make it worth picking up.
+
+### Web-build hash-gate (skip `vite build` when inputs unchanged)
+Same pattern as `packages/db/scripts/generate.ts`. Hash `apps/web/src/**`, workspace deps, `vite.config.ts`, `pnpm-lock.yaml`. Save ~5s per `make test`.
+- **Why not**: 5s is marginal, and adds a new cache surface to debug.
+- **Trigger**: rebuild time grows past 10s, or agent loops accumulate >30s/day of rebuild wait.
+
+### `make test-server` background daemon
+`vite build --watch` + persistent Nitro server. `make test` reuses via `reuseExistingServer`. Near-zero rebuild per run.
+- **Why not**: requires lifecycle management; overkill vs. current 5s incremental.
+- **Trigger**: inner-loop test runs become painful.
+
+### Auth fixture for `I sign out and sign in as` (`e2e/steps/todos.ts:32`)
+That step still does UI-based sign-up mid-scenario. Migrate to `signInViaApi` (helper already exists in `auth.ts`) after the UI sign-out.
+- **Why not**: low traffic (2–3 scenarios), scope creep.
+- **Trigger**: those scenarios flake, or the signup form gains more fields.
+
+### Runtime-derived unique emails (email-uniqueness option B)
+Playwright fixture auto-generating `${scenarioTitleHash}@example.com`. We shipped option A (lint check) instead.
+- **Why not**: lint catches it at commit time, zero runtime cost.
+- **Trigger**: someone bypasses the lint, or feature files exceed ~50 scenarios.
+
+### `apps/server` local dev under bun (not just tests)
+Currently `dev = tsx watch`. Tests already use `bun src/index.ts`. Local dev could match.
+- **Why not**: hot dev path, untested with Better-Auth + HMR.
+- **Trigger**: dev restart time becomes painful, or we drop tsx as a dep.
+
+### Reverse proxy for `VITE_API_URL`
+`/api/*` proxied from web to API, eliminating the build-time env-var bake. Research's "option 3".
+- **Why not**: refactor of `apps/web/src/shared/api-client.ts` + Better-Auth URL handling.
+- **Trigger**: VITE_API_URL drift causes a bug, or we add more VITE_* build-time vars.
+
+### Runtime config via `window.__ENV`
+Alternative to build-time VITE_* vars — server injects config at HTML render. Build-once-deploy-many.
+- **Why not**: reverse-proxy (above) is the cleaner answer to the same problem.
+- **Trigger**: single-artifact-multiple-environments becomes a requirement.
+
+### `__extends` stderr noise in Nitro SSR (~17/run)
+Root cause: `react-remove-scroll-bar` + `react-style-singleton` (transitive via Radix) are CJS-only with tslib imports; Nitro's bundler mis-handles interop. Tests pass — error caught by TanStack Router per-match boundary.
+- **Workaround available** in `apps/web/vite.config.ts`:
+  ```ts
+  resolve: { alias: { tslib: 'tslib/tslib.es6.js' } },
+  ssr: { noExternal: ['react-remove-scroll-bar', 'react-style-singleton', 'react-remove-scroll', 'tslib'] },
+  ```
+- **Why not now**: we're on `nitro-nightly` + Vite 8 rolldown (both moving targets); upstream churn likely fixes it.
+- **Trigger**: stderr blocks debugging, or Nitro stabilizes and error persists → file upstream.
+- **Refs**: [vite#19032](https://github.com/vitejs/vite/issues/19032), [TanStack/router#6151](https://github.com/TanStack/router/issues/6151).
+
+### `data-hydrated` placement risk
+Currently in `RootDocument`'s `useEffect` at `apps/web/src/routes/__root.tsx:42`. If a suspense boundary resolves before children mount, the attribute could lie. Not observed.
+- **Trigger**: `waitForHydration` passes while page is still visually unhydrated → move the effect into a leaf component.
+
+### `BETTER_AUTH_SECRET` zero-conf default vs. prod safety (out of spike scope)
+`packages/env/src/server.ts` ships a `change-me-to-a-random-32-char-secret-key` default that's 32 chars (passes the min). In prod, an unset `BETTER_AUTH_SECRET` silently boots with a publicly-known signing key — anyone who reads the source can forge sessions. Spec §D6 claims "defaults never fire in prod" but the code doesn't enforce it.
+- **Fix**: add a `.refine()` that rejects the literal default when `NODE_ENV === "production"`.
+- **Not done here**: out of this spike's scope, but worth a follow-up ticket before any prod deploy.
+
+### Source maps on prod build
+`build.sourcemap: true` for debugging test failures against the built Nitro bundle.
+- **Why not**: tests pass, no current failure needs it.
+
+### CI config review for build-for-test
+`.github/workflows/*` untouched. CI pays the ~15s cold vite build every run. Likely fine; worth reading through when this branch nears merge.
+
+### Dead-ends (not todos, just remembered)
+- **Vitest under Bun runtime** (`bun --bun vitest`): blocked by Vite SSR transform losing Zod's named export. Moved to `bun test` instead. Not revisitable until [bun#4145](https://github.com/oven-sh/bun/issues/4145) closes.
+- **Prisma `--skip-if-unchanged`**: no native flag. We built `packages/db/scripts/generate.ts` (content-hash). Open request: [prisma/prisma#29308](https://github.com/prisma/prisma/issues/29308).
+
+---
+
 ## Rejected
 
 | Tool | Why not |

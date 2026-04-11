@@ -237,14 +237,16 @@ When an AI agent writes Gherkin or step definitions:
 
 ## Auth in Tests
 
-Use the `signUpOrSignIn` helper pattern:
-- Tries sign-up first, falls back to sign-in if user exists
-- Handles parallel execution where multiple scenarios may create the same user
+**Precondition auth goes through the HTTP API, not the UI.** `Given I am signed in as "X"` and `Given a user exists with email "X" and password "Y"` call Better-Auth directly (see `createUserViaApi` / `signInViaApi` in `e2e/auth-client.ts`), landing the session cookie on `page.context()`. Skipping the sign-up form is ~20× faster and immune to form-field changes (adding a username, password policy, etc.).
+
+**Subject-under-test auth uses the real UI.** The scenarios in `auth.feature` — Sign Up, Sign In, Wrong Password, Protected Route, Sign Out — exercise the actual login form via When/Then steps. Don't move those to the API path; they're the tests that would catch a broken form.
+
+If you're writing a new feature file and need a signed-in user as scaffolding, always use `Given I am signed in as "unique-email@example.com"`.
 
 ## Test Infrastructure
 
 - `docker-compose.test.yml` — Postgres on dynamic port (derived from directory hash), tmpfs (in-memory). Parametric — `TEST_PORT` + `TEST_CONTAINER` supplied by `scripts/test-db.ts`.
-- `../scripts/test-db.ts` — **shared with vitest**: `testDbEnv(suite)` (pure hash→port/container derivation) + `setupTestDatabase(suite)` (docker boot + prisma push). Single source of truth for how test DBs are provisioned. Same module drives unit-suite isolation in `packages/api/vitest.config.ts`.
+- `../scripts/test-db.ts` — **shared with the unit suite**: `testDbEnv(suite)` (pure hash→port/container derivation) + `setupTestDatabase(suite)` (docker boot + prisma push). Single source of truth for how test DBs are provisioned. Same module drives unit-suite isolation in `packages/api/test-runner.ts`.
 - `test-env.ts` — thin facade: `testDbEnv("e2e")` + named re-exports (`TEST_PORT`, `TEST_CONTAINER`, `TEST_DATABASE_URL`, `PROJECT_ROOT`).
 - `global-setup.ts` — thin wrapper calling `setupTestDatabase("e2e")`.
 - `playwright.config.ts` — starts web (`3100 + offset`) and server (`3200 + offset`) with test env vars, where `offset = hash16(PROJECT_ROOT) % 100`. See the container-naming bullet below for the formula.

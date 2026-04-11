@@ -12,6 +12,7 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
+      - uses: oven-sh/setup-bun@v2
       - uses: pnpm/action-setup@v4
       - uses: actions/setup-node@v4
         with:
@@ -29,6 +30,7 @@ jobs:
       BETTER_AUTH_SECRET: test-secret-key-for-ci-tests-only-32chars
     steps:
       - uses: actions/checkout@v4
+      - uses: oven-sh/setup-bun@v2
       - uses: pnpm/action-setup@v4
       - uses: actions/setup-node@v4
         with:
@@ -37,7 +39,7 @@ jobs:
       - run: pnpm install --frozen-lockfile
       - name: Compute dynamic test ports
         run: |
-          pnpm exec tsx scripts/print-test-env.ts e2e >> "$GITHUB_ENV"
+          bun scripts/print-test-env.ts e2e >> "$GITHUB_ENV"
       - name: Promote CORS / auth URLs to workflow env
         run: |
           echo "CORS_ORIGIN=http://localhost:${TEST_WEB_PORT}" >> "$GITHUB_ENV"

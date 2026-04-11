@@ -59,6 +59,7 @@ Open http://localhost:3000 — sign up, create todos, explore.
 
 - Node.js >= 22
 - pnpm
+- [Bun](https://bun.sh/) (used by test runners and the Prisma generate hash script — `brew install bun` or `curl -fsSL https://bun.sh/install | bash`)
 - Docker (for PostgreSQL)
 
 ## Stack
@@ -196,7 +197,7 @@ Pre-commit hooks run `agent-harness fix` then `agent-harness lint` automatically
 | `make check` | Full quality gate (13 checks + typecheck) |
 | `make fix` | Auto-fix lint issues |
 | `make test` | BDD tests (clean test DB each run) |
-| `make test-unit` | Vitest unit/integration tests (isolated unit-suite DB) |
+| `make test-unit` | `bun test` unit/integration tests (isolated unit-suite DB) |
 | `make test-ui` | Playwright UI mode |
 | `make db-push` | Push Prisma schema to database |
 | `make db-generate` | Regenerate Prisma client |

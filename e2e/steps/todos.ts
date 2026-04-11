@@ -3,6 +3,7 @@ import { fileURLToPath } from "node:url";
 import { expect } from "@playwright/test";
 import { createBdd } from "playwright-bdd";
 import { SHARED_PASSWORD } from "../fixtures/credentials.ts";
+import { waitForHydration } from "../waits.ts";
 
 const { Given: given, When: when, Then: then } = createBdd();
 
@@ -44,7 +45,7 @@ when("I sign out and sign in as {string}", async ({ page }, email: string) => {
 
   // Sign up as new user
   await page.goto("/login");
-  await page.waitForLoadState("networkidle");
+  await waitForHydration(page);
   await page.getByRole("button", { name: "Sign Up" }).click();
   await page.getByLabel("Name").fill(email.split("@")[0]);
   await page.getByLabel("Email").fill(email);
