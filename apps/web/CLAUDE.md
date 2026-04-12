@@ -32,7 +32,8 @@ src/
    - Authenticated page: `src/routes/_authenticated/settings.tsx`
 2. Export `Route` using `createFileRoute`
 3. The route tree regenerates automatically on `vite dev`
-   If the dev server isn't running when you add/remove route files, start `make dev` to regenerate. There is no standalone generation command.
+   If the dev server isn't running, run `make routes` to regenerate without starting the full dev server.
+   When adding multiple routes, create all route files first, then run `make routes` once.
 
 ### Public page
 
@@ -93,6 +94,21 @@ function MyComponent() {
 ### Optimistic Updates
 
 For instant UI feedback before the server confirms, see the drag-and-drop reorder handler in `src/routes/_authenticated/todos.tsx` — it uses `queryClient.setQueryData` to update the cache immediately, with `onError` invalidation as fallback.
+
+When using `onMutate` callbacks with tRPC, define explicit types for the data shape — tRPC's type inference breaks on the callback parameter:
+
+```tsx
+// Define explicit types matching your router's return shape
+type TodoItem = { id: string; title: string; position: number };
+type TodoList = TodoItem[];
+
+const previous = queryClient.getQueryData<TodoList>(trpc.todo.list.queryOptions().queryKey);
+queryClient.setQueryData<TodoList>(trpc.todo.list.queryOptions().queryKey, (old) => {
+  if (!old) return old;
+  // TypeScript now knows old is TodoList, not unknown
+  return old.map((item) => (item.id === targetId ? { ...item, position: newPos } : item));
+});
+```
 
 ## Auth Client
 
