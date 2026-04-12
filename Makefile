@@ -16,15 +16,16 @@ setup:
 # Regenerate route tree without full dev server
 routes:
 	@echo "Generating route tree..."
-	@rm -f apps/web/src/routeTree.gen.ts && \
+	@lsof -ti :4173 | xargs kill 2>/dev/null || true
+	@rm -f apps/web/src/routeTree.gen.ts; \
 		pnpm --filter @project/web exec vite dev --port 4173 & VIT_PID=$$!; \
 		TRIES=0; \
 		while [ ! -f apps/web/src/routeTree.gen.ts ]; do \
 			sleep 0.5; TRIES=$$((TRIES+1)); \
-			if [ $$TRIES -ge 30 ]; then echo "ERROR: Route tree generation timed out after 15s"; kill $$VIT_PID 2>/dev/null; exit 1; fi; \
+			if [ $$TRIES -ge 30 ]; then echo "ERROR: Route tree generation timed out after 15s"; lsof -ti :4173 | xargs kill 2>/dev/null; exit 1; fi; \
 		done; \
-		sleep 1; \
-		kill $$VIT_PID 2>/dev/null; wait $$VIT_PID 2>/dev/null; true
+		sleep 0.5; \
+		lsof -ti :4173 | xargs kill 2>/dev/null || true
 
 # Start both web and server
 dev:
