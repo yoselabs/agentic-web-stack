@@ -75,13 +75,47 @@ But there are real tech constraints with subagent-driven development:
 
 **Leaning toward B** — the Gherkin file IS the behavior contract. Step definitions are implementation details of the test, not the spec. Writing them against real HTML is just good engineering.
 
+## Additional Process Concerns
+
+### Log-Driven Development for AI Agents
+
+From K research (073-grace-ldd-ai-code-markup): LDD in the AI agent context means **structured belief-state logging** — agents emit logs capturing what they believe is happening at each step, enabling verification without re-running. GRACE format: `ts, level, module, block, belief, ctx`.
+
+The template already has pino structured logging, but it's not prescribed as part of the development cycle. Consider:
+- Should subagents be required to verify their work by checking server logs after API changes?
+- Should the development cycle include a "verify via logs" step between API implementation and UI?
+- How does this connect to the existing integration tests (which verify behavior) vs logs (which verify runtime state)?
+
+Note: K research found LDD has **weak evidence** (idea #10 in key-ideas.md) — "conceptually appealing, no empirical validation. ODD (Observability-Driven Development) is the established version." Don't over-invest without validation.
+
+Reference: `~/Documents/Knowledge/Researches/073-grace-ldd-ai-code-markup/key-ideas.md` and `examples.md`.
+
+### Consistency & Naming Conventions Audit
+
+Before validating the process with a real feature, the template needs a consistency scan:
+- **Orthogonality** — are concerns properly separated? Do modules have single responsibilities? Are there hidden couplings?
+- **Idiomatic patterns** — does code follow TypeScript/React/Hono/Prisma community conventions? Are anti-patterns present?
+- **Naming conventions** — Makefile targets (e.g., `db-push` vs `db:push` vs `dbPush`), file names (kebab-case vs camelCase), export styles, component names
+- **Architecture consistency** — does every layer follow the same patterns? Are there exceptions that should be standardized?
+
+This audit should happen BEFORE prescribing the development cycle, since the cycle should enforce the conventions it discovers.
+
 ## What Needs To Happen Next
 
-1. **Decide on the step definition timing** (A, B, or C above)
-2. **Write the process as a prescription** — document in CLAUDE.md or as a skill
-3. **Define plan structure template** — how writing-plans should structure vertical slices
-4. **Validate by building a real feature** — run a multi-feature project using the prescribed process
-5. **Capture lessons** — update the process based on what breaks
+1. **Consistency & naming audit** — scan for orthogonality, idioms, naming conventions
+2. **Decide on the step definition timing** (A, B, or C above)
+3. **Decide on LDD integration** — whether/how structured logging fits the development cycle
+4. **Write the process as a prescription** — document in CLAUDE.md or as a skill
+5. **Define plan structure template** — how writing-plans should structure vertical slices
+6. **Validate by building a real feature** — run a multi-feature project using the prescribed process
+7. **Capture lessons** — update the process based on what breaks
+
+## Observations from Round 2 (Retro Board)
+
+- **Batching tRPC routers into one subagent was 3x more efficient** — Tasks 2-4 (board, card, column routers) were batched into a single subagent instead of 3 separate ones. The shared context (Prisma schema, router conventions, tRPC patterns) meant the agent didn't re-discover the same things 3 times. Consider this when defining plan structure: group tasks that share domain context.
+- Spec reviewer found zero issues — high plan specificity paid off
+- BDD tests passed on 2nd run (vs Round 1's ~10 iterations) thanks to fixed test ports documentation
+- Mobile test suite validated responsive behavior automatically
 
 ## Context for Next Session
 
