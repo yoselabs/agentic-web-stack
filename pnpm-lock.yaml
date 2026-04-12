@@ -17,6 +17,9 @@ importers:
       '@project/db':
         specifier: workspace:*
         version: link:packages/db
+      '@tanstack/router-generator':
+        specifier: ^1.166.29
+        version: 1.166.29
       tsx:
         specifier: ^4.21.0
         version: 4.21.0
