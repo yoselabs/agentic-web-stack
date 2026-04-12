@@ -73,6 +73,30 @@ Use the `signUpOrSignIn` helper pattern:
 - Test ports (3100/3101) are separate from dev ports (3000/3001) — both can run simultaneously
 - Fully parallel execution (7 workers), desktop then mobile with DB reset between
 
+## Known Test Failure Patterns
+
+| Symptom | Cause | Fix |
+|---------|-------|-----|
+| `getByRole("button")` click doesn't navigate | `<Link>` wrapping `<Button>` creates nested `<a><button>` | Use `<Button asChild><Link>` instead (single element) |
+
+## Locator Scoping
+
+When multiple identical elements exist in different sections (e.g., "Add" buttons in
+each column), scope to the nearest **semantic** container — not `div`:
+
+```typescript
+// BAD: div matches nested containers too broadly
+const column = page.locator("div", { has: page.getByRole("heading", { name: "To Do" }) });
+column.getByRole("button", { name: "Add" }); // finds buttons in ALL columns
+
+// GOOD: scope to semantic element (form, section, nav, [role="region"])
+const form = page.locator("form", { has: page.getByPlaceholder("Add a card") });
+form.getByRole("button", { name: "Add" }); // finds only this form's button
+```
+
+If no semantic container exists, add `data-testid` to the section wrapper.
+Prefer `form`, `section`, `nav`, `article`, `[role="region"]` over generic `div`.
+
 ## Do Not
 
 - Edit files in `.features-gen/` — they are auto-generated
