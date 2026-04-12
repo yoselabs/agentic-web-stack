@@ -1,4 +1,4 @@
-.PHONY: setup dev db db-push db-generate db-studio db-seed check typecheck lint fix test test-ui test-unit clean
+.PHONY: setup dev db db-push db-generate db-studio db-seed check typecheck lint fix test test-ui test-unit clean routes
 
 # Zero-conf setup: clone → make setup → make dev
 setup:
@@ -9,12 +9,22 @@ setup:
 	@echo "Waiting for Postgres..."
 	@until docker compose exec -T postgres pg_isready -U postgres > /dev/null 2>&1; do sleep 1; done
 	pnpm -w run db:push
-	@echo "Generating route tree..."
-	@cd apps/web && pnpm exec vite dev --port 0 & VIT_PID=$$!; \
-		while [ ! -f src/routeTree.gen.ts ]; do sleep 0.5; done; \
-		kill $$VIT_PID 2>/dev/null; wait $$VIT_PID 2>/dev/null; true
+	$(MAKE) routes
 	prek install
 	@echo "✓ Ready. Run 'make dev' to start."
+
+# Regenerate route tree without full dev server
+routes:
+	@echo "Generating route tree..."
+	@rm -f apps/web/src/routeTree.gen.ts && \
+		pnpm --filter @project/web exec vite dev --port 4173 & VIT_PID=$$!; \
+		TRIES=0; \
+		while [ ! -f apps/web/src/routeTree.gen.ts ]; do \
+			sleep 0.5; TRIES=$$((TRIES+1)); \
+			if [ $$TRIES -ge 30 ]; then echo "ERROR: Route tree generation timed out after 15s"; kill $$VIT_PID 2>/dev/null; exit 1; fi; \
+		done; \
+		sleep 1; \
+		kill $$VIT_PID 2>/dev/null; wait $$VIT_PID 2>/dev/null; true
 
 # Start both web and server
 dev:
