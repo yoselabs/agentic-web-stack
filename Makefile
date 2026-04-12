@@ -13,24 +13,13 @@ setup:
 	prek install
 	@echo "✓ Ready. Run 'make dev' to start."
 
-# Regenerate route tree without full dev server
-# Uses port 4173 (not 0) so we can pre-kill stale processes and clean up reliably via lsof
+# Regenerate route tree (no dev server needed)
 routes:
-	@echo "Generating route tree..."
-	@lsof -ti :4173 | xargs kill 2>/dev/null || true
-	@rm -f apps/web/src/routeTree.gen.ts; \
-		pnpm --filter @project/web exec vite dev --port 4173 --strictPort & \
-		TRIES=0; \
-		while [ ! -f apps/web/src/routeTree.gen.ts ]; do \
-			sleep 0.5; TRIES=$$((TRIES+1)); \
-			if [ $$TRIES -ge 30 ]; then echo "ERROR: Route tree generation timed out after 15s"; lsof -ti :4173 | xargs kill 2>/dev/null; exit 1; fi; \
-		done; \
-		sleep 1; \
-		lsof -ti :4173 | xargs kill 2>/dev/null || true
+	@pnpm exec tsx scripts/generate-routes.ts
 
 # Start both web and server
 dev:
-	@lsof -ti :3000,:3001 | xargs kill 2>/dev/null || true
+	@pnpm exec tsx scripts/kill-ports.ts 3000 3001
 	pnpm -w run dev
 
 # Database
@@ -60,10 +49,10 @@ test-unit:
 
 # BDD Tests (uses separate test database on port 5433)
 test:
-	@lsof -ti :3100,:3101 | xargs kill 2>/dev/null || true
+	@pnpm exec tsx scripts/kill-ports.ts 3100 3101
 	cd e2e && pnpm exec bddgen && pnpm exec playwright test
 test-ui:
-	@lsof -ti :3100,:3101 | xargs kill 2>/dev/null || true
+	@pnpm exec tsx scripts/kill-ports.ts 3100 3101
 	cd e2e && pnpm exec bddgen && pnpm exec playwright test --ui
 
 # Cleanup
