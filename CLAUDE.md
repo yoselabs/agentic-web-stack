@@ -22,6 +22,7 @@ Each directory with a CLAUDE.md has area-specific guidance. Read it before worki
 - `make check` — full quality gate: `agent-harness lint` + `tsc -b`
 - `make fix` — auto-fix lint issues
 - `make test` — BDD tests (separate test DB on port 5433)
+- `make routes` — regenerate TanStack Router route tree without starting dev server
 - `make db-push` — push Prisma schema to database
 - `make db-generate` — regenerate Prisma client
 
@@ -74,6 +75,8 @@ All workspace packages use `@project/*` prefix (e.g., `@project/api`, `@project/
 | Skip `prisma generate` after schema change | Stale types, runtime errors | Run `make db-push` (includes generate) |
 | `Link to` rejects not-yet-created routes | TanStack Router types from `routeTree.gen.ts` | Use `to={"/path" as string}` temporarily, remove once route exists and `make dev` regenerates |
 | `//` in JSX text content | Biome `noCommentText` flags as comment | Wrap in expression: `<p>{"https://example.com"}</p>` |
+| `<Link>` wrapping `<Button>` | Nested `<a><button>` breaks accessibility and BDD click handlers | Use `<Button asChild><Link to="...">Text</Link></Button>` — renders single `<a>` element |
+| `setQueryData` callback type errors with tRPC | tRPC's `queryKey` type inference breaks on `onMutate` callback parameter | Define explicit types for query data shape (see optimistic updates guide in `apps/web/CLAUDE.md`) |
 
 ## Library Skills (@tanstack/intent)
 
