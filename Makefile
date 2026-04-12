@@ -28,6 +28,7 @@ routes:
 
 # Start both web and server
 dev:
+	@lsof -ti :3000,:3001 | xargs kill 2>/dev/null || true
 	pnpm -w run dev
 
 # Database
@@ -57,8 +58,10 @@ test-unit:
 
 # BDD Tests (uses separate test database on port 5433)
 test:
+	@lsof -ti :3100,:3101 | xargs kill 2>/dev/null || true
 	cd e2e && pnpm exec bddgen && pnpm exec playwright test
 test-ui:
+	@lsof -ti :3100,:3101 | xargs kill 2>/dev/null || true
 	cd e2e && pnpm exec bddgen && pnpm exec playwright test --ui
 
 # Cleanup
