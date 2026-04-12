@@ -14,17 +14,18 @@ setup:
 	@echo "✓ Ready. Run 'make dev' to start."
 
 # Regenerate route tree without full dev server
+# Uses port 4173 (not 0) so we can pre-kill stale processes and clean up reliably via lsof
 routes:
 	@echo "Generating route tree..."
 	@lsof -ti :4173 | xargs kill 2>/dev/null || true
 	@rm -f apps/web/src/routeTree.gen.ts; \
-		pnpm --filter @project/web exec vite dev --port 4173 & VIT_PID=$$!; \
+		pnpm --filter @project/web exec vite dev --port 4173 &; \
 		TRIES=0; \
 		while [ ! -f apps/web/src/routeTree.gen.ts ]; do \
 			sleep 0.5; TRIES=$$((TRIES+1)); \
 			if [ $$TRIES -ge 30 ]; then echo "ERROR: Route tree generation timed out after 15s"; lsof -ti :4173 | xargs kill 2>/dev/null; exit 1; fi; \
 		done; \
-		sleep 0.5; \
+		sleep 1; \
 		lsof -ti :4173 | xargs kill 2>/dev/null || true
 
 # Start both web and server
