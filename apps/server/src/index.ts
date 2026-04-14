@@ -132,8 +132,7 @@ app.get("/api/todos/export", async (c) => {
   if (!session) return c.json({ error: "Unauthorized" }, 401);
 
   const todoListId = c.req.query("todoListId");
-  if (!todoListId)
-    return c.json({ error: "todoListId is required" }, 400);
+  if (!todoListId) return c.json({ error: "todoListId is required" }, 400);
 
   const csv = await exportTodosAsCSV(db, session.user.id, todoListId);
 

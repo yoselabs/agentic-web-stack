@@ -39,7 +39,9 @@ export function useTodos(
   const createTodo = useMutation(
     trpc.todo.create.mutationOptions({
       onSuccess: () => {
-        queryClient.invalidateQueries(trpc.todo.list.queryFilter({ todoListId }));
+        queryClient.invalidateQueries(
+          trpc.todo.list.queryFilter({ todoListId }),
+        );
         setNewTitle("");
         toast.success("Todo added");
       },
@@ -50,7 +52,9 @@ export function useTodos(
   const completeTodo = useMutation(
     trpc.todo.complete.mutationOptions({
       onSuccess: () => {
-        queryClient.invalidateQueries(trpc.todo.list.queryFilter({ todoListId }));
+        queryClient.invalidateQueries(
+          trpc.todo.list.queryFilter({ todoListId }),
+        );
       },
       onError: () => toast.error("Failed to update todo"),
     }),
@@ -59,7 +63,9 @@ export function useTodos(
   const deleteTodo = useMutation(
     trpc.todo.delete.mutationOptions({
       onSuccess: () => {
-        queryClient.invalidateQueries(trpc.todo.list.queryFilter({ todoListId }));
+        queryClient.invalidateQueries(
+          trpc.todo.list.queryFilter({ todoListId }),
+        );
         toast.success("Todo deleted");
       },
       onError: () => toast.error("Failed to delete todo"),
@@ -70,7 +76,9 @@ export function useTodos(
     trpc.todo.reorder.mutationOptions({
       onError: () => {
         // Rollback: refetch server state since optimistic update was wrong
-        queryClient.invalidateQueries(trpc.todo.list.queryFilter({ todoListId }));
+        queryClient.invalidateQueries(
+          trpc.todo.list.queryFilter({ todoListId }),
+        );
         toast.error("Failed to reorder");
       },
     }),
@@ -104,10 +112,10 @@ export function useTodos(
     // flushSync forces React to re-render synchronously so the DOM order
     // matches before @dnd-kit resets CSS transforms (prevents item flash)
     flushSync(() => {
-      queryClient.setQueryData(trpc.todo.list.queryFilter({ todoListId }).queryKey, [
-        ...reordered,
-        ...currentCompleted,
-      ]);
+      queryClient.setQueryData(
+        trpc.todo.list.queryFilter({ todoListId }).queryKey,
+        [...reordered, ...currentCompleted],
+      );
     });
 
     reorderTodos.mutate({ ids: reordered.map((t) => t.id) });
@@ -137,9 +145,12 @@ export function useTodos(
   });
 
   const exportTodos = async () => {
-    const res = await fetch(`${API_URL}/api/todos/export?todoListId=${todoListId}`, {
-      credentials: "include",
-    });
+    const res = await fetch(
+      `${API_URL}/api/todos/export?todoListId=${todoListId}`,
+      {
+        credentials: "include",
+      },
+    );
     if (!res.ok) {
       toast.error("Export failed");
       return;

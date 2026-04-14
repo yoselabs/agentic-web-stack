@@ -29,11 +29,7 @@ export async function createTodoList(
   });
 }
 
-export async function deleteTodoList(
-  db: DbClient,
-  userId: string,
-  id: string,
-) {
+export async function deleteTodoList(db: DbClient, userId: string, id: string) {
   const list = await db.todoList.findFirstOrThrow({
     where: { id, userId },
   });
