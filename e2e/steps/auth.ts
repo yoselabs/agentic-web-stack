@@ -71,8 +71,8 @@ given("I am on the dashboard", async ({ page }) => {
   });
 });
 
-given("I am on the todos page", async ({ page }) => {
-  await page.goto("/todos");
+given("I am on the todo lists page", async ({ page }) => {
+  await page.goto("/todo-lists");
   await page.waitForLoadState("networkidle");
 });
 
