@@ -109,11 +109,15 @@ app.post("/api/todos/import", async (c) => {
     return c.json({ error: "Only CSV files are accepted" }, 400);
   }
 
+  const todoListId = formData.get("todoListId");
+  if (typeof todoListId !== "string")
+    return c.json({ error: "todoListId is required" }, 400);
+
   const buffer = Buffer.from(await file.arrayBuffer());
 
   try {
     const result = await db.$transaction((tx) =>
-      importTodosFromCSV(tx, session.user.id, buffer),
+      importTodosFromCSV(tx, session.user.id, buffer, todoListId),
     );
     return c.json(result, 201);
   } catch (err) {
@@ -127,7 +131,11 @@ app.get("/api/todos/export", async (c) => {
   const session = await auth.api.getSession({ headers: c.req.raw.headers });
   if (!session) return c.json({ error: "Unauthorized" }, 401);
 
-  const csv = await exportTodosAsCSV(db, session.user.id);
+  const todoListId = c.req.query("todoListId");
+  if (!todoListId)
+    return c.json({ error: "todoListId is required" }, 400);
+
+  const csv = await exportTodosAsCSV(db, session.user.id, todoListId);
 
   return new Response(csv, {
     headers: {
