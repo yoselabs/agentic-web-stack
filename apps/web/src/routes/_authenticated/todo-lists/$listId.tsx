@@ -5,20 +5,23 @@ import {
 } from "@dnd-kit/sortable";
 import { Button } from "@project/ui/components/button";
 import { Input } from "@project/ui/components/input";
-import { useQueryClient } from "@tanstack/react-query";
-import { createFileRoute } from "@tanstack/react-router";
+import { useQuery, useQueryClient } from "@tanstack/react-query";
+import { Link, createFileRoute } from "@tanstack/react-router";
 import { useRef } from "react";
-import { CompletedTodoItem } from "#/features/todo/completed-todo-item";
-import { SortableTodoItem } from "#/features/todo/sortable-todo-item";
-import { useTodos } from "#/features/todo/use-todos";
+import { CompletedTodoItem } from "#/features/todo/completed-todo-item.js";
+import { SortableTodoItem } from "#/features/todo/sortable-todo-item.js";
+import { useTodos } from "#/features/todo/use-todos.js";
 
-export const Route = createFileRoute("/_authenticated/todos")({
-  component: TodosPage,
+export const Route = createFileRoute("/_authenticated/todo-lists/$listId")({
+  component: TodoListDetailPage,
 });
 
-function TodosPage() {
+function TodoListDetailPage() {
   const { trpc } = Route.useRouteContext();
+  const { listId } = Route.useParams();
   const queryClient = useQueryClient();
+
+  const listQuery = useQuery(trpc.todoList.get.queryOptions({ id: listId }));
   const {
     newTitle,
     setNewTitle,
@@ -33,13 +36,23 @@ function TodosPage() {
     handleDragEnd,
     importTodos,
     exportTodos,
-  } = useTodos(trpc, queryClient);
+  } = useTodos(trpc, queryClient, listId);
 
   const fileInputRef = useRef<HTMLInputElement>(null);
 
   return (
     <main className="max-w-2xl mx-auto px-4 sm:px-6 py-8 sm:py-10">
-      <h1 className="text-3xl font-bold mb-6">Todos</h1>
+      <div className="mb-6">
+        <Link
+          to="/todo-lists"
+          className="text-sm text-muted-foreground hover:text-foreground"
+        >
+          {"<-"} Back to lists
+        </Link>
+        <h1 className="text-3xl font-bold mt-2">
+          {listQuery.data?.name ?? "Loading..."}
+        </h1>
+      </div>
 
       <div className="flex gap-2 mb-4">
         <input

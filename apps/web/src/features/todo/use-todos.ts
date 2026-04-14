@@ -19,10 +19,11 @@ const API_URL = import.meta.env.VITE_API_URL ?? "http://localhost:3001";
 export function useTodos(
   trpc: TRPCOptionsProxy<AppRouter>,
   queryClient: QueryClient,
+  todoListId: string,
 ) {
   const [newTitle, setNewTitle] = useState("");
 
-  const todos = useQuery(trpc.todo.list.queryOptions());
+  const todos = useQuery(trpc.todo.list.queryOptions({ todoListId }));
 
   const activeTodos = todos.data?.filter((t) => !t.completed) ?? [];
   const completedTodos = todos.data?.filter((t) => t.completed) ?? [];
@@ -38,7 +39,7 @@ export function useTodos(
   const createTodo = useMutation(
     trpc.todo.create.mutationOptions({
       onSuccess: () => {
-        queryClient.invalidateQueries(trpc.todo.list.queryFilter());
+        queryClient.invalidateQueries(trpc.todo.list.queryFilter({ todoListId }));
         setNewTitle("");
         toast.success("Todo added");
       },
@@ -49,7 +50,7 @@ export function useTodos(
   const completeTodo = useMutation(
     trpc.todo.complete.mutationOptions({
       onSuccess: () => {
-        queryClient.invalidateQueries(trpc.todo.list.queryFilter());
+        queryClient.invalidateQueries(trpc.todo.list.queryFilter({ todoListId }));
       },
       onError: () => toast.error("Failed to update todo"),
     }),
@@ -58,7 +59,7 @@ export function useTodos(
   const deleteTodo = useMutation(
     trpc.todo.delete.mutationOptions({
       onSuccess: () => {
-        queryClient.invalidateQueries(trpc.todo.list.queryFilter());
+        queryClient.invalidateQueries(trpc.todo.list.queryFilter({ todoListId }));
         toast.success("Todo deleted");
       },
       onError: () => toast.error("Failed to delete todo"),
@@ -69,7 +70,7 @@ export function useTodos(
     trpc.todo.reorder.mutationOptions({
       onError: () => {
         // Rollback: refetch server state since optimistic update was wrong
-        queryClient.invalidateQueries(trpc.todo.list.queryFilter());
+        queryClient.invalidateQueries(trpc.todo.list.queryFilter({ todoListId }));
         toast.error("Failed to reorder");
       },
     }),
@@ -78,7 +79,7 @@ export function useTodos(
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
     if (!newTitle.trim()) return;
-    createTodo.mutate({ title: newTitle.trim() });
+    createTodo.mutate({ title: newTitle.trim(), todoListId });
   };
 
   const handleDragEnd = (event: DragEndEvent) => {
@@ -93,17 +94,17 @@ export function useTodos(
 
     // Read current completed todos from cache to avoid stale closure
     const currentData = queryClient.getQueryData<typeof todos.data>(
-      trpc.todo.list.queryFilter().queryKey,
+      trpc.todo.list.queryFilter({ todoListId }).queryKey,
     );
     const currentCompleted = currentData?.filter((t) => t.completed) ?? [];
 
     // Cancel in-flight list queries (fire-and-forget — setQueryData below overrides anyway)
-    queryClient.cancelQueries(trpc.todo.list.queryFilter());
+    queryClient.cancelQueries(trpc.todo.list.queryFilter({ todoListId }));
 
     // flushSync forces React to re-render synchronously so the DOM order
     // matches before @dnd-kit resets CSS transforms (prevents item flash)
     flushSync(() => {
-      queryClient.setQueryData(trpc.todo.list.queryFilter().queryKey, [
+      queryClient.setQueryData(trpc.todo.list.queryFilter({ todoListId }).queryKey, [
         ...reordered,
         ...currentCompleted,
       ]);
@@ -116,6 +117,7 @@ export function useTodos(
     mutationFn: async (file: File) => {
       const formData = new FormData();
       formData.append("file", file);
+      formData.append("todoListId", todoListId);
       const res = await fetch(`${API_URL}/api/todos/import`, {
         method: "POST",
         body: formData,
@@ -128,14 +130,14 @@ export function useTodos(
       return res.json() as Promise<{ count: number }>;
     },
     onSuccess: (data) => {
-      queryClient.invalidateQueries(trpc.todo.list.queryFilter());
+      queryClient.invalidateQueries(trpc.todo.list.queryFilter({ todoListId }));
       toast.success(`Imported ${data.count} todos`);
     },
     onError: (err: Error) => toast.error(err.message),
   });
 
   const exportTodos = async () => {
-    const res = await fetch(`${API_URL}/api/todos/export`, {
+    const res = await fetch(`${API_URL}/api/todos/export?todoListId=${todoListId}`, {
       credentials: "include",
     });
     if (!res.ok) {
