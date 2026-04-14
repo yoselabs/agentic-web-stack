@@ -3,10 +3,14 @@ import Papa from "papaparse";
 
 type DbClient = PrismaClient | Prisma.TransactionClient;
 
-async function lockActiveTodos(db: DbClient, userId: string): Promise<void> {
+async function lockActiveTodos(
+  db: DbClient,
+  userId: string,
+  todoListId: string,
+): Promise<void> {
   await db.$queryRaw`
     SELECT id FROM "Todo"
-    WHERE "userId" = ${userId} AND "completed" = false
+    WHERE "userId" = ${userId} AND "completed" = false AND "todoListId" = ${todoListId}
     FOR UPDATE
   `;
 }
@@ -14,25 +18,36 @@ async function lockActiveTodos(db: DbClient, userId: string): Promise<void> {
 async function shiftActivePositions(
   db: DbClient,
   userId: string,
+  todoListId: string,
 ): Promise<void> {
   await db.todo.updateMany({
-    where: { userId, completed: false },
+    where: { userId, completed: false, todoListId },
     data: { position: { increment: 1 } },
   });
 }
 
-export async function listTodos(db: DbClient, userId: string) {
+export async function listTodos(
+  db: DbClient,
+  userId: string,
+  todoListId: string,
+) {
   return db.todo.findMany({
-    where: { userId },
+    where: { userId, todoListId },
     orderBy: [{ completed: "asc" }, { position: "asc" }],
+    include: { todoList: true },
   });
 }
 
-export async function createTodo(db: DbClient, userId: string, title: string) {
-  await lockActiveTodos(db, userId);
-  await shiftActivePositions(db, userId);
+export async function createTodo(
+  db: DbClient,
+  userId: string,
+  title: string,
+  todoListId: string,
+) {
+  await lockActiveTodos(db, userId, todoListId);
+  await shiftActivePositions(db, userId, todoListId);
   return db.todo.create({
-    data: { title, userId, position: 0 },
+    data: { title, userId, todoListId, position: 0 },
   });
 }
 
@@ -43,8 +58,9 @@ export async function completeTodo(
   completed: boolean,
 ) {
   if (!completed) {
-    await lockActiveTodos(db, userId);
-    await shiftActivePositions(db, userId);
+    const todo = await db.todo.findUniqueOrThrow({ where: { id, userId } });
+    await lockActiveTodos(db, userId, todo.todoListId);
+    await shiftActivePositions(db, userId, todo.todoListId);
     return db.todo.update({
       where: { id, userId },
       data: { completed: false, position: 0 },
@@ -80,6 +96,7 @@ export async function importTodosFromCSV(
   db: DbClient,
   userId: string,
   csvData: Buffer,
+  todoListId: string,
 ): Promise<{ count: number }> {
   const text = csvData.toString("utf-8");
   const parsed = Papa.parse<Record<string, string>>(text, {
@@ -96,15 +113,16 @@ export async function importTodosFromCSV(
     throw new Error("CSV must have a 'title' column with at least one value");
   }
 
-  await lockActiveTodos(db, userId);
+  await lockActiveTodos(db, userId, todoListId);
   await db.todo.updateMany({
-    where: { userId, completed: false },
+    where: { userId, completed: false, todoListId },
     data: { position: { increment: titles.length } },
   });
   await db.todo.createMany({
     data: titles.map((title, i) => ({
       title,
       userId,
+      todoListId,
       position: i,
     })),
   });
@@ -115,8 +133,12 @@ export async function importTodosFromCSV(
 export async function exportTodosAsCSV(
   db: DbClient,
   userId: string,
+  todoListId: string,
 ): Promise<string> {
-  const todos = await listTodos(db, userId);
+  const todos = await db.todo.findMany({
+    where: { userId, todoListId },
+    orderBy: [{ completed: "asc" }, { position: "asc" }],
+  });
   if (todos.length === 0) {
     return "title,completed";
   }
