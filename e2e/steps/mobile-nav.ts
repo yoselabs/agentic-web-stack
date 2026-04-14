@@ -22,8 +22,8 @@ when("I tap {string} in the menu", async ({ page }, text: string) => {
   await sheet.getByText(text).click();
 });
 
-then("I should be on the todos page", async ({ page }) => {
-  await expect(page).toHaveURL(/\/todos/, { timeout: 5000 });
+then("I should be on the todo lists page", async ({ page }) => {
+  await expect(page).toHaveURL(/\/todo-lists/, { timeout: 5000 });
 });
 
 then("the mobile menu should be closed", async ({ page }) => {
