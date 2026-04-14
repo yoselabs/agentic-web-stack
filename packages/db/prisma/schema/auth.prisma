@@ -11,7 +11,8 @@ model User {
 
   sessions Session[]
   accounts Account[]
-  todos    Todo[]
+  todos     Todo[]
+  todoLists TodoList[]
 }
 
 model Session {

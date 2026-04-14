@@ -1,13 +1,15 @@
 // Application owned — full control.
 
 model Todo {
-  id        String   @id @default(cuid())
-  title     String
-  completed Boolean  @default(false)
-  position  Int      @default(0)
-  userId    String
-  createdAt DateTime @default(now())
-  updatedAt DateTime @updatedAt
+  id         String   @id @default(cuid())
+  title      String
+  completed  Boolean  @default(false)
+  position   Int      @default(0)
+  userId     String
+  todoListId String
+  createdAt  DateTime @default(now())
+  updatedAt  DateTime @updatedAt
 
-  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+  user     User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  todoList TodoList @relation(fields: [todoListId], references: [id], onDelete: Cascade)
 }
