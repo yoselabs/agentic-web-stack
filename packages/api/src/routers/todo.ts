@@ -9,14 +9,16 @@ import {
 import { protectedProcedure, router } from "../trpc.js";
 
 export const todoRouter = router({
-  list: protectedProcedure.query(({ ctx }) => {
-    return listTodos(ctx.db, ctx.session.user.id);
-  }),
+  list: protectedProcedure
+    .input(z.object({ todoListId: z.string() }))
+    .query(({ ctx, input }) => {
+      return listTodos(ctx.db, ctx.session.user.id, input.todoListId);
+    }),
   create: protectedProcedure
-    .input(z.object({ title: z.string().min(1) }))
+    .input(z.object({ title: z.string().min(1), todoListId: z.string() }))
     .mutation(({ ctx, input }) => {
       return ctx.db.$transaction((tx) =>
-        createTodo(tx, ctx.session.user.id, input.title),
+        createTodo(tx, ctx.session.user.id, input.title, input.todoListId),
       );
     }),
   complete: protectedProcedure
