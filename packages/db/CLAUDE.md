@@ -22,6 +22,7 @@ One `.prisma` file per domain area. Models that belong together live in the same
 | `base.prisma` | Infrastructure | Generator + datasource config |
 | `auth.prisma` | Better-Auth | User, Session, Account, Verification |
 | `todo.prisma` | Application | Todo |
+| `todo-list.prisma` | Application | TodoList |
 
 New domains get a new file (e.g., `post.prisma` for a blog feature). Never put unrelated models in the same file.
 

@@ -77,6 +77,10 @@ export const appRouter = router({
 });
 ```
 
+### Include Pattern (Prisma relations)
+
+When a service uses `include` (e.g., `listTodoLists` with `_count`), the type flows correctly through `inferRouterOutputs`. The issue arises in `setQueryData` callbacks — see `apps/web/CLAUDE.md` for the workaround.
+
 ## Transaction Rules
 
 - **All mutations:** router wraps in `db.$transaction((tx) => ...)` — even single-write ops, so you never forget when the service grows

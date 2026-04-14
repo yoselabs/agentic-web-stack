@@ -148,9 +148,10 @@ Steps are organized by domain. Shared steps (auth, navigation, assertions) live 
 
 ```
 steps/
-  auth.ts       # sign in/out, navigation, generic assertions (I should see, I click)
-  todos.ts      # todo-specific steps
-  mobile-nav.ts # mobile-specific steps
+  auth.ts        # sign in/out, navigation, generic assertions (I should see, I click)
+  todo-lists.ts  # todo-list-specific steps (create, navigate into, delete list)
+  todos.ts       # todo-specific steps
+  mobile-nav.ts  # mobile-specific steps
 ```
 
 ### Reuse Rules

@@ -96,22 +96,30 @@ function MyComponent() {
 When a route has 2+ mutations or the return object would have 5+ properties, extract orchestration into a `features/*/use-*.ts` hook. The route becomes a thin shell.
 
 ```tsx
-// features/todo/use-todos.ts — orchestration hook
+// features/todo/use-todos.ts — orchestration hook (scoped to a list)
 export function useTodos(
   trpc: TRPCOptionsProxy<AppRouter>,
   queryClient: QueryClient,
+  todoListId: string,
 ) {
-  const todos = useQuery(trpc.todo.list.queryOptions());
+  const todos = useQuery(trpc.todo.list.queryOptions({ todoListId }));
   const createTodo = useMutation(trpc.todo.create.mutationOptions({ ... }));
   // ... all mutations, handlers, derived state
   return { todos, createTodo, handleSubmit, handleDragEnd, ... };
 }
 
-// routes/_authenticated/todos.tsx — thin shell
-function TodosPage() {
+// features/todo-list/use-todo-lists.ts — list-level orchestration with optimistic delete
+export function useTodoLists(
+  trpc: TRPCOptionsProxy<AppRouter>,
+  queryClient: QueryClient,
+) { ... }
+
+// routes/_authenticated/todo-lists/$listId.tsx — thin shell
+function TodoListDetailPage() {
   const { trpc } = Route.useRouteContext();
+  const { listId } = Route.useParams();
   const queryClient = useQueryClient();
-  const { todos, handleSubmit, ... } = useTodos(trpc, queryClient);
+  const { todos, handleSubmit, ... } = useTodos(trpc, queryClient, listId);
   return <main>...</main>;
 }
 ```
@@ -136,6 +144,21 @@ queryClient.setQueryData<TodoList>(trpc.todo.list.queryFilter().queryKey, (old) 
   return old.map((item) => (item.id === targetId ? { ...item, position: newPos } : item));
 });
 ```
+
+### Include Type Workaround
+
+When using `setQueryData` on a query that returns data with Prisma `include`, tRPC's type inference breaks on the callback parameter. Define an explicit type:
+
+```typescript
+type TodoListWithCount = RouterOutput["todoList"]["list"][number];
+
+queryClient.setQueryData<TodoListWithCount[]>(
+  trpc.todoList.list.queryFilter().queryKey,
+  (old) => old?.filter((list) => list.id !== id),
+);
+```
+
+See `features/todo-list/use-todo-lists.ts` for the full optimistic delete pattern.
 
 ## Auth Client
 
