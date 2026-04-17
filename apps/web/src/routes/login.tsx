@@ -1,4 +1,4 @@
-import { MIN_PASSWORD_LENGTH } from "@project/config";
+import { MIN_PASSWORD_LENGTH } from "@project/config/limits";
 import { Button } from "@project/ui/components/button";
 import {
   Card,

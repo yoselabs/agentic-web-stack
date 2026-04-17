@@ -14,7 +14,7 @@ setup:
 	pnpm install
 	export $(CONFIG_SH) && docker compose up -d
 	@echo "Waiting for Postgres..."
-	@until docker compose exec -T postgres pg_isready -U postgres > /dev/null 2>&1; do sleep 1; done
+	@export $(CONFIG_SH) && until docker compose exec -T postgres pg_isready -U $$DEV_DB_USER > /dev/null 2>&1; do sleep 1; done
 	pnpm -w run db:push
 	$(MAKE) routes
 	prek install

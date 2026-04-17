@@ -1,5 +1,5 @@
 import { defineConfig } from "@playwright/test";
-import { TEST_API_PORT, TEST_WEB_PORT } from "@project/config";
+import { TEST_API_PORT, TEST_WEB_PORT } from "@project/config/ports";
 import { defineBddConfig } from "playwright-bdd";
 
 import { TEST_DATABASE_URL } from "./test-env.js";

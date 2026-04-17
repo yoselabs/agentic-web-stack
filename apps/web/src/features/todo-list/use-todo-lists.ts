@@ -1,4 +1,4 @@
-import type { AppRouter } from "@project/api";
+import type { AppRouter } from "@project/api/router";
 import { type QueryClient, useMutation, useQuery } from "@tanstack/react-query";
 import type { TRPCOptionsProxy } from "@trpc/tanstack-react-query";
 import { useState } from "react";

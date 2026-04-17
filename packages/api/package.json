@@ -4,15 +4,16 @@
   "private": true,
   "type": "module",
   "exports": {
-    ".": {
-      "default": "./src/index.ts"
-    }
+    "./router": { "default": "./src/router.ts" },
+    "./context": { "default": "./src/context.ts" },
+    "./services/todo": { "default": "./src/services/todo.ts" }
   },
   "scripts": {
     "test": "vitest run"
   },
   "dependencies": {
     "@project/auth": "workspace:*",
+    "@project/config": "workspace:*",
     "@project/db": "workspace:*",
     "@trpc/server": "^11.0.0",
     "papaparse": "^5.5.3",

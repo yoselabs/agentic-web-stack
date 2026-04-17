@@ -1,4 +1,4 @@
-import type { AppRouter } from "@project/api";
+import type { AppRouter } from "@project/api/router";
 import { Button } from "@project/ui/components/button";
 import { QueryClientProvider } from "@tanstack/react-query";
 import type { QueryClient } from "@tanstack/react-query";

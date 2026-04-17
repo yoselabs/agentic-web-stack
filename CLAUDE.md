@@ -53,8 +53,9 @@ All workspace packages use `@project/*` prefix (e.g., `@project/api`, `@project/
 ## Critical Rules
 
 - **Single source of truth (SSOT)** — a global architectural principle, not just a config rule. Any value, type, validation rule, or structural definition referenced in 2+ places lives in exactly one declaration; every other consumer imports it. Duplication is the failure mode, not a style preference — if you change one copy and forget the other, the app silently drifts. Applies across layers:
-  - **Runtime env vars** → `@project/env` (the only module allowed to read `process.env`; split `server` / `client` subpaths, no barrel)
-  - **Static constants** (ports, limits, mount paths, dev creds) → `@project/config`
+  - **No barrel files** — `@project/env`, `@project/config`, and `@project/api` expose named subpaths only (e.g., `@project/env/server`, `@project/config/ports`, `@project/api/router`). Barrels break native Node ESM resolution, hurt tree-shaking, and obscure where symbols come from. Prefer subpath imports everywhere.
+  - **Runtime env vars** → `@project/env` (the only module allowed to read `process.env`; `/server` and `/client` subpaths)
+  - **Static constants** (ports, limits, mount paths, dev creds) → `@project/config` (`/ports`, `/db`, `/limits`, `/api-paths` subpaths)
   - **Type definitions** → infer from Prisma (`@project/db`) or tRPC (`inferRouterOutputs<AppRouter>`); never redeclare a shape that already exists
   - **Validation rules** → one Zod schema, used by both server routers and client forms
   - **Dependency versions** → `catalog:` in `pnpm-workspace.yaml`

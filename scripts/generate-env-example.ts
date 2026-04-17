@@ -4,13 +4,8 @@
 
 import { writeFileSync } from "node:fs";
 import path from "node:path";
-import {
-  DEV_API_PORT,
-  DEV_DB_NAME,
-  DEV_DB_PASSWORD,
-  DEV_DB_PORT,
-  DEV_DB_USER,
-} from "@project/config";
+import { DEV_DB_NAME, DEV_DB_PASSWORD, DEV_DB_USER } from "@project/config/db";
+import { DEV_API_PORT, DEV_DB_PORT } from "@project/config/ports";
 
 const PROJECT_ROOT = path.resolve(import.meta.dirname, "..");
 
@@ -20,6 +15,7 @@ const betterAuthUrl = `http://localhost:${DEV_API_PORT}`;
 const rootEnv = `DATABASE_URL="${databaseUrl}"
 BETTER_AUTH_SECRET="change-me-to-a-random-32-char-secret-key"
 BETTER_AUTH_URL="${betterAuthUrl}"
+VITE_API_URL="${betterAuthUrl}"
 `;
 
 const dbEnv = `DATABASE_URL="${databaseUrl}"

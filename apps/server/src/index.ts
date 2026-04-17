@@ -1,13 +1,14 @@
 import { serve } from "@hono/node-server";
 import { trpcServer } from "@hono/trpc-server";
+import { createContext } from "@project/api/context";
+import { appRouter } from "@project/api/router";
 import {
-  appRouter,
-  createContext,
   exportTodosAsCSV,
   importTodosFromCSV,
-} from "@project/api";
+} from "@project/api/services/todo";
 import { auth } from "@project/auth";
-import { AUTH_MOUNT, MAX_UPLOAD_BYTES, TRPC_MOUNT } from "@project/config";
+import { AUTH_MOUNT, TRPC_MOUNT } from "@project/config/api-paths";
+import { MAX_UPLOAD_BYTES } from "@project/config/limits";
 import { db } from "@project/db";
 import { env } from "@project/env/server";
 import { Hono } from "hono";

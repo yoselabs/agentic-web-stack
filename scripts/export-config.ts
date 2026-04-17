@@ -10,16 +10,18 @@
 // scripts/export-dev-config.ts and scripts/export-test-config.ts.
 
 import {
-  DEV_API_PORT,
   DEV_DB_NAME,
   DEV_DB_PASSWORD,
-  DEV_DB_PORT,
   DEV_DB_USER,
+  TEST_DB_NAME,
+} from "@project/config/db";
+import {
+  DEV_API_PORT,
+  DEV_DB_PORT,
   DEV_WEB_PORT,
   TEST_API_PORT,
-  TEST_DB_NAME,
   TEST_WEB_PORT,
-} from "@project/config";
+} from "@project/config/ports";
 
 const exports: Record<string, string | number> = {
   DEV_DB_PORT,

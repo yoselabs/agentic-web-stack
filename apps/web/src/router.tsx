@@ -1,5 +1,5 @@
-import type { AppRouter } from "@project/api";
-import { TRPC_MOUNT } from "@project/config";
+import type { AppRouter } from "@project/api/router";
+import { TRPC_MOUNT } from "@project/config/api-paths";
 import { env } from "@project/env/client";
 import { QueryClient } from "@tanstack/react-query";
 import { createRouter as createTanStackRouter } from "@tanstack/react-router";
