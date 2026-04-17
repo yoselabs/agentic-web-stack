@@ -1,5 +1,6 @@
 import { expect } from "@playwright/test";
 import { createBdd } from "playwright-bdd";
+import { SHARED_PASSWORD } from "../fixtures/credentials.ts";
 
 const { Given: given, When: when, Then: then } = createBdd();
 
@@ -58,7 +59,7 @@ given("I am not signed in", async ({ page }) => {
 });
 
 given("I am signed in as {string}", async ({ page }, email: string) => {
-  await signUpOrSignIn(page, email, "testpassword123");
+  await signUpOrSignIn(page, email, SHARED_PASSWORD);
 });
 
 given("I am on the dashboard", async ({ page }) => {
@@ -84,7 +85,7 @@ when(
     await page.getByRole("button", { name: "Sign Up" }).click();
     await page.getByLabel("Name").fill(name);
     await page.getByLabel("Email").fill(email);
-    await page.getByLabel("Password").fill("testpassword123");
+    await page.getByLabel("Password").fill(SHARED_PASSWORD);
     await page.locator('button[type="submit"]').click();
     await page.waitForLoadState("networkidle");
   },

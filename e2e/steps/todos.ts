@@ -2,6 +2,7 @@ import { dirname, resolve } from "node:path";
 import { fileURLToPath } from "node:url";
 import { expect } from "@playwright/test";
 import { createBdd } from "playwright-bdd";
+import { SHARED_PASSWORD } from "../fixtures/credentials.ts";
 
 const { Given: given, When: when, Then: then } = createBdd();
 
@@ -47,7 +48,7 @@ when("I sign out and sign in as {string}", async ({ page }, email: string) => {
   await page.getByRole("button", { name: "Sign Up" }).click();
   await page.getByLabel("Name").fill(email.split("@")[0]);
   await page.getByLabel("Email").fill(email);
-  await page.getByLabel("Password").fill("testpassword123");
+  await page.getByLabel("Password").fill(SHARED_PASSWORD);
   await page.locator('button[type="submit"]').click();
   await page.waitForURL(/\/dashboard/, { timeout: 10000 });
 });

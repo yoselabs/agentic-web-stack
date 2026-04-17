@@ -1,24 +1,25 @@
 import { auth } from "@project/auth";
 import { db } from "@project/db";
+import { SEED_USER } from "../e2e/fixtures/credentials.ts";
 
 async function main() {
   console.log("Seeding database...");
 
   // Check if already seeded
   const existing = await db.user.findFirst({
-    where: { email: "demo@example.com" },
+    where: { email: SEED_USER.email },
   });
 
   if (existing) {
-    console.log("Already seeded (demo@example.com exists), skipping.");
+    console.log(`Already seeded (${SEED_USER.email} exists), skipping.`);
     return;
   }
 
   // Create demo user via Better-Auth (handles password hashing)
   const { user } = await auth.api.signUpEmail({
     body: {
-      email: "demo@example.com",
-      password: "password123",
+      email: SEED_USER.email,
+      password: SEED_USER.password,
       name: "Demo User",
     },
   });
@@ -63,8 +64,8 @@ async function main() {
 
   console.log("Created 5 sample todos");
   console.log("\nDemo credentials:");
-  console.log("  Email:    demo@example.com");
-  console.log("  Password: password123");
+  console.log(`  Email:    ${SEED_USER.email}`);
+  console.log(`  Password: ${SEED_USER.password}`);
 }
 
 main()
