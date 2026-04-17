@@ -10,7 +10,7 @@ import { env } from "@project/env/client";
 // imports from @project/env/server is a build-breaking mistake (see
 // root CLAUDE.md: SSOT + split-brain env + no-barrel rule).
 
-export const API_BASE_URL = env.VITE_API_URL;
+const API_BASE_URL = env.VITE_API_URL;
 
 // Thin fetch wrapper: prepends base URL for relative paths, sets
 // cookie-auth credentials, preserves caller-provided init options.
@@ -20,7 +20,7 @@ export const API_BASE_URL = env.VITE_API_URL;
 // httpBatchLink `fetch` option (FetchEsque). Full URLs (starting with
 // http) and URL/Request objects pass through unchanged; relative
 // string paths get the base URL prepended.
-export async function apiFetch(
+async function apiFetch(
   input: string | URL | Request,
   init?: RequestInit,
 ): Promise<Response> {
@@ -36,9 +36,10 @@ export async function apiFetch(
   });
 }
 
-// Namespaced export so call sites read `apiClient.fetch(...)` rather
-// than `apiFetch(...)` — matches the "all HTTP via apiClient" mental
-// model established in apps/web/CLAUDE.md.
+// Single public export: all HTTP access goes through apiClient. The
+// base URL and fetch wrapper are intentionally NOT exported separately
+// — that would give callers a path around the namespace and partially
+// defeat the "all HTTP via apiClient" rule in apps/web/CLAUDE.md.
 export const apiClient = {
   baseUrl: API_BASE_URL,
   fetch: apiFetch,
