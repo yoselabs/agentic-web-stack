@@ -9,11 +9,11 @@
     }
   },
   "dependencies": {
-    "@prisma/client": "^6.19.3",
+    "@prisma/client": "catalog:",
     "@project/db": "workspace:*",
     "better-auth": "^1.6.2"
   },
   "devDependencies": {
-    "@types/node": "^25.6.0"
+    "@types/node": "catalog:"
   }
 }

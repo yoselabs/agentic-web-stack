@@ -4,6 +4,27 @@ settings:
   autoInstallPeers: true
   excludeLinksFromLockfile: false
 
+catalogs:
+  default:
+    '@prisma/client':
+      specifier: ^6.19.3
+      version: 6.19.3
+    '@t3-oss/env-core':
+      specifier: ^0.12.0
+      version: 0.12.0
+    '@types/node':
+      specifier: ^25.6.0
+      version: 25.6.0
+    prisma:
+      specifier: ^6.19.3
+      version: 6.19.3
+    typescript:
+      specifier: ^5.7.2
+      version: 5.9.3
+    zod:
+      specifier: ^3.25.76
+      version: 3.25.76
+
 importers:
 
   .:
@@ -24,7 +45,7 @@ importers:
         specifier: ^4.21.0
         version: 4.21.0
       typescript:
-        specifier: ^5.7.0
+        specifier: 'catalog:'
         version: 5.9.3
 
   apps/server:
@@ -55,7 +76,7 @@ importers:
         version: 10.3.1
     devDependencies:
       '@types/node':
-        specifier: ^25.6.0
+        specifier: 'catalog:'
         version: 25.6.0
       pino-pretty:
         specifier: ^13.1.3
@@ -137,7 +158,7 @@ importers:
         specifier: ^6.0.1
         version: 6.0.1(vite@8.0.8(@types/node@25.6.0)(esbuild@0.27.7)(jiti@2.6.1)(tsx@4.21.0)(yaml@2.8.3))
       typescript:
-        specifier: ^5.7.0
+        specifier: 'catalog:'
         version: 5.9.3
       vite:
         specifier: ^8.0.0
@@ -167,11 +188,11 @@ importers:
         specifier: ^5.5.3
         version: 5.5.3
       zod:
-        specifier: ^3.25.76
+        specifier: 'catalog:'
         version: 3.25.76
     devDependencies:
       '@types/node':
-        specifier: ^25.6.0
+        specifier: 'catalog:'
         version: 25.6.0
       '@types/papaparse':
         specifier: ^5.5.2
@@ -183,7 +204,7 @@ importers:
   packages/auth:
     dependencies:
       '@prisma/client':
-        specifier: ^6.19.3
+        specifier: 'catalog:'
         version: 6.19.3(prisma@6.19.3(typescript@5.9.3))(typescript@5.9.3)
       '@project/db':
         specifier: workspace:*
@@ -193,20 +214,20 @@ importers:
         version: 1.6.2(@opentelemetry/api@1.9.1)(@prisma/client@6.19.3(prisma@6.19.3(typescript@5.9.3))(typescript@5.9.3))(@tanstack/react-start@1.167.31(crossws@0.4.5(srvx@0.11.15))(react-dom@19.2.5(react@19.2.5))(react@19.2.5)(vite@8.0.8(@types/node@25.6.0)(esbuild@0.27.7)(jiti@2.6.1)(tsx@4.21.0)(yaml@2.8.3)))(prisma@6.19.3(typescript@5.9.3))(react-dom@19.2.5(react@19.2.5))(react@19.2.5)(vitest@4.1.4(@opentelemetry/api@1.9.1)(@types/node@25.6.0)(vite@8.0.8(@types/node@25.6.0)(esbuild@0.27.7)(jiti@2.6.1)(tsx@4.21.0)(yaml@2.8.3)))
     devDependencies:
       '@types/node':
-        specifier: ^25.6.0
+        specifier: 'catalog:'
         version: 25.6.0
 
   packages/db:
     dependencies:
       '@prisma/client':
-        specifier: ^6.5.0
+        specifier: 'catalog:'
         version: 6.19.3(prisma@6.19.3(typescript@5.9.3))(typescript@5.9.3)
     devDependencies:
       '@types/node':
-        specifier: ^25.6.0
+        specifier: 'catalog:'
         version: 25.6.0
       prisma:
-        specifier: ^6.5.0
+        specifier: 'catalog:'
         version: 6.19.3(typescript@5.9.3)
       tsx:
         specifier: ^4.21.0
@@ -215,14 +236,14 @@ importers:
   packages/env:
     dependencies:
       '@t3-oss/env-core':
-        specifier: ^0.12.0
+        specifier: 'catalog:'
         version: 0.12.0(typescript@5.9.3)(zod@3.25.76)
       zod:
-        specifier: ^3.24.0
+        specifier: 'catalog:'
         version: 3.25.76
     devDependencies:
       '@types/node':
-        specifier: ^25.6.0
+        specifier: 'catalog:'
         version: 25.6.0
 
   packages/ui:

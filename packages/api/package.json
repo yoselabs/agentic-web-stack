@@ -16,10 +16,10 @@
     "@project/db": "workspace:*",
     "@trpc/server": "^11.0.0",
     "papaparse": "^5.5.3",
-    "zod": "^3.25.76"
+    "zod": "catalog:"
   },
   "devDependencies": {
-    "@types/node": "^25.6.0",
+    "@types/node": "catalog:",
     "@types/papaparse": "^5.5.2",
     "vitest": "^4.1.4"
   }

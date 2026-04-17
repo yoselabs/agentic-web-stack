@@ -16,11 +16,11 @@
     "postinstall": "prisma generate"
   },
   "dependencies": {
-    "@prisma/client": "^6.5.0"
+    "@prisma/client": "catalog:"
   },
   "devDependencies": {
-    "@types/node": "^25.6.0",
-    "prisma": "^6.5.0",
+    "@types/node": "catalog:",
+    "prisma": "catalog:",
     "tsx": "^4.21.0"
   }
 }

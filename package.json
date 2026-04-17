@@ -24,7 +24,7 @@
     "@project/db": "workspace:*",
     "@tanstack/router-generator": "^1.166.29",
     "tsx": "^4.21.0",
-    "typescript": "^5.7.0"
+    "typescript": "catalog:"
   },
   "pnpm": {
     "onlyBuiltDependencies": [

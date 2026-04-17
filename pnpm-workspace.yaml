@@ -2,3 +2,11 @@ packages:
   - "apps/*"
   - "packages/*"
   - "e2e"
+
+catalog:
+  "@prisma/client": ^6.19.3
+  prisma: ^6.19.3
+  zod: ^3.25.76
+  "@t3-oss/env-core": ^0.12.0
+  "@types/node": ^25.6.0
+  typescript: ^5.7.2
