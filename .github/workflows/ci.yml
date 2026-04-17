@@ -15,7 +15,7 @@ jobs:
       - uses: pnpm/action-setup@v4
       - uses: actions/setup-node@v4
         with:
-          node-version: 20
+          node-version: 22
           cache: pnpm
       - run: pnpm install --frozen-lockfile
       - run: pnpm -w run lint
@@ -25,22 +25,10 @@ jobs:
     name: Integration & BDD Tests
     runs-on: ubuntu-latest
     needs: check
-    services:
-      postgres:
-        image: postgres:17
-        env:
-          POSTGRES_DB: agentic_web_stack_test
-          POSTGRES_USER: postgres
-          POSTGRES_PASSWORD: postgres
-        ports:
-          - 5433:5432
-        options: >-
-          --health-cmd "pg_isready -U postgres"
-          --health-interval 10s
-          --health-timeout 5s
-          --health-retries 5
+    # No Postgres service container: both test suites provision their own
+    # per-suite containers via scripts/test-db.ts (setupTestDatabase). The
+    # ubuntu-latest runner has Docker + Compose available out of the box.
     env:
-      DATABASE_URL: postgresql://postgres:postgres@localhost:5433/agentic_web_stack_test
       BETTER_AUTH_SECRET: test-secret-key-for-ci-tests-only-32chars
       BETTER_AUTH_URL: http://localhost:3101
       CORS_ORIGIN: http://localhost:3100
@@ -49,10 +37,9 @@ jobs:
       - uses: pnpm/action-setup@v4
       - uses: actions/setup-node@v4
         with:
-          node-version: 20
+          node-version: 22
           cache: pnpm
       - run: pnpm install --frozen-lockfile
-      - run: pnpm --filter @project/db push
       - run: pnpm --filter @project/api test
       - run: pnpm exec playwright install chromium --with-deps
       - run: cd e2e && pnpm exec bddgen && pnpm exec playwright test

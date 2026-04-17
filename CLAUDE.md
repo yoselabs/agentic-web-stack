@@ -22,7 +22,8 @@ Each directory with a CLAUDE.md has area-specific guidance. Read it before worki
 - `make check` — alias for `make lint`
 - `make lint` — full quality gate (MUST pass before claiming done): `agent-harness lint` + `tsc -b`
 - `make fix` — auto-fix lint issues + typecheck
-- `make test` — BDD tests (separate test DB on port 5433)
+- `make test` — BDD tests (isolated e2e-suite Postgres, dynamic port per worktree — see `scripts/test-db.ts`)
+- `make test-unit` — unit/integration tests (isolated unit-suite Postgres, dynamic port per worktree — see `scripts/test-db.ts`)
 - `make routes` — regenerate TanStack Router route tree without starting dev server
 - `make db-push` — push Prisma schema to database
 - `make db-generate` — regenerate Prisma client
