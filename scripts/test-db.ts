@@ -33,7 +33,22 @@ function isContainerHealthy(container: string): boolean {
   }
 }
 
-export async function setupTestDatabase(suite: TestSuite): Promise<void> {
+function assertDockerRunning(): void {
+  try {
+    execSync("docker info", { stdio: "ignore" });
+  } catch {
+    throw new Error(
+      "Docker daemon is not running. Start Docker (or OrbStack) and retry.",
+    );
+  }
+}
+
+// Shell-string form below (with `2>/dev/null; true` and `${container}` interp)
+// is POSIX and works on /bin/sh across macOS / Linux CI. It does NOT work on
+// Windows (cmd.exe). `container` is always an md5-derived hex identifier — no
+// injection surface. If Windows support is ever added, convert to execFileSync.
+export function setupTestDatabase(suite: TestSuite): void {
+  assertDockerRunning();
   const { TEST_PORT, TEST_CONTAINER, TEST_DATABASE_URL } = testDbEnv(suite);
   const composeEnv = {
     ...process.env,
@@ -41,18 +56,27 @@ export async function setupTestDatabase(suite: TestSuite): Promise<void> {
     TEST_CONTAINER,
   };
   const prismaCwd = path.join(PROJECT_ROOT, "packages/db");
+  const pushEnv = {
+    ...process.env,
+    DATABASE_URL: TEST_DATABASE_URL,
+    // Set on both paths: harmless without --force-reset, and prevents the
+    // cold path from hanging on an interactive prompt if someone later
+    // changes it to force-reset in a non-TTY context.
+    PRISMA_USER_CONSENT_FOR_DANGEROUS_AI_ACTION: "yes",
+  };
 
   if (isContainerHealthy(TEST_CONTAINER)) {
-    execSync("pnpm exec prisma db push --force-reset --skip-generate", {
-      cwd: prismaCwd,
-      stdio: "inherit",
-      env: {
-        ...process.env,
-        DATABASE_URL: TEST_DATABASE_URL,
-        PRISMA_USER_CONSENT_FOR_DANGEROUS_AI_ACTION: "yes",
-      },
-    });
-    return;
+    try {
+      execSync("pnpm exec prisma db push --force-reset --skip-generate", {
+        cwd: prismaCwd,
+        stdio: "inherit",
+        env: pushEnv,
+      });
+      return;
+    } catch {
+      // Container died between health check and push (e.g. laptop sleep).
+      // Fall through to cold boot — the next run auto-recovers.
+    }
   }
 
   execSync(
@@ -67,6 +91,6 @@ export async function setupTestDatabase(suite: TestSuite): Promise<void> {
   execSync("pnpm exec prisma db push --skip-generate", {
     cwd: prismaCwd,
     stdio: "inherit",
-    env: { ...process.env, DATABASE_URL: TEST_DATABASE_URL },
+    env: pushEnv,
   });
 }
