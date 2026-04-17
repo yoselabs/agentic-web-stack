@@ -44,11 +44,11 @@ fix:
 	@agent-harness fix
 	pnpm -w run typecheck
 
-# Unit / integration tests (vitest, uses dev database on port 5432)
+# Unit / integration tests (vitest, uses isolated unit-suite Postgres, dynamic port per worktree — see scripts/test-db.ts)
 test-unit:
 	pnpm --filter @project/api test
 
-# BDD Tests (uses separate test database on port 5433)
+# BDD Tests (uses separate test database, dynamic port per suite — see scripts/test-db.ts)
 test:
 	@pnpm exec tsx scripts/kill-ports.ts 3100 3101
 	cd e2e && pnpm exec bddgen && pnpm exec playwright test
@@ -59,5 +59,7 @@ test-ui:
 # Cleanup
 clean:
 	docker compose down -v
+	@ids=$$(docker ps -aq --filter "name=agentic-postgres-test-" --filter "name=agentic-postgres-e2e-" --filter "name=agentic-postgres-unit-"); \
+	  [ -n "$$ids" ] && docker rm -f $$ids || true
 	rm -rf node_modules apps/*/node_modules packages/*/node_modules
 	rm -rf apps/web/.output apps/web/dist apps/server/dist
