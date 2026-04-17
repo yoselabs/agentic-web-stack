@@ -211,12 +211,14 @@ Use the `signUpOrSignIn` helper pattern:
 
 ## Test Infrastructure
 
-- `docker-compose.test.yml` — Postgres on dynamic port (derived from directory hash), tmpfs (in-memory)
-- `test-env.ts` — derives unique DB port and container name from project directory hash (worktree-safe)
-- `global-setup.ts` — reuses healthy container or creates fresh; pushes schema
-- `playwright.config.ts` — starts web (port 3100) and server (port 3101) with test env vars
-- Test ports (3100/3101) are separate from dev ports (3000/3001) — both can run simultaneously
-- Fully parallel execution (7 workers), desktop then mobile with DB reset between
+- `docker-compose.test.yml` — Postgres on dynamic port (derived from directory hash), tmpfs (in-memory). Parametric — `TEST_PORT` + `TEST_CONTAINER` supplied by `scripts/test-db.ts`.
+- `../scripts/test-db.ts` — **shared with vitest**: `testDbEnv(suite)` (pure hash→port/container derivation) + `setupTestDatabase(suite)` (docker boot + prisma push). Single source of truth for how test DBs are provisioned. Same module drives unit-suite isolation in `packages/api/vitest.config.ts`.
+- `test-env.ts` — thin facade: `testDbEnv("e2e")` + named re-exports (`TEST_PORT`, `TEST_CONTAINER`, `TEST_DATABASE_URL`, `PROJECT_ROOT`).
+- `global-setup.ts` — thin wrapper calling `setupTestDatabase("e2e")`.
+- `playwright.config.ts` — starts web (port 3100) and server (port 3101) with test env vars.
+- E2e container is `agentic-postgres-e2e-<hash8>` on port `5400 + (hash16 % 100)` — fully isolated from the unit suite (port `5500+`), so `make test` and `make test-unit` can run in parallel.
+- Test ports (3100/3101) are separate from dev ports (3000/3001) — both can run simultaneously.
+- Fully parallel execution (7 workers), desktop then mobile with DB reset between.
 
 ## Known Test Failure Patterns
 

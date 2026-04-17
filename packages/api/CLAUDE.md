@@ -158,6 +158,12 @@ Never define frontend types manually — derive them from the router so they sta
 - `src/services/__tests__/` — service unit tests
 - `src/__tests__/` — router integration tests
 - `src/index.ts` — re-exports everything
+- `vitest.config.ts` — wires unit tests to an isolated `agentic-postgres-unit-<hash>` container (via `../../scripts/test-db.ts`). Sets `DATABASE_URL` at module scope + `test.env` + `pool: "forks"` — all three are load-bearing, see the comments in the file.
+- `test-setup.ts` — vitest `globalSetup`. Calls `setupTestDatabase("unit")`. **Must not import `@project/db`** (directly or transitively) — would race the config-time `DATABASE_URL` capture.
+
+## Testing
+
+`make test-unit` boots an isolated unit-suite Postgres container (dynamic port per worktree) and runs vitest against it. Tests use the real `db` client imported from `@project/db`; no mocking. Schema is force-reset at the start of every run, so each run starts clean. Tests are still responsible for their own per-test cleanup (unique IDs, `afterAll` deletion). See `docs/superpowers/specs/2026-04-17-test-db-shared-setup-design.md` for the full test infrastructure design.
 
 ## Context
 

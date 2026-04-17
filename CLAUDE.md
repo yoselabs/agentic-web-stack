@@ -76,7 +76,7 @@ All workspace packages use `@project/*` prefix (e.g., `@project/api`, `@project/
 | Use `navigate()` during React render | React setState-in-render warning | Use `useEffect` for conditional navigation |
 | Hardcode localhost URLs | Breaks in non-local environments | Use env vars: `VITE_API_URL`, `CORS_ORIGIN`, `BETTER_AUTH_URL` |
 | Create QueryClient as module singleton | Leaks data between SSR requests | Use `getQueryClient()` pattern (per-request on server) |
-| Skip `prisma generate` after schema change | Stale types, runtime errors | Run `make db-push` (includes generate) |
+| Skip `prisma generate` after schema change | Stale types, runtime errors | `make dev`, `make test`, `make test-unit`, `make lint`, `make fix` all auto-regenerate via `db-generate` prereq. Run `make db-push` when you also need to push the new schema to the dev DB |
 | `Link to` rejects not-yet-created routes | TanStack Router types from `routeTree.gen.ts` | Use `to={"/path" as string}` temporarily, remove once route exists and `make dev` regenerates |
 | `//` in JSX text content | Biome `noCommentText` flags as comment | Wrap in expression: `<p>{"https://example.com"}</p>` |
 | `<Link>` wrapping `<Button>` | Nested `<a><button>` breaks accessibility and BDD click handlers | Use `<Button asChild><Link to="...">Text</Link></Button>` — renders single `<a>` element |
