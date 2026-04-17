@@ -627,7 +627,7 @@ Expected: both complete successfully. No errors about port conflicts, container 
 
 - [ ] **Step 9: Schema-change propagation**
 
-Add a throwaway column to `packages/db/prisma/schema.prisma`. Find the `Todo` model and add one line:
+Add a throwaway column to `packages/db/prisma/schema/todo.prisma` (schema is split per domain — `schema/` is a directory). Find the `Todo` model and add one line:
 
 ```prisma
 model Todo {
@@ -645,7 +645,7 @@ Expected: force-reset picks up the schema change automatically. 27/27 pass (the 
 
 Revert the schema change:
 ```bash
-git checkout packages/db/prisma/schema.prisma
+git checkout packages/db/prisma/schema/todo.prisma
 ```
 
 - [ ] **Step 10: Final clean**

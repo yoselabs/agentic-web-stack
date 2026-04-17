@@ -79,11 +79,19 @@ export function setupTestDatabase(suite: TestSuite): void {
     }
   }
 
-  execSync(
-    "docker compose -f docker-compose.test.yml down -v 2>/dev/null; true",
-    { cwd: PROJECT_ROOT, stdio: "inherit", env: composeEnv },
-  );
-  execSync("docker compose -f docker-compose.test.yml up -d --wait", {
+  // `-p` scopes the compose project to this suite. Without it, both suites
+  // share the compose yaml's top-level `name:` (`agentic-web-stack-test`), so
+  // `down -v` from one suite tears down the sibling's container as a side
+  // effect. Per-suite project names isolate teardown. Container names are
+  // already per-suite via TEST_CONTAINER, so no collision risk.
+  const composeProject = `agentic-web-stack-${suite}`;
+  const composeBase = `docker compose -p ${composeProject} -f docker-compose.test.yml`;
+  execSync(`${composeBase} down -v 2>/dev/null; true`, {
+    cwd: PROJECT_ROOT,
+    stdio: "inherit",
+    env: composeEnv,
+  });
+  execSync(`${composeBase} up -d --wait`, {
     cwd: PROJECT_ROOT,
     stdio: "inherit",
     env: composeEnv,
