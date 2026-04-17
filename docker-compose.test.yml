@@ -3,13 +3,18 @@ name: agentic-web-stack-test
 services:
   postgres:
     image: postgres:17
-    container_name: ${TEST_CONTAINER:-agentic-postgres-test}
+    # TEST_CONTAINER and TEST_PORT are supplied by scripts/test-db.ts — not
+    # optional. Do not add `:-default` fallbacks: they would mask a missing
+    # env with a silent collision on the legacy `agentic-postgres-test` name
+    # or port 5433. Compose will fail loudly if either is unset, which is the
+    # correct behavior.
+    container_name: ${TEST_CONTAINER}
     environment:
       POSTGRES_DB: agentic_web_stack_test
       POSTGRES_USER: postgres
       POSTGRES_PASSWORD: postgres
     ports:
-      - "${TEST_PORT:-5433}:5432"
+      - "${TEST_PORT}:5432"
     tmpfs:
       - /var/lib/postgresql/data
     healthcheck:

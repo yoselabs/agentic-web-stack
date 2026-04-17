@@ -9,6 +9,10 @@ export const PROJECT_ROOT = path.resolve(import.meta.dirname, "..");
 export function testDbEnv(suite: TestSuite) {
   const hash = createHash("md5").update(PROJECT_ROOT).digest("hex");
   const hash8 = hash.slice(0, 8);
+  // 100-slot modulo → birthday-paradox collision between worktrees becomes
+  // likely past ~12 checkouts of this repo on one host. Container names
+  // (hash8) don't collide, but the host port bind will — docker fails loudly
+  // with "port already allocated", which is acceptable and rare in practice.
   const portOffset = Number.parseInt(hash.slice(0, 4), 16) % 100;
   const portBase = suite === "e2e" ? 5400 : 5500;
   const port = portBase + portOffset;
@@ -86,7 +90,10 @@ export function setupTestDatabase(suite: TestSuite): void {
   // already per-suite via TEST_CONTAINER, so no collision risk.
   const composeProject = `agentic-web-stack-${suite}`;
   const composeBase = `docker compose -p ${composeProject} -f docker-compose.test.yml`;
-  execSync(`${composeBase} down -v 2>/dev/null; true`, {
+  // `|| true` preserves stderr on genuine compose failures (bad yaml, bad
+  // env) while still tolerating the common "nothing to tear down" case.
+  // Previous `2>/dev/null; true` form swallowed both.
+  execSync(`${composeBase} down -v || true`, {
     cwd: PROJECT_ROOT,
     stdio: "inherit",
     env: composeEnv,

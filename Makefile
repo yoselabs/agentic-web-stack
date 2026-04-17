@@ -38,11 +38,14 @@ db-seed:
 	pnpm -w run db:seed
 
 # Quality gates
+# lint/fix depend on db-generate: `tsc -b` type-checks @project/db which imports
+# the generated Prisma client. Edit schema → `make lint` without fresh client =
+# stale type errors. Same rationale as dev/test targets below.
 check: lint
-lint:
+lint: db-generate
 	@agent-harness lint
 	pnpm -w run typecheck
-fix:
+fix: db-generate
 	@agent-harness fix
 	pnpm -w run typecheck
 

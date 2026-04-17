@@ -57,7 +57,7 @@ Open http://localhost:3000 — sign up, create todos, explore.
 
 ### Prerequisites
 
-- Node.js >= 20
+- Node.js >= 22
 - pnpm
 - Docker (for PostgreSQL)
 
@@ -196,6 +196,7 @@ Pre-commit hooks run `agent-harness fix` then `agent-harness lint` automatically
 | `make check` | Full quality gate (13 checks + typecheck) |
 | `make fix` | Auto-fix lint issues |
 | `make test` | BDD tests (clean test DB each run) |
+| `make test-unit` | Vitest unit/integration tests (isolated unit-suite DB) |
 | `make test-ui` | Playwright UI mode |
 | `make db-push` | Push Prisma schema to database |
 | `make db-generate` | Regenerate Prisma client |
