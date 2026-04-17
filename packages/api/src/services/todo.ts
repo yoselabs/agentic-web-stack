@@ -3,24 +3,35 @@ import Papa from "papaparse";
 
 type DbClient = PrismaClient | Prisma.TransactionClient;
 
+// Row-lock helpers require Prisma.TransactionClient (not the root PrismaClient union).
+// Prisma has no native FOR UPDATE: if the root client is passed, Prisma runs each
+// $queryRaw in its own implicit transaction and releases the lock immediately —
+// silently, with no error. Every function that participates in the lock below
+// must therefore accept Prisma.TransactionClient only, and routers wrap calls in
+// ctx.db.$transaction((tx) => ...). See packages/api/CLAUDE.md.
 async function lockActiveTodos(
-  db: DbClient,
+  tx: Prisma.TransactionClient,
   userId: string,
   todoListId: string,
 ): Promise<void> {
-  await db.$queryRaw`
+  // ORDER BY id: deterministic lock order across concurrent callers — avoids
+  //   deadlocks if the planner ever picks different scan orders.
+  // FOR NO KEY UPDATE: we only mutate `position` (non-key, non-FK), so the weaker
+  //   lock is sufficient and allows concurrent FK references to these rows.
+  await tx.$queryRaw`
     SELECT id FROM "Todo"
     WHERE "userId" = ${userId} AND "completed" = false AND "todoListId" = ${todoListId}
-    FOR UPDATE
+    ORDER BY id
+    FOR NO KEY UPDATE
   `;
 }
 
 async function shiftActivePositions(
-  db: DbClient,
+  tx: Prisma.TransactionClient,
   userId: string,
   todoListId: string,
 ): Promise<void> {
-  await db.todo.updateMany({
+  await tx.todo.updateMany({
     where: { userId, completed: false, todoListId },
     data: { position: { increment: 1 } },
   });
@@ -38,35 +49,37 @@ export async function listTodos(
   });
 }
 
+// Narrowed to Prisma.TransactionClient because they call lockActiveTodos.
+// Router must always wrap: ctx.db.$transaction((tx) => createTodo(tx, ...)).
 export async function createTodo(
-  db: DbClient,
+  tx: Prisma.TransactionClient,
   userId: string,
   title: string,
   todoListId: string,
 ) {
-  await lockActiveTodos(db, userId, todoListId);
-  await shiftActivePositions(db, userId, todoListId);
-  return db.todo.create({
+  await lockActiveTodos(tx, userId, todoListId);
+  await shiftActivePositions(tx, userId, todoListId);
+  return tx.todo.create({
     data: { title, userId, todoListId, position: 0 },
   });
 }
 
 export async function completeTodo(
-  db: DbClient,
+  tx: Prisma.TransactionClient,
   userId: string,
   id: string,
   completed: boolean,
 ) {
   if (!completed) {
-    const todo = await db.todo.findUniqueOrThrow({ where: { id, userId } });
-    await lockActiveTodos(db, userId, todo.todoListId);
-    await shiftActivePositions(db, userId, todo.todoListId);
-    return db.todo.update({
+    const todo = await tx.todo.findUniqueOrThrow({ where: { id, userId } });
+    await lockActiveTodos(tx, userId, todo.todoListId);
+    await shiftActivePositions(tx, userId, todo.todoListId);
+    return tx.todo.update({
       where: { id, userId },
       data: { completed: false, position: 0 },
     });
   }
-  return db.todo.update({
+  return tx.todo.update({
     where: { id, userId },
     data: { completed },
   });
@@ -92,8 +105,9 @@ export async function deleteTodo(db: DbClient, userId: string, id: string) {
   });
 }
 
+// Narrowed to Prisma.TransactionClient: calls lockActiveTodos.
 export async function importTodosFromCSV(
-  db: DbClient,
+  tx: Prisma.TransactionClient,
   userId: string,
   csvData: Buffer,
   todoListId: string,
@@ -113,12 +127,12 @@ export async function importTodosFromCSV(
     throw new Error("CSV must have a 'title' column with at least one value");
   }
 
-  await lockActiveTodos(db, userId, todoListId);
-  await db.todo.updateMany({
+  await lockActiveTodos(tx, userId, todoListId);
+  await tx.todo.updateMany({
     where: { userId, completed: false, todoListId },
     data: { position: { increment: titles.length } },
   });
-  await db.todo.createMany({
+  await tx.todo.createMany({
     data: titles.map((title, i) => ({
       title,
       userId,

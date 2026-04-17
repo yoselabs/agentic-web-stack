@@ -86,14 +86,34 @@ When a service uses `include` (e.g., `listTodoLists` with `_count`), the type fl
 - **All mutations:** router wraps in `db.$transaction((tx) => ...)` — even single-write ops, so you never forget when the service grows
 - **All reads:** router calls service with `db` directly (no transaction)
 - **Cross-service:** router wraps multiple service calls in one `$transaction`
-- **Race conditions:** service uses `SELECT FOR UPDATE` inside the tx it receives
+- **Race conditions:** service uses `SELECT ... FOR NO KEY UPDATE` inside the tx it receives
+- **Lock helpers must be typed `Prisma.TransactionClient`, never the `DbClient` union.** Prisma has no native `FOR UPDATE`: if the root `PrismaClient` is passed, each `$queryRaw` runs in its own implicit transaction and the lock releases immediately — silently, with no error. Type-level narrowing is the only guard.
+- Any service function that calls a lock helper must also be typed `Prisma.TransactionClient` so the invariant propagates to the caller.
 
 ```typescript
 // Race-safe pattern inside a service function
-await db.$queryRaw`
-  SELECT id FROM "Todo" WHERE "userId" = ${userId} FOR UPDATE
-`;
+async function lockActiveTodos(
+  tx: Prisma.TransactionClient,  // ← never the DbClient union
+  userId: string,
+  todoListId: string,
+): Promise<void> {
+  // ORDER BY <pk>: deterministic lock order prevents deadlocks between callers.
+  //   Rule: all lockers whose row sets can overlap must ORDER BY the same column,
+  //   even if their WHERE predicates differ.
+  // FOR NO KEY UPDATE: weaker lock, use when mutating non-key/non-FK columns only.
+  //   Use plain FOR UPDATE only when deleting or mutating the primary key.
+  await tx.$queryRaw`
+    SELECT id FROM "Todo"
+    WHERE "userId" = ${userId} AND "todoListId" = ${todoListId}
+    -- Real lockActiveTodos also filters "completed" = false; omitted here
+    -- to focus on the locking pattern. Add whatever WHERE you need.
+    ORDER BY id
+    FOR NO KEY UPDATE
+  `;
+}
 ```
+
+See `packages/api/src/services/todo.ts` for the canonical example.
 
 ## N+1 Prevention
 
