@@ -52,6 +52,15 @@ All workspace packages use `@project/*` prefix (e.g., `@project/api`, `@project/
 
 ## Critical Rules
 
+- **Single source of truth (SSOT)** — a global architectural principle, not just a config rule. Any value, type, validation rule, or structural definition referenced in 2+ places lives in exactly one declaration; every other consumer imports it. Duplication is the failure mode, not a style preference — if you change one copy and forget the other, the app silently drifts. Applies across layers:
+  - **Runtime env vars** → `@project/env` (the only module allowed to read `process.env`; split `server` / `client` subpaths, no barrel)
+  - **Static constants** (ports, limits, mount paths, dev creds) → `@project/config`
+  - **Type definitions** → infer from Prisma (`@project/db`) or tRPC (`inferRouterOutputs<AppRouter>`); never redeclare a shape that already exists
+  - **Validation rules** → one Zod schema, used by both server routers and client forms
+  - **Dependency versions** → `catalog:` in `pnpm-workspace.yaml`
+  - **Domain constants / enums** → a single exported const; never repeat string literals like `"pending"` or `"google"` across files
+
+  When writing new code, ask: "is this value or shape also used elsewhere?" If yes, extract first, import everywhere.
 - **Never use `verbatimModuleSyntax` in apps/web** — causes server bundle leaks in TanStack Start
 - **Always use `import type` for AppRouter** — value imports bundle the server into the client
 - **One `initTRPC.create()` call** — in `packages/api/src/trpc.ts` only
