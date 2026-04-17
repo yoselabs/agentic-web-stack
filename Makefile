@@ -19,7 +19,9 @@ routes:
 	@pnpm exec tsx scripts/generate-routes.ts
 
 # Start both web and server
-dev:
+# Depends on db-generate so edits to schema.prisma propagate to types without
+# a manual `make db-push`. `prisma generate` is ~100ms and idempotent.
+dev: db-generate
 	@pnpm exec tsx scripts/kill-ports.ts 3000 3001
 	pnpm -w run dev
 
@@ -45,14 +47,16 @@ fix:
 	pnpm -w run typecheck
 
 # Unit / integration tests (vitest, uses isolated unit-suite Postgres, dynamic port per worktree — see scripts/test-db.ts)
-test-unit:
+# db-generate prerequisite: keeps Prisma client in sync with schema.prisma without
+# requiring a manual `make db-push` before every test run.
+test-unit: db-generate
 	pnpm --filter @project/api test
 
 # BDD Tests (uses separate test database, dynamic port per suite — see scripts/test-db.ts)
-test:
+test: db-generate
 	@pnpm exec tsx scripts/kill-ports.ts 3100 3101
 	cd e2e && pnpm exec bddgen && pnpm exec playwright test
-test-ui:
+test-ui: db-generate
 	@pnpm exec tsx scripts/kill-ports.ts 3100 3101
 	cd e2e && pnpm exec bddgen && pnpm exec playwright test --ui
 
