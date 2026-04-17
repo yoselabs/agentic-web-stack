@@ -1,3 +1,4 @@
+import { MIN_PASSWORD_LENGTH } from "@project/config";
 import { Button } from "@project/ui/components/button";
 import {
   Card,
@@ -102,11 +103,11 @@ function LoginPage() {
               <Input
                 id="password"
                 type="password"
-                placeholder="Min 8 characters"
+                placeholder={`Min ${MIN_PASSWORD_LENGTH} characters`}
                 value={password}
                 onChange={(e) => setPassword(e.target.value)}
                 required
-                minLength={8}
+                minLength={MIN_PASSWORD_LENGTH}
               />
             </div>
 

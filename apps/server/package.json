@@ -13,6 +13,7 @@
     "@hono/trpc-server": "^0.3.0",
     "@project/api": "workspace:*",
     "@project/auth": "workspace:*",
+    "@project/config": "workspace:*",
     "@project/db": "workspace:*",
     "@project/env": "workspace:*",
     "hono": "^4.7.0",

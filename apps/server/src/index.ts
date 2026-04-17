@@ -7,6 +7,7 @@ import {
   importTodosFromCSV,
 } from "@project/api";
 import { auth } from "@project/auth";
+import { MAX_UPLOAD_BYTES } from "@project/config";
 import { db } from "@project/db";
 import { env } from "@project/env";
 import { Hono } from "hono";
@@ -96,8 +97,7 @@ app.post("/api/todos/import", async (c) => {
   if (!(file instanceof File))
     return c.json({ error: "No file provided" }, 400);
 
-  const MAX_FILE_SIZE = 10 * 1024 * 1024; // 10 MB
-  if (file.size > MAX_FILE_SIZE) {
+  if (file.size > MAX_UPLOAD_BYTES) {
     return c.json({ error: "File too large (max 10 MB)" }, 413);
   }
 

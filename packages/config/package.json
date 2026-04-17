@@ -1,18 +1,15 @@
 {
-  "name": "@project/auth",
+  "name": "@project/config",
   "version": "0.0.0",
   "private": true,
   "type": "module",
   "exports": {
     ".": {
       "default": "./src/index.ts"
+    },
+    "./limits": {
+      "default": "./src/limits.ts"
     }
-  },
-  "dependencies": {
-    "@prisma/client": "catalog:",
-    "@project/config": "workspace:*",
-    "@project/db": "workspace:*",
-    "better-auth": "^1.6.2"
   },
   "devDependencies": {
     "@types/node": "catalog:"

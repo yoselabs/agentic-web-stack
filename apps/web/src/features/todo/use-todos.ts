@@ -8,6 +8,7 @@ import {
 } from "@dnd-kit/core";
 import { arrayMove, sortableKeyboardCoordinates } from "@dnd-kit/sortable";
 import type { AppRouter } from "@project/api";
+import { MAX_UPLOAD_BYTES } from "@project/config";
 import { type QueryClient, useMutation, useQuery } from "@tanstack/react-query";
 import type { TRPCOptionsProxy } from "@trpc/tanstack-react-query";
 import { useState } from "react";
@@ -123,6 +124,9 @@ export function useTodos(
 
   const importTodos = useMutation({
     mutationFn: async (file: File) => {
+      if (file.size > MAX_UPLOAD_BYTES) {
+        throw new Error("File too large (max 10 MB)");
+      }
       const formData = new FormData();
       formData.append("file", file);
       formData.append("todoListId", todoListId);
