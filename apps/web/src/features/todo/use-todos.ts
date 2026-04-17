@@ -9,13 +9,14 @@ import {
 import { arrayMove, sortableKeyboardCoordinates } from "@dnd-kit/sortable";
 import type { AppRouter } from "@project/api";
 import { MAX_UPLOAD_BYTES } from "@project/config";
+import { env } from "@project/env/client";
 import { type QueryClient, useMutation, useQuery } from "@tanstack/react-query";
 import type { TRPCOptionsProxy } from "@trpc/tanstack-react-query";
 import { useState } from "react";
 import { flushSync } from "react-dom";
 import { toast } from "sonner";
 
-const API_URL = import.meta.env.VITE_API_URL ?? "http://localhost:3001";
+const API_URL = env.VITE_API_URL;
 
 export function useTodos(
   trpc: TRPCOptionsProxy<AppRouter>,

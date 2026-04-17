@@ -1,6 +1,7 @@
 import { execSync } from "node:child_process";
 import { createHash } from "node:crypto";
 import path from "node:path";
+import { TEST_DB_NAME } from "@project/config/db";
 
 export type TestSuite = "e2e" | "unit";
 
@@ -20,7 +21,8 @@ export function testDbEnv(suite: TestSuite) {
   return {
     TEST_PORT: port,
     TEST_CONTAINER: container,
-    TEST_DATABASE_URL: `postgresql://postgres:postgres@localhost:${port}/agentic_web_stack_test`,
+    TEST_DB_NAME,
+    TEST_DATABASE_URL: `postgresql://postgres:postgres@localhost:${port}/${TEST_DB_NAME}`,
     PROJECT_ROOT,
   };
 }
@@ -53,11 +55,17 @@ function assertDockerRunning(): void {
 // injection surface. If Windows support is ever added, convert to execFileSync.
 export function setupTestDatabase(suite: TestSuite): void {
   assertDockerRunning();
-  const { TEST_PORT, TEST_CONTAINER, TEST_DATABASE_URL } = testDbEnv(suite);
+  const {
+    TEST_PORT,
+    TEST_CONTAINER,
+    TEST_DB_NAME: dbName,
+    TEST_DATABASE_URL,
+  } = testDbEnv(suite);
   const composeEnv = {
     ...process.env,
     TEST_PORT: String(TEST_PORT),
     TEST_CONTAINER,
+    TEST_DB_NAME: dbName,
   };
   const prismaCwd = path.join(PROJECT_ROOT, "packages/db");
   const pushEnv = {

@@ -1,4 +1,6 @@
 import type { AppRouter } from "@project/api";
+import { TRPC_MOUNT } from "@project/config";
+import { env } from "@project/env/client";
 import { QueryClient } from "@tanstack/react-query";
 import { createRouter as createTanStackRouter } from "@tanstack/react-router";
 import { createTRPCClient, httpBatchLink } from "@trpc/client";
@@ -30,7 +32,7 @@ function getQueryClient() {
 const trpcClient = createTRPCClient<AppRouter>({
   links: [
     httpBatchLink({
-      url: `${import.meta.env.VITE_API_URL ?? "http://localhost:3001"}/trpc`,
+      url: `${env.VITE_API_URL}${TRPC_MOUNT}`,
       fetch(url, options) {
         return fetch(url, { ...options, credentials: "include" });
       },

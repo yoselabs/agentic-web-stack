@@ -1,4 +1,5 @@
 import { defineConfig } from "@playwright/test";
+import { TEST_API_PORT, TEST_WEB_PORT } from "@project/config";
 import { defineBddConfig } from "playwright-bdd";
 
 import { TEST_DATABASE_URL } from "./test-env.js";
@@ -18,31 +19,29 @@ const mobileTestDir = defineBddConfig({
   outputDir: ".features-gen/mobile",
 });
 
+const WEB_URL = `http://localhost:${TEST_WEB_PORT}`;
+const API_URL = `http://localhost:${TEST_API_PORT}`;
+
 export default defineConfig({
   globalSetup: "./global-setup.ts",
   timeout: 30_000,
   retries: 0,
   fullyParallel: true,
   use: {
-    baseURL: "http://localhost:3100",
+    baseURL: WEB_URL,
     trace: "on-first-retry",
   },
   projects: [
-    // Desktop viewport (default)
     {
       name: "desktop",
       testDir: desktopTestDir,
       use: { browserName: "chromium" },
     },
-    // Reset DB between viewport runs so each starts with clean state
-    // Depends on desktop → runs after desktop finishes
     {
       name: "mobile-setup",
       testMatch: /db-reset\.setup\.ts/,
       dependencies: ["desktop"],
     },
-    // Mobile viewport (iPhone 14 dimensions, chromium)
-    // Depends on mobile-setup → runs after DB reset
     {
       name: "mobile",
       testDir: mobileTestDir,
@@ -58,22 +57,22 @@ export default defineConfig({
   webServer: [
     {
       command: "pnpm --filter @project/server dev",
-      port: 3101,
+      port: TEST_API_PORT,
       reuseExistingServer: !process.env.CI,
       env: {
-        PORT: "3101",
+        PORT: String(TEST_API_PORT),
         DATABASE_URL: TEST_DATABASE_URL,
         BETTER_AUTH_SECRET: "test-secret-key-for-e2e-tests-only-32chars",
-        BETTER_AUTH_URL: "http://localhost:3101",
-        CORS_ORIGIN: "http://localhost:3100",
+        BETTER_AUTH_URL: API_URL,
+        CORS_ORIGIN: WEB_URL,
       },
     },
     {
-      command: "pnpm --filter @project/web exec vite dev --port 3100",
-      port: 3100,
+      command: `pnpm --filter @project/web exec vite dev --port ${TEST_WEB_PORT}`,
+      port: TEST_WEB_PORT,
       reuseExistingServer: !process.env.CI,
       env: {
-        VITE_API_URL: "http://localhost:3101",
+        VITE_API_URL: API_URL,
       },
     },
   ],

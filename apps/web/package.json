@@ -17,6 +17,7 @@
     "@dnd-kit/utilities": "^3.2.2",
     "@project/api": "workspace:*",
     "@project/config": "workspace:*",
+    "@project/env": "workspace:*",
     "@project/ui": "workspace:*",
     "@tailwindcss/vite": "^4.1.18",
     "@tanstack/react-query": "^5.75.0",

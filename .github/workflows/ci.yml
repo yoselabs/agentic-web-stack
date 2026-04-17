@@ -30,8 +30,6 @@ jobs:
     # ubuntu-latest runner has Docker + Compose available out of the box.
     env:
       BETTER_AUTH_SECRET: test-secret-key-for-ci-tests-only-32chars
-      BETTER_AUTH_URL: http://localhost:3101
-      CORS_ORIGIN: http://localhost:3100
     steps:
       - uses: actions/checkout@v4
       - uses: pnpm/action-setup@v4
@@ -40,6 +38,16 @@ jobs:
           node-version: 22
           cache: pnpm
       - run: pnpm install --frozen-lockfile
+      # Promote @project/config values to workflow env so downstream steps
+      # see TEST_CORS_ORIGIN, TEST_BETTER_AUTH_URL, etc. without hardcoding.
+      - name: Export config to GITHUB_ENV
+        run: pnpm exec tsx scripts/export-config.ts >> "$GITHUB_ENV"
       - run: pnpm --filter @project/api test
+        env:
+          CORS_ORIGIN: ${{ env.TEST_CORS_ORIGIN }}
+          BETTER_AUTH_URL: ${{ env.TEST_BETTER_AUTH_URL }}
       - run: pnpm exec playwright install chromium --with-deps
       - run: cd e2e && pnpm exec bddgen && pnpm exec playwright test
+        env:
+          CORS_ORIGIN: ${{ env.TEST_CORS_ORIGIN }}
+          BETTER_AUTH_URL: ${{ env.TEST_BETTER_AUTH_URL }}

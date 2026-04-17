@@ -12,6 +12,7 @@
     "@prisma/client": "catalog:",
     "@project/config": "workspace:*",
     "@project/db": "workspace:*",
+    "@project/env": "workspace:*",
     "better-auth": "^1.6.2"
   },
   "devDependencies": {

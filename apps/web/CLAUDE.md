@@ -208,6 +208,7 @@ Never call `navigate()` during render — use `useEffect`.
 - Use `getServerSideProps`, `"use server"`, or Next.js patterns
 - Create `QueryClient` as a module-level singleton — use `getQueryClient()` pattern
 - Import `appRouter` value (only `import type { AppRouter }`)
+- **Never import from `@project/env` without a subpath.** The env package exposes `/server` and `/client` only; there is no barrel. Web code imports from `@project/env/client` exclusively. A barrel import would transitively pull server-only vars (DATABASE_URL, BETTER_AUTH_SECRET) into the client bundle. Same class of bug as `import { appRouter }` — see root CLAUDE.md.
 - Put `verbatimModuleSyntax: true` in tsconfig — breaks TanStack Start
 - Add `credentials: "include"` — already configured in the tRPC httpBatchLink
 - Import upward in FSD layers (features must not import from widgets or routes)

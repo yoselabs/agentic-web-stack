@@ -1,3 +1,4 @@
+import { DEV_API_PORT } from "@project/config/ports";
 import { createEnv } from "@t3-oss/env-core";
 import { z } from "zod";
 
@@ -10,6 +11,10 @@ export const env = createEnv({
     NODE_ENV: z
       .enum(["development", "production", "test"])
       .default("development"),
+    PORT: z.coerce.number().default(DEV_API_PORT),
+    LOG_LEVEL: z
+      .enum(["fatal", "error", "warn", "info", "debug", "trace"])
+      .optional(),
   },
   runtimeEnv: process.env,
   emptyStringAsUndefined: true,

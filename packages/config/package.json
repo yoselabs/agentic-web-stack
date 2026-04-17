@@ -7,8 +7,17 @@
     ".": {
       "default": "./src/index.ts"
     },
+    "./api-paths": {
+      "default": "./src/api-paths.ts"
+    },
+    "./db": {
+      "default": "./src/db.ts"
+    },
     "./limits": {
       "default": "./src/limits.ts"
+    },
+    "./ports": {
+      "default": "./src/ports.ts"
     }
   },
   "devDependencies": {

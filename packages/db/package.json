@@ -16,7 +16,8 @@
     "postinstall": "prisma generate"
   },
   "dependencies": {
-    "@prisma/client": "catalog:"
+    "@prisma/client": "catalog:",
+    "@project/env": "workspace:*"
   },
   "devDependencies": {
     "@types/node": "catalog:",

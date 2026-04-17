@@ -1,11 +1,18 @@
 .PHONY: setup dev db db-push db-generate db-studio db-seed check lint fix test test-ui test-unit clean routes
 
+# `config` is a sourceable shell fragment produced by scripts/export-config.ts.
+# Every target that needs a port or dev DB cred value sources it, so the
+# single source of truth is @project/config (via the script). Re-evaluated
+# per target rather than cached in a file to avoid stale state when config
+# changes between runs.
+CONFIG_SH := $$(pnpm exec tsx scripts/export-config.ts)
+
 # Zero-conf setup: clone → make setup → make dev
 setup:
 	cp -n .env.example .env 2>/dev/null || true
 	cp -n packages/db/.env.example packages/db/.env 2>/dev/null || true
 	pnpm install
-	docker compose up -d
+	export $(CONFIG_SH) && docker compose up -d
 	@echo "Waiting for Postgres..."
 	@until docker compose exec -T postgres pg_isready -U postgres > /dev/null 2>&1; do sleep 1; done
 	pnpm -w run db:push
@@ -22,12 +29,12 @@ routes:
 # Depends on db-generate so edits to schema.prisma propagate to types without
 # a manual `make db-push`. `prisma generate` is ~100ms and idempotent.
 dev: db-generate
-	@pnpm exec tsx scripts/kill-ports.ts 3000 3001
-	pnpm -w run dev
+	@export $(CONFIG_SH) && pnpm exec tsx scripts/kill-ports.ts $$DEV_WEB_PORT $$DEV_API_PORT
+	export $(CONFIG_SH) && pnpm -w run dev
 
 # Database
 db:
-	docker compose up -d
+	export $(CONFIG_SH) && docker compose up -d
 db-push:
 	pnpm -w run db:push
 db-generate:
@@ -45,22 +52,26 @@ check: lint
 lint: db-generate
 	@agent-harness lint
 	pnpm -w run typecheck
+	@! rg 'process\.env\.' --type ts \
+	    -g '!packages/env/**' -g '!scripts/**' \
+	    -g '!**/vite.config.ts' -g '!**/vitest.config.ts' -g '!**/test-setup.ts' \
+	    -g '!**/playwright.config.ts' \
+	    -g '!node_modules' -g '!**/*.gen.*' \
+	  || (echo "FAIL: process.env.X read outside @project/env — use env from @project/env/server or /client" && exit 1)
 fix: db-generate
 	@agent-harness fix
 	pnpm -w run typecheck
 
 # Unit / integration tests (vitest, uses isolated unit-suite Postgres, dynamic port per worktree — see scripts/test-db.ts)
-# db-generate prerequisite: keeps Prisma client in sync with schema.prisma without
-# requiring a manual `make db-push` before every test run.
 test-unit: db-generate
 	pnpm --filter @project/api test
 
 # BDD Tests (uses separate test database, dynamic port per suite — see scripts/test-db.ts)
 test: db-generate
-	@pnpm exec tsx scripts/kill-ports.ts 3100 3101
+	@export $(CONFIG_SH) && pnpm exec tsx scripts/kill-ports.ts $$TEST_WEB_PORT $$TEST_API_PORT
 	cd e2e && pnpm exec bddgen && pnpm exec playwright test
 test-ui: db-generate
-	@pnpm exec tsx scripts/kill-ports.ts 3100 3101
+	@export $(CONFIG_SH) && pnpm exec tsx scripts/kill-ports.ts $$TEST_WEB_PORT $$TEST_API_PORT
 	cd e2e && pnpm exec bddgen && pnpm exec playwright test --ui
 
 # Cleanup

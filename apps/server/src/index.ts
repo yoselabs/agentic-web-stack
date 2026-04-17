@@ -7,9 +7,9 @@ import {
   importTodosFromCSV,
 } from "@project/api";
 import { auth } from "@project/auth";
-import { MAX_UPLOAD_BYTES } from "@project/config";
+import { AUTH_MOUNT, MAX_UPLOAD_BYTES, TRPC_MOUNT } from "@project/config";
 import { db } from "@project/db";
-import { env } from "@project/env";
+import { env } from "@project/env/server";
 import { Hono } from "hono";
 import { cors } from "hono/cors";
 import { secureHeaders } from "hono/secure-headers";
@@ -83,7 +83,7 @@ app.get("/health", async (c) => {
 });
 
 // Better-Auth handler
-app.on(["POST", "GET"], "/api/auth/**", (c) => {
+app.on(["POST", "GET"], `${AUTH_MOUNT}/**`, (c) => {
   return auth.handler(c.req.raw);
 });
 
@@ -146,7 +146,7 @@ app.get("/api/todos/export", async (c) => {
 
 // tRPC handler — pass session into context
 app.use(
-  "/trpc/*",
+  `${TRPC_MOUNT}/*`,
   trpcServer({
     router: appRouter,
     createContext: async (_opts, c) => {
@@ -158,6 +158,6 @@ app.use(
   }),
 );
 
-serve({ fetch: app.fetch, port: Number(process.env.PORT ?? 3001) }, (info) => {
+serve({ fetch: app.fetch, port: env.PORT }, (info) => {
   logger.info(`Server running at http://localhost:${info.port}`);
 });

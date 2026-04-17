@@ -12,6 +12,15 @@ const env = testDbEnv("unit");
 // Rule: neither this file nor test-setup.ts may import @project/db (directly
 // or transitively).
 process.env.DATABASE_URL = env.TEST_DATABASE_URL;
+// @project/env/server validates all server env vars at module load (including
+// @project/db which now imports it). Provide safe test-only values so the
+// schema validation passes in workers where .env is not loaded.
+process.env.BETTER_AUTH_SECRET =
+  process.env.BETTER_AUTH_SECRET ??
+  "test-secret-key-for-unit-tests-only-32chars";
+process.env.CORS_ORIGIN = process.env.CORS_ORIGIN ?? "http://localhost:3000";
+process.env.BETTER_AUTH_URL =
+  process.env.BETTER_AUTH_URL ?? "http://localhost:3001";
 
 export default defineConfig({
   test: {
@@ -21,7 +30,12 @@ export default defineConfig({
     // module-scope mutation above covers the main process; this covers workers
     // whose pool spawner snapshots at spawn time. Both are load-bearing — do
     // not delete either thinking the other is redundant.
-    env: { DATABASE_URL: env.TEST_DATABASE_URL },
+    env: {
+      DATABASE_URL: env.TEST_DATABASE_URL,
+      BETTER_AUTH_SECRET: "test-secret-key-for-unit-tests-only-32chars",
+      CORS_ORIGIN: "http://localhost:3000",
+      BETTER_AUTH_URL: "http://localhost:3001",
+    },
     // Forks snapshot process.env at spawn — the DATABASE_URL set above pins
     // into every worker. Threads share a live process.env by reference, which
     // would leak any later mutation to sibling workers. Forks is the safer

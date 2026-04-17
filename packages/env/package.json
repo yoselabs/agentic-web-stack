@@ -4,14 +4,15 @@
   "private": true,
   "type": "module",
   "exports": {
-    ".": {
-      "default": "./src/index.ts"
-    },
     "./server": {
       "default": "./src/server.ts"
+    },
+    "./client": {
+      "default": "./src/client.ts"
     }
   },
   "dependencies": {
+    "@project/config": "workspace:*",
     "@t3-oss/env-core": "catalog:",
     "zod": "catalog:"
   },
