@@ -93,6 +93,8 @@ All workspace packages use `@project/*` prefix (e.g., `@project/api`, `@project/
 | `setQueryData` callback type errors with tRPC | tRPC's `queryKey` type inference breaks on `onMutate` callback parameter | Define explicit types for query data shape (see optimistic updates guide in `apps/web/CLAUDE.md`) |
 | Use `PointerSensor` for DnD touch support | `PointerSensor` consumes Chrome DevTools simulated touch events, blocking `TouchSensor` | Use `MouseSensor` + `TouchSensor` instead of `PointerSensor` + `TouchSensor`, add `touch-action: none` to draggable items |
 | Run `agent-harness lint` directly instead of `make lint` | `agent-harness lint` alone passes but `tsc -b` catches implicit `any`, missing imports, type mismatches | Use `make lint` (runs both `agent-harness lint` + `tsc -b`). Pre-commit hook also enforces this |
+| Read `process.env.X` outside `packages/env/` | Bypasses Zod validation; env schema changes don't propagate; caught by `make lint` grep check | Import `env` from `@project/env/server` (or `/client` for web) and read `env.X` |
+| Import from `@project/env`, `@project/config`, or `@project/api` without a subpath | There is no barrel export; the top-level path doesn't resolve. Same class of bug as `import { appRouter }` | Use subpath: `@project/env/server`, `@project/config/ports`, `@project/api/router`, etc. |
 
 ## Library Skills (@tanstack/intent)
 
