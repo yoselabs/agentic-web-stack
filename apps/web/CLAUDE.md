@@ -160,6 +160,25 @@ queryClient.setQueryData<TodoListWithCount[]>(
 
 See `features/todo-list/use-todo-lists.ts` for the full optimistic delete pattern.
 
+## Non-tRPC HTTP Calls
+
+For endpoints that aren't tRPC procedures (file upload/download, webhooks), use `apiClient`:
+
+```typescript
+import { apiClient } from "#/shared/api-client";
+
+// POST with FormData
+const res = await apiClient.fetch("/api/upload", {
+  method: "POST",
+  body: formData,
+});
+
+// GET with query string
+const res = await apiClient.fetch(`/api/export?id=${id}`);
+```
+
+Never write `fetch("http://localhost:3001/...")` or `` fetch(`${import.meta.env.VITE_API_URL}/...`) `` — both duplicate the base URL and bypass the `@project/env/client` validation boundary.
+
 ## Auth Client
 
 Import from `#/features/auth/auth-client`:
@@ -209,6 +228,7 @@ Never call `navigate()` during render — use `useEffect`.
 - Create `QueryClient` as a module-level singleton — use `getQueryClient()` pattern
 - Import `appRouter` value (only `import type { AppRouter }`)
 - **Never import from `@project/env` without a subpath.** The env package exposes `/server` and `/client` only; there is no barrel. Web code imports from `@project/env/client` exclusively. A barrel import would transitively pull server-only vars (DATABASE_URL, BETTER_AUTH_SECRET) into the client bundle. Same class of bug as `import { appRouter }` — see root CLAUDE.md.
+- **Make HTTP calls directly with `fetch()`.** All server calls from the web app MUST go through `apiClient` (`apps/web/src/shared/api-client.ts`). `apiClient.fetch(path, init)` prepends the base URL and sets cookie-auth credentials. This keeps the base URL in a single place and prevents scattered `fetch(`http://...`)` calls.
 - Put `verbatimModuleSyntax: true` in tsconfig — breaks TanStack Start
 - Add `credentials: "include"` — already configured in the tRPC httpBatchLink
 - Import upward in FSD layers (features must not import from widgets or routes)

@@ -1,10 +1,10 @@
 import type { AppRouter } from "@project/api/router";
 import { TRPC_MOUNT } from "@project/config/api-paths";
-import { env } from "@project/env/client";
 import { QueryClient } from "@tanstack/react-query";
 import { createRouter as createTanStackRouter } from "@tanstack/react-router";
 import { createTRPCClient, httpBatchLink } from "@trpc/client";
 import { createTRPCOptionsProxy } from "@trpc/tanstack-react-query";
+import { apiClient } from "#/shared/api-client";
 import { routeTree } from "./routeTree.gen";
 
 function makeQueryClient() {
@@ -32,10 +32,8 @@ function getQueryClient() {
 const trpcClient = createTRPCClient<AppRouter>({
   links: [
     httpBatchLink({
-      url: `${env.VITE_API_URL}${TRPC_MOUNT}`,
-      fetch(url, options) {
-        return fetch(url, { ...options, credentials: "include" });
-      },
+      url: `${apiClient.baseUrl}${TRPC_MOUNT}`,
+      fetch: apiClient.fetch,
     }),
   ],
 });

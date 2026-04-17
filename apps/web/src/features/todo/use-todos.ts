@@ -9,14 +9,12 @@ import {
 import { arrayMove, sortableKeyboardCoordinates } from "@dnd-kit/sortable";
 import type { AppRouter } from "@project/api/router";
 import { MAX_UPLOAD_BYTES } from "@project/config/limits";
-import { env } from "@project/env/client";
 import { type QueryClient, useMutation, useQuery } from "@tanstack/react-query";
 import type { TRPCOptionsProxy } from "@trpc/tanstack-react-query";
 import { useState } from "react";
 import { flushSync } from "react-dom";
 import { toast } from "sonner";
-
-const API_URL = env.VITE_API_URL;
+import { apiClient } from "#/shared/api-client";
 
 export function useTodos(
   trpc: TRPCOptionsProxy<AppRouter>,
@@ -131,10 +129,9 @@ export function useTodos(
       const formData = new FormData();
       formData.append("file", file);
       formData.append("todoListId", todoListId);
-      const res = await fetch(`${API_URL}/api/todos/import`, {
+      const res = await apiClient.fetch("/api/todos/import", {
         method: "POST",
         body: formData,
-        credentials: "include",
       });
       if (!res.ok) {
         const err = await res.json();
@@ -150,11 +147,8 @@ export function useTodos(
   });
 
   const exportTodos = async () => {
-    const res = await fetch(
-      `${API_URL}/api/todos/export?todoListId=${todoListId}`,
-      {
-        credentials: "include",
-      },
+    const res = await apiClient.fetch(
+      `/api/todos/export?todoListId=${todoListId}`,
     );
     if (!res.ok) {
       toast.error("Export failed");
