@@ -132,11 +132,12 @@ await db.$executeRaw`
 
 ## Frontend Type Contracts
 
-`@project/api` re-exports type inference utilities so the frontend derives types from the server:
+`@project/api` exposes the router via the `/router` subpath; tRPC's type-inference utilities come directly from `@trpc/server`. No barrel re-exports (see root CLAUDE.md's no-barrel rule):
 
 ```typescript
-// Shared types for component props (from @project/api)
-import type { AppRouter, inferRouterOutputs } from "@project/api";
+// Shared types for component props
+import type { AppRouter } from "@project/api/router";
+import type { inferRouterOutputs } from "@trpc/server";
 type RouterOutput = inferRouterOutputs<AppRouter>;
 export type Todo = RouterOutput["todo"]["list"][number];
 
