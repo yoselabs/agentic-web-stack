@@ -50,7 +50,8 @@ when(
   "I sign up as {string} with email {string}",
   async ({ page }, name: string, email: string) => {
     await page.getByRole("button", { name: "Sign Up" }).click();
-    await page.getByLabel("Name").fill(name);
+    await page.getByLabel("Name", { exact: true }).fill(name);
+    await page.getByLabel("Username").fill(email.split("@")[0]);
     await page.getByLabel("Email").fill(email);
     await page.getByLabel("Password").fill(SHARED_PASSWORD);
     await page.locator('button[type="submit"]').click();

@@ -24,6 +24,7 @@ beforeAll(async () => {
       id: TEST_USER_ID,
       name: "Service Test User",
       email: "test-todo-service@example.com",
+      username: "test-todo-service",
       emailVerified: false,
     },
   });

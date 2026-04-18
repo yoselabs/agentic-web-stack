@@ -20,6 +20,22 @@ export const auth = betterAuth({
       });
     },
   },
+  user: {
+    additionalFields: {
+      role: {
+        type: "string",
+        defaultValue: "user",
+        input: false,
+        unique: false,
+      },
+      username: {
+        type: "string",
+        input: true,
+        unique: true,
+        required: true,
+      },
+    },
+  },
   trustedOrigins: [env.CORS_ORIGIN],
 });
 

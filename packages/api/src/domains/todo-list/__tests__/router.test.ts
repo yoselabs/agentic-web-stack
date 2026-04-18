@@ -8,6 +8,8 @@ const TEST_USER = {
   id: TEST_USER_ID,
   name: "TodoList Router Test User",
   email: "test-todolist-router@example.com",
+  username: "test-todolist-router",
+  role: "user",
   emailVerified: false,
   image: null,
   createdAt: new Date(),
@@ -42,6 +44,7 @@ beforeAll(async () => {
       id: TEST_USER_ID,
       name: TEST_USER.name,
       email: TEST_USER.email,
+      username: TEST_USER.username,
       emailVerified: TEST_USER.emailVerified,
     },
   });

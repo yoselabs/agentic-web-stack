@@ -35,6 +35,7 @@ const loginSchema = z.object({
   // defaultValues.name = ""; the submit handler derives a name from
   // the email when the field is empty, preserving the UX.
   name: z.string(),
+  username: z.string(),
 });
 
 function formatFieldError(err: unknown): string {
@@ -54,7 +55,7 @@ function LoginPage() {
   const [formError, setFormError] = useState<string | null>(null);
 
   const form = useForm({
-    defaultValues: { email: "", password: "", name: "" },
+    defaultValues: { email: "", password: "", name: "", username: "" },
     validators: { onChange: loginSchema },
     onSubmit: async ({ value }) => {
       setFormError(null);
@@ -63,6 +64,7 @@ function LoginPage() {
           email: value.email,
           password: value.password,
           name: value.name || value.email.split("@")[0],
+          username: value.username || value.email.split("@")[0],
         });
         if (result.error) {
           setFormError(result.error.message ?? "Sign up failed");
@@ -113,6 +115,24 @@ function LoginPage() {
                       id={field.name}
                       type="text"
                       placeholder="Your name"
+                      value={field.state.value}
+                      onBlur={field.handleBlur}
+                      onChange={(e) => field.handleChange(e.target.value)}
+                    />
+                  </div>
+                )}
+              </form.Field>
+            )}
+
+            {isSignUp && (
+              <form.Field name="username">
+                {(field) => (
+                  <div className="space-y-2">
+                    <Label htmlFor={field.name}>Username</Label>
+                    <Input
+                      id={field.name}
+                      type="text"
+                      placeholder="your_username"
                       value={field.state.value}
                       onBlur={field.handleBlur}
                       onChange={(e) => field.handleChange(e.target.value)}

@@ -36,6 +36,7 @@ beforeEach(async () => {
       email: TEST_EMAIL,
       password: "initial-pw-123!",
       name: "Reset User",
+      username: "reset-user",
     },
   });
 });

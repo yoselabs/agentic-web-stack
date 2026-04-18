@@ -19,6 +19,7 @@ beforeAll(async () => {
       id: TEST_USER_ID,
       name: "TodoList Test User",
       email: "test-todolist-service@example.com",
+      username: "test-todolist-service",
       emailVerified: false,
     },
   });

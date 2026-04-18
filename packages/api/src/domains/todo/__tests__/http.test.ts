@@ -16,6 +16,8 @@ const TEST_USER = {
   id: TEST_USER_ID,
   name: "HTTP Test User",
   email: "test-todo-http@example.com",
+  username: "test-todo-http",
+  role: "user",
   emailVerified: false,
   image: null,
   createdAt: new Date(),

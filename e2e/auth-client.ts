@@ -22,7 +22,12 @@ export async function createUserViaApi(
   password: string,
 ): Promise<void> {
   const res = await page.request.post(`${API_URL}/api/auth/sign-up/email`, {
-    data: { email, password, name: email.split("@")[0] },
+    data: {
+      email,
+      password,
+      name: email.split("@")[0],
+      username: email.split("@")[0],
+    },
     failOnStatusCode: false,
   });
   if (res.ok()) return;
