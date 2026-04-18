@@ -12,7 +12,8 @@
     },
     "./domains/todo-list/service": {
       "default": "./src/domains/todo-list/service.ts"
-    }
+    },
+    "./realtime/channel": { "default": "./src/realtime/channel.ts" }
   },
   "scripts": {
     "test": "vitest run"
@@ -20,6 +21,7 @@
   "dependencies": {
     "@project/auth": "workspace:*",
     "@project/db": "workspace:*",
+    "@project/env": "workspace:*",
     "@trpc/server": "^11.0.0",
     "papaparse": "^5.5.3",
     "zod": "catalog:"

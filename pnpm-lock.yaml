@@ -190,6 +190,9 @@ importers:
       '@project/db':
         specifier: workspace:*
         version: link:../db
+      '@project/env':
+        specifier: workspace:*
+        version: link:../env
       '@trpc/server':
         specifier: ^11.0.0
         version: 11.16.0(typescript@5.9.3)
