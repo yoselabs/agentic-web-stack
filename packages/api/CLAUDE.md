@@ -3,10 +3,13 @@
 ## Architecture: Router → Service → Prisma
 
 ```
-routers/todo.ts              ← Thin: Zod validation + protectedProcedure + $transaction → service
-services/todo.ts             ← Business logic: accepts db|tx, owns domain rules
-services/__tests__/todo.test.ts  ← Service unit tests (direct function calls)
-__tests__/todo.test.ts       ← Router integration tests (createCaller, auth guards)
+domains/todo/
+  constants.ts               ← Primitives (client-safe)
+  service.ts                 ← Business logic; mutations typed Prisma.TransactionClient, reads typed DbClient
+  router.ts                  ← Thin: Zod validation + protectedProcedure + $transaction → service
+  __tests__/
+    service.test.ts          ← Service unit tests (direct function calls)
+    router.test.ts           ← Router integration tests (createCaller, auth guards)
 ```
 
 **Routers** are wiring only — input validation (Zod), auth (`protectedProcedure`), and transaction boundaries.
@@ -15,22 +18,25 @@ __tests__/todo.test.ts       ← Router integration tests (createCaller, auth gu
 
 ## Adding a New Feature
 
-1. Create `src/services/<name>.ts` with business logic functions
-2. Create `src/services/__tests__/<name>.test.ts` with service unit tests (TDD)
-3. Create `src/routers/<name>.ts` with thin router wiring
-4. Mount in `src/router.ts`
-5. Create/update `src/__tests__/<name>.test.ts` for router-level tests (auth, validation)
-6. Run `make check` — types propagate to apps/web automatically
+1. Create `src/domains/<name>/constants.ts` if the feature has client-safe primitives
+2. Create `src/domains/<name>/service.ts` — business logic; mutations typed `Prisma.TransactionClient`, reads typed `DbClient`
+3. Create `src/domains/<name>/__tests__/service.test.ts` — service unit tests (TDD)
+4. Create `src/domains/<name>/router.ts` — thin router wiring, wrap every mutation in `ctx.db.$transaction((tx) => ...)`. The wrap is not type-enforced (see Transaction Rules below) — discipline and code review catch the miss.
+5. Register in `src/router.ts` at the alphabetical position (see "Append-Alpha Router Registration" below)
+6. Create `src/domains/<name>/__tests__/router.test.ts` for router-level tests (auth, validation)
+7. If the web app needs constants or schemas, add the subpath to `@project/api` exports and import via `@project/api/domains/<name>/constants`
+8. Run `make check` — types propagate to apps/web automatically
 
 ### Example: Add a posts feature
 
-Create service `src/services/post.ts`:
+Create service `src/domains/post/service.ts`:
 
 ```typescript
 import { Prisma, type PrismaClient } from "@project/db";
 
 type DbClient = PrismaClient | Prisma.TransactionClient;
 
+// Reads — accept either.
 export async function listPosts(db: DbClient, userId: string) {
   return db.post.findMany({
     where: { userId },
@@ -38,19 +44,24 @@ export async function listPosts(db: DbClient, userId: string) {
   });
 }
 
-export async function createPost(db: DbClient, userId: string, title: string) {
-  return db.post.create({
+// Writes — Prisma.TransactionClient only. Router MUST wrap in $transaction.
+export async function createPost(
+  tx: Prisma.TransactionClient,
+  userId: string,
+  title: string,
+) {
+  return tx.post.create({
     data: { title, userId },
   });
 }
 ```
 
-Create router `src/routers/post.ts`:
+Create router `src/domains/post/router.ts`:
 
 ```typescript
 import { z } from "zod";
-import { createPost, listPosts } from "../services/post.js";
-import { protectedProcedure, router } from "../trpc.js";
+import { createPost, listPosts } from "./service.js";
+import { protectedProcedure, router } from "../../trpc.js";
 
 export const postRouter = router({
   list: protectedProcedure.query(({ ctx }) => {
@@ -69,7 +80,7 @@ export const postRouter = router({
 Mount in `src/router.ts`:
 
 ```typescript
-import { postRouter } from "./routers/post.js";
+import { postRouter } from "./domains/post/router.js";
 
 export const appRouter = router({
   // ... existing routes
@@ -83,12 +94,11 @@ When a service uses `include` (e.g., `listTodoLists` with `_count`), the type fl
 
 ## Transaction Rules
 
-- **All mutations:** router wraps in `db.$transaction((tx) => ...)` — even single-write ops, so you never forget when the service grows
-- **All reads:** router calls service with `db` directly (no transaction)
-- **Cross-service:** router wraps multiple service calls in one `$transaction`
-- **Race conditions:** service uses `SELECT ... FOR NO KEY UPDATE` inside the tx it receives
-- **Lock helpers must be typed `Prisma.TransactionClient`, never the `DbClient` union.** Prisma has no native `FOR UPDATE`: if the root `PrismaClient` is passed, each `$queryRaw` runs in its own implicit transaction and the lock releases immediately — silently, with no error. Type-level narrowing is the only guard.
-- Any service function that calls a lock helper must also be typed `Prisma.TransactionClient` so the invariant propagates to the caller.
+- **All mutations (including read-then-write):** service function is typed `Prisma.TransactionClient`. Router wraps in `db.$transaction((tx) => ...)`. The tx type documents the requirement and surfaces it in hover tooltips + code review, but **it is NOT a compile-time guarantee** — TypeScript's structural subtyping makes `PrismaClient` assignable to `Prisma.TransactionClient` (since `TransactionClient = Omit<PrismaClient, ...>`, PrismaClient has a superset of its methods). So `createTodo(ctx.db, ...)` without a `$transaction` wrap compiles. Enforcement is by convention + code review, same as before the narrow.
+- **All reads (no writes):** service is typed `DbClient` (`PrismaClient | Prisma.TransactionClient`). Router calls service with `ctx.db` directly.
+- **Cross-service:** router wraps multiple service calls in one `$transaction`.
+- **Race conditions:** service uses `SELECT ... FOR NO KEY UPDATE` inside the `tx` it receives.
+- **Why narrow mutations anyway?** Prisma has no native `FOR UPDATE`: if the root `PrismaClient` runs a `$queryRaw` for a lock outside a transaction, the lock releases immediately — silently, with no error. The `Prisma.TransactionClient` parameter type is the idiomatic Prisma signature for lock-participating code. A narrow signature makes the intent explicit at every call site; it is not self-enforcing.
 
 ```typescript
 // Race-safe pattern inside a service function
@@ -113,7 +123,7 @@ async function lockActiveTodos(
 }
 ```
 
-See `packages/api/src/services/todo.ts` for the canonical example.
+See `packages/api/src/domains/todo/service.ts` for the canonical example.
 
 ## N+1 Prevention
 
@@ -153,11 +163,12 @@ Never define frontend types manually — derive them from the router so they sta
 
 - `src/trpc.ts` — single `initTRPC.create()`, exports `router`, `publicProcedure`, `protectedProcedure`
 - `src/context.ts` — `createContext()` receives session from Hono, exports `Context` type
-- `src/router.ts` — `appRouter` merging sub-routers, exports `AppRouter` type
-- `src/routers/` — one file per domain sub-router (thin wiring only)
-- `src/services/` — one file per domain service (business logic)
-- `src/services/__tests__/` — service unit tests
-- `src/__tests__/` — router integration tests
+- `src/router.ts` — `appRouter` merging sub-routers (append-alpha), exports `AppRouter` type
+- `src/domains/<name>/service.ts` — business logic; mutations typed `Prisma.TransactionClient`, reads typed `DbClient`
+- `src/domains/<name>/router.ts` — thin router wiring (Zod, auth, `$transaction`)
+- `src/domains/<name>/constants.ts` — client-safe primitives (optional)
+- `src/domains/<name>/__tests__/service.test.ts` — service unit tests
+- `src/domains/<name>/__tests__/router.test.ts` — router integration tests
 - `src/index.ts` — re-exports everything
 - `vitest.config.ts` — wires unit tests to an isolated `agentic-postgres-unit-<hash>` container (via `../../scripts/test-db.ts`). Sets `DATABASE_URL` at module scope + `test.env` + `pool: "forks"` — all three are load-bearing, see the comments in the file.
 - `test-setup.ts` — vitest `globalSetup`. Calls `setupTestDatabase("unit")`. **Must not import `@project/db`** (directly or transitively) — would race the config-time `DATABASE_URL` capture.
@@ -171,6 +182,26 @@ Never define frontend types manually — derive them from the router so they sta
 `protectedProcedure` narrows `ctx.session` to non-null. Inside a protected procedure:
 - `ctx.session.user` — authenticated user (id, email, name, etc.)
 - `ctx.db` — Prisma client
+
+## Append-Alpha Router Registration
+
+The root `src/router.ts` lists every domain router alphabetically by key, one
+per line, trailing comma always. New domains INSERT at the alpha position —
+never append to the bottom.
+
+Rationale: two agents adding features in parallel (e.g., "blog" and "comment")
+edit different lines under alpha order — "blog" goes between `auth` and `todo`,
+"comment" between `blog` and `todo`. Git's 3-way merge resolves these cleanly.
+With append-to-bottom, both agents edit the last line — merge conflict.
+
+```ts
+export const appRouter = router({
+  blog: blogRouter,
+  comment: commentRouter,
+  todo: todoRouter,
+  todoList: todoListRouter,
+});
+```
 
 ## Do Not
 

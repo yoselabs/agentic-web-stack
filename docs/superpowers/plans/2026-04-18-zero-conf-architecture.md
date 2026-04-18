@@ -4,7 +4,7 @@
 
 **Goal:** Simplify `@project/config` + `@project/env` into a zero-conf architecture, restructure `packages/api/` to domain-split, and tighten transaction types — course-correcting the 2026-04-18 SSOT audit where it over-engineered.
 
-**Architecture:** Zod defaults in `@project/env` absorb `@project/config`'s role. Domain constants move into their domain folders. Dev infra values (ports, DB creds) become literals in Makefile/compose/CI. Test ports become dynamic per worktree. `packages/api/src/` mirrors `apps/web/`'s FSD shape. Mutation service signatures narrow to `Prisma.TransactionClient` so forgetting `$transaction` becomes a compile error.
+**Architecture:** Zod defaults in `@project/env` absorb `@project/config`'s role. Domain constants move into their domain folders. Dev infra values (ports, DB creds) become literals in Makefile/compose/CI. Test ports become dynamic per worktree. `packages/api/src/` mirrors `apps/web/`'s FSD shape. Mutation service signatures use `Prisma.TransactionClient` to document the transaction requirement (structural subtyping means it's not compile-enforced; discipline + review still catch missed wraps).
 
 **Tech Stack:** TanStack Start + Hono + tRPC + Prisma + Better-Auth + Zod + `@t3-oss/env-core`, pnpm workspaces.
 
@@ -1299,7 +1299,7 @@ EOF
 
 ## Task 7: Tighten transaction types + append-alpha router docs
 
-**Purpose.** Narrow mutation service signatures to `Prisma.TransactionClient` only. Forgetting `$transaction` in a router becomes a compile error. Document both the type invariant and the append-alpha router convention in `packages/api/CLAUDE.md`.
+**Purpose.** Narrow mutation service signatures to `Prisma.TransactionClient`. The tx type documents the transaction requirement, surfaces it in hover tooltips, and matches Prisma's idiom for lock-participating functions. It is NOT compile-enforced (TS structural subtyping: PrismaClient assignable to TransactionClient) — discipline + code review still catch missed `$transaction` wraps. Also document both the invariant and the append-alpha router convention in `packages/api/CLAUDE.md`.
 
 **Files:**
 - Modify: `packages/api/src/domains/todo/service.ts` (narrow `reorderTodos`, `deleteTodo`)
@@ -1432,11 +1432,13 @@ Edit the `## Transaction Rules` section. Replace:
 
 With:
 ```
-- **All mutations (including read-then-write):** service function is typed `Prisma.TransactionClient` only, router wraps in `db.$transaction((tx) => ...)`. Forgetting the wrap is a compile error, not a review comment.
-- **All reads (no writes):** service is typed `DbClient` (`PrismaClient | Prisma.TransactionClient`), router calls service with `ctx.db` directly.
+## Transaction Rules
+
+- **All mutations (including read-then-write):** service function is typed `Prisma.TransactionClient`. Router wraps in `db.$transaction((tx) => ...)`. The tx type documents the requirement and surfaces it in hover tooltips + code review, but **it is NOT a compile-time guarantee** — TypeScript's structural subtyping makes `PrismaClient` assignable to `Prisma.TransactionClient` (since `TransactionClient = Omit<PrismaClient, ...>`, PrismaClient has a superset of its methods). So `createTodo(ctx.db, ...)` without a `$transaction` wrap compiles. Enforcement is by convention + code review, same as before the narrow.
+- **All reads (no writes):** service is typed `DbClient` (`PrismaClient | Prisma.TransactionClient`). Router calls service with `ctx.db` directly.
 - **Cross-service:** router wraps multiple service calls in one `$transaction`.
-- **Race conditions:** service uses `SELECT ... FOR NO KEY UPDATE` inside the tx it receives.
-- **Why narrow mutations?** Prisma has no native `FOR UPDATE`: if the root `PrismaClient` is passed to a lock helper, each `$queryRaw` runs in its own implicit transaction and the lock releases immediately — silently, with no error. Narrowing the whole mutation chain to `Prisma.TransactionClient` makes the invariant type-level.
+- **Race conditions:** service uses `SELECT ... FOR NO KEY UPDATE` inside the `tx` it receives.
+- **Why narrow mutations anyway?** Prisma has no native `FOR UPDATE`: if the root `PrismaClient` runs a `$queryRaw` for a lock outside a transaction, the lock releases immediately — silently, with no error. The `Prisma.TransactionClient` parameter type is the idiomatic Prisma signature for lock-participating code. A narrow signature makes the intent explicit at every call site; it is not self-enforcing.
 ```
 
 Then edit the `### Example: Add a posts feature` block's service snippet to reflect the new pattern (show reads with `DbClient`, writes with `Prisma.TransactionClient`):
@@ -1537,8 +1539,10 @@ refactor(api): narrow mutation services to Prisma.TransactionClient
 
 reorderTodos, deleteTodo, createTodoList, deleteTodoList: DbClient → Prisma.
 TransactionClient. Routers already wrap each in $transaction — no runtime
-change. Forgetting the wrap is now a compile error, matching the existing
-lock-helper invariant.
+change. The tx type documents the requirement and signals it in tooling;
+it's not a compile-time guard (TS structural subtyping — PrismaClient
+assignable to Prisma.TransactionClient). Discipline + review still catch
+missed wraps.
 
 Also documents the append-alpha router registration rule.
 EOF

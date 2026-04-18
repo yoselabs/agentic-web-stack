@@ -165,7 +165,7 @@ packages/api/src/
 | `createTodoList` | `DbClient` | **`Prisma.TransactionClient`** |
 | `deleteTodoList` | `DbClient` (reads then writes) | **`Prisma.TransactionClient`** |
 
-**Why.** Routers already wrap every mutation in `$transaction((tx) => ...)` — the rule is in `packages/api/CLAUDE.md`. Narrowing the parameter types makes "forgot to wrap" a compile error instead of a review comment. Same mechanism as the lock helpers; extend to all writes.
+**Why.** Routers already wrap every mutation in `$transaction((tx) => ...)` per `packages/api/CLAUDE.md`. The narrow signals the invariant in the service's signature and hover tooltip, matching Prisma's idiom for lock-participating functions. **It is NOT compile-enforced.** TypeScript's structural subtyping means `PrismaClient` is assignable to `Prisma.TransactionClient` (the latter is `Omit<PrismaClient, …>`), so `service(ctx.db, …)` without `$transaction` still compiles. The benefit is documentation + code review signal, not a tsc guard. A true compile-time guard would require nominal branding that Prisma doesn't ship.
 
 ### D9 — Root `router.ts` append-alpha convention
 

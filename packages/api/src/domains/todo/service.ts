@@ -86,12 +86,12 @@ export async function completeTodo(
 }
 
 export async function reorderTodos(
-  db: DbClient,
+  tx: Prisma.TransactionClient,
   userId: string,
   ids: string[],
 ) {
   const pairs = ids.map((id, i) => Prisma.sql`(${id}::text, ${i}::integer)`);
-  await db.$executeRaw`
+  await tx.$executeRaw`
     UPDATE "Todo" AS t
     SET "position" = d.new_position
     FROM (VALUES ${Prisma.join(pairs, ",")}) AS d(id, new_position)
@@ -99,8 +99,12 @@ export async function reorderTodos(
   `;
 }
 
-export async function deleteTodo(db: DbClient, userId: string, id: string) {
-  return db.todo.delete({
+export async function deleteTodo(
+  tx: Prisma.TransactionClient,
+  userId: string,
+  id: string,
+) {
+  return tx.todo.delete({
     where: { id, userId },
   });
 }

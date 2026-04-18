@@ -19,19 +19,23 @@ export async function getTodoList(db: DbClient, userId: string, id: string) {
 }
 
 export async function createTodoList(
-  db: DbClient,
+  tx: Prisma.TransactionClient,
   userId: string,
   name: string,
   color?: string,
 ) {
-  return db.todoList.create({
+  return tx.todoList.create({
     data: { name, userId, ...(color ? { color } : {}) },
   });
 }
 
-export async function deleteTodoList(db: DbClient, userId: string, id: string) {
-  const list = await db.todoList.findFirstOrThrow({
+export async function deleteTodoList(
+  tx: Prisma.TransactionClient,
+  userId: string,
+  id: string,
+) {
+  const list = await tx.todoList.findFirstOrThrow({
     where: { id, userId },
   });
-  return db.todoList.delete({ where: { id: list.id } });
+  return tx.todoList.delete({ where: { id: list.id } });
 }
