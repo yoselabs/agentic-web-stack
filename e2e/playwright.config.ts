@@ -4,7 +4,15 @@ import { defineBddConfig } from "playwright-bdd";
 
 import { TEST_DATABASE_URL } from "./test-env.js";
 
-// Desktop runs all features except @mobile-tagged ones
+// Desktop runs every scenario except @mobile-tagged ones.
+// Mobile runs ONLY @mobile-tagged scenarios — not a re-run of the full
+// suite on a narrow viewport. Scenarios that need both viewports should
+// either (a) live in desktop only (the default) or (b) add a new tag
+// like @cross-viewport and include it in both filters here.
+//
+// Because the two filters are disjoint, the two projects share no test
+// identity (no email/DB-row collisions), so they run fully parallel
+// with no DB reset between them — see the `projects` array below.
 const desktopTestDir = defineBddConfig({
   features: "features/**/*.feature",
   steps: "steps/**/*.ts",
@@ -12,11 +20,11 @@ const desktopTestDir = defineBddConfig({
   tags: "not @mobile",
 });
 
-// Mobile runs all features (including @mobile-specific ones)
 const mobileTestDir = defineBddConfig({
   features: "features/**/*.feature",
   steps: "steps/**/*.ts",
   outputDir: ".features-gen/mobile",
+  tags: "@mobile",
 });
 
 const WEB_URL = `http://localhost:${TEST_WEB_PORT}`;
@@ -38,11 +46,6 @@ export default defineConfig({
       use: { browserName: "chromium" },
     },
     {
-      name: "mobile-setup",
-      testMatch: /db-reset\.setup\.ts/,
-      dependencies: ["desktop"],
-    },
-    {
       name: "mobile",
       testDir: mobileTestDir,
       use: {
@@ -51,7 +54,6 @@ export default defineConfig({
         isMobile: true,
         hasTouch: true,
       },
-      dependencies: ["mobile-setup"],
     },
   ],
   webServer: [
