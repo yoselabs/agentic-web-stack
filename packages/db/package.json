@@ -17,10 +17,10 @@
   },
   "dependencies": {
     "@prisma/client": "catalog:",
+    "prisma": "catalog:",
     "@project/env": "workspace:*"
   },
   "devDependencies": {
-    "@types/node": "catalog:",
-    "prisma": "catalog:"
+    "@types/node": "catalog:"
   }
 }

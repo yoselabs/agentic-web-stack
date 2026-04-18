@@ -231,13 +231,13 @@ importers:
       '@project/env':
         specifier: workspace:*
         version: link:../env
+      prisma:
+        specifier: 'catalog:'
+        version: 6.19.3(typescript@5.9.3)
     devDependencies:
       '@types/node':
         specifier: 'catalog:'
         version: 25.6.0
-      prisma:
-        specifier: 'catalog:'
-        version: 6.19.3(typescript@5.9.3)
 
   packages/env:
     dependencies:
