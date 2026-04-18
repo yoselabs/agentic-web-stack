@@ -9,6 +9,9 @@
     "start": "node dist/index.js"
   },
   "dependencies": {
+    "@bull-board/api": "catalog:",
+    "@bull-board/hono": "catalog:",
+    "@project/jobs": "workspace:*",
     "@hono/node-server": "^1.13.0",
     "@hono/trpc-server": "^0.3.0",
     "@project/api": "workspace:*",

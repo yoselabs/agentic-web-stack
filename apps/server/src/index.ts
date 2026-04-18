@@ -9,7 +9,8 @@ import { env } from "@project/env/server";
 import { Hono } from "hono";
 import { cors } from "hono/cors";
 import { secureHeaders } from "hono/secure-headers";
-
+import { createBullBoardAdapter } from "./admin/bull-board.js";
+import { requireAdmin } from "./admin/middleware.js";
 import { logger } from "./logger.js";
 
 const app = new Hono();
@@ -104,6 +105,13 @@ app.use(
     },
   }),
 );
+
+// requireAdmin applies to the whole /admin subtree. Do NOT place any
+// other /admin/* route above this line.
+app.use("/admin/*", requireAdmin(auth));
+
+const bullBoardAdapter = createBullBoardAdapter();
+app.route("/admin/queues", bullBoardAdapter.registerPlugin());
 
 serve({ fetch: app.fetch, port: env.PORT }, (info) => {
   logger.info(`Server running at http://localhost:${info.port}`);
