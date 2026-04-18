@@ -52,7 +52,7 @@ export function getRouter() {
     defaultPreload: "intent",
     defaultPendingMs: 200,
     defaultPendingMinMs: 300,
-    context: { trpc, queryClient },
+    context: { trpc, queryClient, session: null },
   });
 
   return router;

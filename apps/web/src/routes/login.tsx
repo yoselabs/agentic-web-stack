@@ -9,29 +9,24 @@ import {
 } from "@project/ui/components/card";
 import { Input } from "@project/ui/components/input";
 import { Label } from "@project/ui/components/label";
-import { createFileRoute, useNavigate } from "@tanstack/react-router";
-import { useEffect, useState } from "react";
-import { signIn, signUp, useSession } from "#/features/auth/auth-client";
+import { createFileRoute, redirect, useNavigate } from "@tanstack/react-router";
+import { useState } from "react";
+import { signIn, signUp } from "#/features/auth/auth-client";
 
 export const Route = createFileRoute("/login")({
+  beforeLoad: ({ context }) => {
+    if (context.session) throw redirect({ to: "/dashboard" });
+  },
   component: LoginPage,
 });
 
 function LoginPage() {
   const navigate = useNavigate();
-  const { data: session } = useSession();
   const [isSignUp, setIsSignUp] = useState(false);
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [name, setName] = useState("");
   const [error, setError] = useState("");
-
-  // Redirect if already logged in
-  useEffect(() => {
-    if (session) {
-      navigate({ to: "/dashboard" });
-    }
-  }, [session, navigate]);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -57,8 +52,6 @@ function LoginPage() {
 
     navigate({ to: "/dashboard" });
   };
-
-  if (session) return null;
 
   return (
     <main className="flex min-h-screen items-center justify-center px-4">

@@ -13,15 +13,21 @@ import type { ErrorComponentProps } from "@tanstack/react-router";
 import type { TRPCOptionsProxy } from "@trpc/tanstack-react-query";
 import { type ReactNode, useEffect } from "react";
 import { Toaster } from "sonner";
+import { type SessionData, getSession } from "#/shared/session";
 
 import appCss from "../styles.css?url";
 
 export interface RouterContext {
   trpc: TRPCOptionsProxy<AppRouter>;
   queryClient: QueryClient;
+  session: SessionData;
 }
 
 export const Route = createRootRouteWithContext<RouterContext>()({
+  beforeLoad: async () => {
+    const session = await getSession();
+    return { session };
+  },
   head: () => ({
     meta: [
       { charSet: "utf-8" },
