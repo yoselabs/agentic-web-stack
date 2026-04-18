@@ -28,6 +28,27 @@ Agent:  writes Gherkin spec → implements tRPC routes → builds UI → make ch
 Result: 5 BDD scenarios green, types checked, lint clean, feature shipped
 ```
 
+## Quick start (demo mode)
+
+```bash
+git clone <this-repo-url>
+cd agentic-web-stack
+docker compose up
+```
+
+Open `http://localhost:3000`. Sign in with:
+
+- **Email:** `demo@example.com`
+- **Password:** `TestPassword!123`
+
+First build takes ~3–5 minutes (pnpm install + vite build + prisma generate). Subsequent `docker compose up` runs start in ~10–30 seconds.
+
+**Port conflict:** demo mode uses `3000`/`3001`/`5432` — the same ports as `make dev`. Don't run both at once.
+
+Want to hack on it? See the Development section below — `make setup` + `make dev` is the dev workflow; `docker compose up` is the demo artifact.
+
+---
+
 ## Why This Template?
 
 AI agents write better code when the stack is mainstream, type-safe, and quality-gated. Most templates optimize for humans — this one optimizes for agents:
