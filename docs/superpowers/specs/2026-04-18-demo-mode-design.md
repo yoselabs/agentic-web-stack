@@ -89,7 +89,7 @@ Five build stages:
    - `COPY --from=build --parents /app/./packages/*/src /app` — shared TS source for domain packages
    - `COPY --from=build /app/apps/server/src /app/apps/server/src` — bun runs this directly, no dist
    - `COPY --from=build /app/packages/db/prisma /app/packages/db/prisma` — prisma schema (used by migrate sidecar)
-   - `COPY --from=build /app/scripts /app/scripts` — seed script + credentials module (new)
+   - `COPY --from=build /app/scripts /app/scripts` — seed script + credentials module (new). The whole directory ships for simplicity; only `seed.ts` + `seed-credentials.ts` are invoked at runtime. Other `scripts/*.ts` (e.g. `generate-routes.ts`, `test-db.ts`) are dev-only but trivially small — not worth the COPY-narrowing ceremony.
    - `COPY --from=build /app/tsconfig.base.json /app/tsconfig.base.json` — bun needs it for path resolution when running TS from the scripts/ dir
    - Add non-root `app` user, `USER app`. `HEALTHCHECK NONE` at image level — compose services each define their own.
 
