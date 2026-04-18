@@ -10,6 +10,7 @@
     "./domains/todo/constants": {
       "default": "./src/domains/todo/constants.ts"
     },
+    "./domains/todo/http": { "default": "./src/domains/todo/http.ts" },
     "./domains/todo-list/service": {
       "default": "./src/domains/todo-list/service.ts"
     }
@@ -18,9 +19,11 @@
     "test": "bun run scripts/test-runner.ts"
   },
   "dependencies": {
+    "@hono/zod-validator": "^0.7.0",
     "@project/auth": "workspace:*",
     "@project/db": "workspace:*",
     "@trpc/server": "^11.0.0",
+    "hono": "^4.12.0",
     "papaparse": "^5.5.3",
     "zod": "catalog:"
   },

@@ -1,11 +1,7 @@
 import { serve } from "@hono/node-server";
 import { trpcServer } from "@hono/trpc-server";
 import { createContext } from "@project/api/context";
-import { MAX_UPLOAD_BYTES } from "@project/api/domains/todo/constants";
-import {
-  exportTodosAsCSV,
-  importTodosFromCSV,
-} from "@project/api/domains/todo/service";
+import { todoHttpRouter } from "@project/api/domains/todo/http";
 import { appRouter } from "@project/api/router";
 import { auth } from "@project/auth";
 import { db } from "@project/db";
@@ -90,62 +86,8 @@ app.on(["POST", "GET"], "/api/auth/**", (c) => {
   return auth.handler(c.req.raw);
 });
 
-// Todo import — multipart CSV
-app.post("/api/todos/import", async (c) => {
-  const session = await auth.api.getSession({ headers: c.req.raw.headers });
-  if (!session) return c.json({ error: "Unauthorized" }, 401);
-
-  const formData = await c.req.formData();
-  const file = formData.get("file");
-  if (!(file instanceof File))
-    return c.json({ error: "No file provided" }, 400);
-
-  if (file.size > MAX_UPLOAD_BYTES) {
-    return c.json({ error: "File too large (max 10 MB)" }, 413);
-  }
-
-  const isCSV =
-    file.type === "text/csv" ||
-    file.type === "application/vnd.ms-excel" ||
-    file.name.endsWith(".csv");
-  if (!isCSV) {
-    return c.json({ error: "Only CSV files are accepted" }, 400);
-  }
-
-  const todoListId = formData.get("todoListId");
-  if (typeof todoListId !== "string")
-    return c.json({ error: "todoListId is required" }, 400);
-
-  const buffer = Buffer.from(await file.arrayBuffer());
-
-  try {
-    const result = await db.$transaction((tx) =>
-      importTodosFromCSV(tx, session.user.id, buffer, todoListId),
-    );
-    return c.json(result, 201);
-  } catch (err) {
-    const message = err instanceof Error ? err.message : "Import failed";
-    return c.json({ error: message }, 400);
-  }
-});
-
-// Todo export — CSV download
-app.get("/api/todos/export", async (c) => {
-  const session = await auth.api.getSession({ headers: c.req.raw.headers });
-  if (!session) return c.json({ error: "Unauthorized" }, 401);
-
-  const todoListId = c.req.query("todoListId");
-  if (!todoListId) return c.json({ error: "todoListId is required" }, 400);
-
-  const csv = await exportTodosAsCSV(db, session.user.id, todoListId);
-
-  return new Response(csv, {
-    headers: {
-      "Content-Type": "text/csv",
-      "Content-Disposition": 'attachment; filename="todos.csv"',
-    },
-  });
-});
+// Todo file I/O — domain-owned Hono sub-app.
+app.route("/api/todos", todoHttpRouter);
 
 // tRPC handler — pass session into context.
 // NOTE: "/trpc" is inlined by design — ≤2 call sites and no library

@@ -3,7 +3,11 @@
 // web bundle will silently pull in server code.
 //
 // Consumed by:
-// - apps/server/src/index.ts (upload size enforcement)
-// - apps/web/src/features/todo/use-todos.ts (client-side pre-flight)
+// - packages/api/src/domains/todo/http.ts (multipart validation)
 
 export const MAX_UPLOAD_BYTES = 10 * 1024 * 1024; // 10 MB
+
+export const CSV_MIME_TYPES: ReadonlySet<string> = new Set([
+  "text/csv",
+  "application/vnd.ms-excel",
+]);

@@ -7,14 +7,13 @@ import {
   useSensors,
 } from "@dnd-kit/core";
 import { arrayMove, sortableKeyboardCoordinates } from "@dnd-kit/sortable";
-import { MAX_UPLOAD_BYTES } from "@project/api/domains/todo/constants";
 import type { AppRouter } from "@project/api/router";
 import { type QueryClient, useMutation, useQuery } from "@tanstack/react-query";
 import type { TRPCOptionsProxy } from "@trpc/tanstack-react-query";
 import { useState } from "react";
 import { flushSync } from "react-dom";
 import { toast } from "sonner";
-import { apiClient } from "#/shared/api-client";
+import { todoHttpClient } from "#/shared/todo-http-client";
 
 export function useTodos(
   trpc: TRPCOptionsProxy<AppRouter>,
@@ -123,21 +122,18 @@ export function useTodos(
 
   const importTodos = useMutation({
     mutationFn: async (file: File) => {
-      if (file.size > MAX_UPLOAD_BYTES) {
-        throw new Error("File too large (max 10 MB)");
-      }
-      const formData = new FormData();
-      formData.append("file", file);
-      formData.append("todoListId", todoListId);
-      const res = await apiClient.fetch("/api/todos/import", {
-        method: "POST",
-        body: formData,
+      // zValidator only advertises the scalar todoListId in the typed form
+      // input; the File itself is read by parseBody() in the handler, not
+      // by zValidator, so we cast to attach it. Runtime: hc appends every
+      // entry of `form` to a FormData, which accepts Blob/File values.
+      const res = await todoHttpClient.import.$post({
+        form: { file, todoListId } as unknown as { todoListId: string },
       });
       if (!res.ok) {
-        const err = await res.json();
+        const err = (await res.json()) as { error?: string };
         throw new Error(err.error ?? "Import failed");
       }
-      return res.json() as Promise<{ count: number }>;
+      return (await res.json()) as { count: number };
     },
     onSuccess: (data) => {
       queryClient.invalidateQueries(trpc.todo.list.queryFilter({ todoListId }));
@@ -147,9 +143,7 @@ export function useTodos(
   });
 
   const exportTodos = async () => {
-    const res = await apiClient.fetch(
-      `/api/todos/export?todoListId=${todoListId}`,
-    );
+    const res = await todoHttpClient.export.$get({ query: { todoListId } });
     if (!res.ok) {
       toast.error("Export failed");
       return;
