@@ -26,10 +26,13 @@ jobs:
     runs-on: ubuntu-latest
     needs: check
     # No Postgres service container: both test suites provision their own
-    # per-suite containers via scripts/test-db.ts (setupTestDatabase). The
-    # ubuntu-latest runner has Docker + Compose available out of the box.
+    # per-suite containers via scripts/test-db.ts. ubuntu-latest has Docker + Compose.
     env:
       BETTER_AUTH_SECRET: test-secret-key-for-ci-tests-only-32chars
+      # Static test ports used by playwright.config.ts and vitest until Task 5
+      # makes them dynamic per-worktree via scripts/test-db.ts.
+      CORS_ORIGIN: http://localhost:3100
+      BETTER_AUTH_URL: http://localhost:3101
     steps:
       - uses: actions/checkout@v4
       - uses: pnpm/action-setup@v4
@@ -38,16 +41,6 @@ jobs:
           node-version: 22
           cache: pnpm
       - run: pnpm install --frozen-lockfile
-      # Promote @project/config values to workflow env so downstream steps
-      # see TEST_CORS_ORIGIN, TEST_BETTER_AUTH_URL, etc. without hardcoding.
-      - name: Export config to GITHUB_ENV
-        run: pnpm exec tsx scripts/export-config.ts >> "$GITHUB_ENV"
       - run: pnpm --filter @project/api test
-        env:
-          CORS_ORIGIN: ${{ env.TEST_CORS_ORIGIN }}
-          BETTER_AUTH_URL: ${{ env.TEST_BETTER_AUTH_URL }}
       - run: pnpm exec playwright install chromium --with-deps
       - run: cd e2e && pnpm exec bddgen && pnpm exec playwright test
-        env:
-          CORS_ORIGIN: ${{ env.TEST_CORS_ORIGIN }}
-          BETTER_AUTH_URL: ${{ env.TEST_BETTER_AUTH_URL }}

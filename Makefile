@@ -1,20 +1,13 @@
 .PHONY: setup dev db db-push db-generate db-studio db-seed check lint fix test test-ui test-unit clean routes
 
-# `config` is a sourceable shell fragment produced by scripts/export-config.ts.
-# Every target that needs a port or dev DB cred value sources it, so the
-# single source of truth is @project/config (via the script). Re-evaluated
-# per target rather than cached in a file to avoid stale state when config
-# changes between runs.
-CONFIG_SH := $$(pnpm exec tsx scripts/export-config.ts)
-
 # Zero-conf setup: clone → make setup → make dev
+# .env file is NOT required — @project/env has Zod defaults for every dev var.
+# .env.example is only a reference for prod deployments.
 setup:
-	cp -n .env.example .env 2>/dev/null || true
-	cp -n packages/db/.env.example packages/db/.env 2>/dev/null || true
 	pnpm install
-	export $(CONFIG_SH) && docker compose up -d
+	docker compose up -d
 	@echo "Waiting for Postgres..."
-	@export $(CONFIG_SH) && until docker compose exec -T postgres pg_isready -U $$DEV_DB_USER > /dev/null 2>&1; do sleep 1; done
+	@until docker compose exec -T postgres pg_isready -U postgres > /dev/null 2>&1; do sleep 1; done
 	pnpm -w run db:push
 	$(MAKE) routes
 	prek install
@@ -26,15 +19,13 @@ routes:
 	@pnpm exec tsx scripts/generate-routes.ts
 
 # Start both web and server
-# Depends on db-generate so edits to schema.prisma propagate to types without
-# a manual `make db-push`. `prisma generate` is ~100ms and idempotent.
 dev: db-generate
-	@export $(CONFIG_SH) && pnpm exec tsx scripts/kill-ports.ts $$DEV_WEB_PORT $$DEV_API_PORT
-	export $(CONFIG_SH) && pnpm -w run dev
+	@pnpm exec tsx scripts/kill-ports.ts 3000 3001
+	pnpm -w run dev
 
 # Database
 db:
-	export $(CONFIG_SH) && docker compose up -d
+	docker compose up -d
 db-push:
 	pnpm -w run db:push
 db-generate:
@@ -45,9 +36,6 @@ db-seed:
 	pnpm -w run db:seed
 
 # Quality gates
-# lint/fix depend on db-generate: `tsc -b` type-checks @project/db which imports
-# the generated Prisma client. Edit schema → `make lint` without fresh client =
-# stale type errors. Same rationale as dev/test targets below.
 check: lint
 lint: db-generate
 	@agent-harness lint
@@ -56,30 +44,29 @@ lint: db-generate
 	    -g '!packages/env/**' -g '!scripts/**' \
 	    -g '!**/vite.config.ts' -g '!**/vitest.config.ts' -g '!**/test-setup.ts' \
 	    -g '!**/playwright.config.ts' \
+	    -g '!packages/db/prisma.config.ts' \
 	    -g '!node_modules' -g '!**/*.gen.*' \
 	  || (echo "FAIL: process.env.X read outside @project/env — use env from @project/env/server or /client" && exit 1)
 fix: db-generate
 	@agent-harness fix
 	pnpm -w run typecheck
 
-# Unit / integration tests (vitest, uses isolated unit-suite Postgres, dynamic port per worktree — see scripts/test-db.ts)
+# Unit / integration tests (vitest, isolated unit-suite Postgres via scripts/test-db.ts)
 test-unit: db-generate
 	pnpm --filter @project/api test
 
-# BDD Tests (uses separate test database, dynamic port per suite — see scripts/test-db.ts)
+# BDD Tests (separate test database, dynamic port per suite via scripts/test-db.ts)
 #
 # Full suite:     make test
-# Filtered run:   make test ARGS="--grep 'Create a todo'"     # scenario title regex
-#                 make test ARGS="--grep Authentication"      # feature name regex
-#                 make test ARGS="--project desktop"          # skip mobile viewport
-#                 make test ARGS="--project desktop --grep auth"
-#                 make test ARGS="--headed"                   # see the browser
-# ARGS is forwarded to `playwright test` verbatim. See `playwright test --help`.
+# Filtered run:   make test ARGS="--grep 'Create a todo'"
+#                 make test ARGS="--project desktop"
+#                 make test ARGS="--headed"
+# ARGS forwarded to `playwright test` verbatim. See `playwright test --help`.
 test: db-generate
-	@export $(CONFIG_SH) && pnpm exec tsx scripts/kill-ports.ts $$TEST_WEB_PORT $$TEST_API_PORT
+	@pnpm exec tsx scripts/kill-ports.ts 3100 3101
 	cd e2e && pnpm exec bddgen && pnpm exec playwright test $(ARGS)
 test-ui: db-generate
-	@export $(CONFIG_SH) && pnpm exec tsx scripts/kill-ports.ts $$TEST_WEB_PORT $$TEST_API_PORT
+	@pnpm exec tsx scripts/kill-ports.ts 3100 3101
 	cd e2e && pnpm exec bddgen && pnpm exec playwright test --ui $(ARGS)
 
 # Cleanup
