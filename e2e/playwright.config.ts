@@ -1,7 +1,8 @@
 import { defineConfig } from "@playwright/test";
+import { envForSubprocess } from "@project/test-infra";
 import { defineBddConfig } from "playwright-bdd";
 
-import { TEST_API_PORT, TEST_DATABASE_URL, TEST_WEB_PORT } from "./test-env.js";
+import { TEST_API_PORT, TEST_WEB_PORT } from "./test-env.js";
 
 // Desktop runs every scenario except @mobile-tagged ones.
 // Mobile runs ONLY @mobile-tagged scenarios — not a re-run of the full
@@ -67,7 +68,9 @@ export default defineConfig({
       reuseExistingServer: !process.env.CI,
       env: {
         PORT: String(TEST_API_PORT),
-        DATABASE_URL: TEST_DATABASE_URL,
+        // All container-service URLs (DATABASE_URL, future REDIS_URL, ...)
+        // derived from the e2e suite's PROFILES + CONTAINER_SERVICES.
+        ...envForSubprocess("e2e"),
         BETTER_AUTH_SECRET: "test-secret-key-for-e2e-tests-only-32chars",
         BETTER_AUTH_URL: API_URL,
         CORS_ORIGIN: WEB_URL,

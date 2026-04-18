@@ -1,13 +1,12 @@
 import { spawnSync } from "node:child_process";
 import path from "node:path";
-import { setupTestDatabase, testDbEnv } from "@project/test-infra";
+import { envForSubprocess, setupTestDatabase } from "@project/test-infra";
 
 // Package root is one level up from this scripts/ folder. bun test discovers
 // files relative to cwd, so point it at the package root, not at scripts/.
 const PACKAGE_ROOT = path.resolve(import.meta.dirname, "..");
 
 setupTestDatabase("unit");
-const env = testDbEnv("unit");
 
 // Forward any CLI args past our own script (e.g. a test path filter,
 // `--test-name-pattern`, `--watch`). Bun test's positional filters match on
@@ -22,7 +21,9 @@ const result = spawnSync(
     cwd: PACKAGE_ROOT,
     env: {
       ...process.env,
-      DATABASE_URL: env.TEST_DATABASE_URL,
+      // All container-service URLs (DATABASE_URL, future REDIS_URL, ...)
+      // derived from the unit suite's PROFILES + CONTAINER_SERVICES.
+      ...envForSubprocess("unit"),
       BETTER_AUTH_SECRET:
         process.env.BETTER_AUTH_SECRET ??
         "test-secret-key-for-unit-tests-only-32chars",

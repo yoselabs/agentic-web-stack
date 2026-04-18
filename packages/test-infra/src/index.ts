@@ -44,6 +44,51 @@ const PROFILES = {
   unit: { db: 5500, web: 3300, api: 3400 },
 } as const satisfies Record<TestSuite, Record<string, number>>;
 
+// Container-backed services: map a PROFILES port key to the env var an
+// app process expects, and how to format the connection URL. Process-only
+// ports (web, api) are NOT listed here — they're not container-backed
+// and don't emit env vars for downstream apps.
+//
+// Adding a new container service = one entry here + one column in PROFILES
+// above + compose blocks + Zod schema entry in @project/env/server. The
+// `scripts/check-test-infra-integrity.ts` audit cross-checks all three.
+export const CONTAINER_SERVICES = {
+  db: {
+    envVar: "DATABASE_URL",
+    url: (port: number) =>
+      `postgresql://postgres:postgres@localhost:${port}/${TEST_DB_NAME}`,
+  },
+  // Example for future Redis:
+  // redis: {
+  //   envVar: "REDIS_URL",
+  //   url: (port: number) => `redis://localhost:${port}`,
+  // },
+} as const satisfies Record<
+  string,
+  { envVar: string; url: (p: number) => string }
+>;
+
+// Returns the env vars every subprocess spawned by test-runner.ts or
+// playwright.config.ts must receive. Add a service to CONTAINER_SERVICES
+// above and every subprocess consumer picks it up automatically — no need
+// to edit test-runner.ts and playwright.config.ts separately.
+export function envForSubprocess(suite: TestSuite): Record<string, string> {
+  const hash = createHash("md5").update(PROJECT_ROOT).digest("hex");
+  const portOffset = Number.parseInt(hash.slice(0, 4), 16) % 100;
+  const profile = PROFILES[suite] as Record<string, number>;
+  const out: Record<string, string> = {};
+  for (const [svc, cfg] of Object.entries(CONTAINER_SERVICES)) {
+    const base = profile[svc];
+    if (base === undefined) {
+      throw new Error(
+        `test-infra: CONTAINER_SERVICES has "${svc}" but PROFILES[${suite}] does not`,
+      );
+    }
+    out[cfg.envVar] = cfg.url(base + portOffset);
+  }
+  return out;
+}
+
 export function testDbEnv(suite: TestSuite) {
   const hash = createHash("md5").update(PROJECT_ROOT).digest("hex");
   const hash8 = hash.slice(0, 8);
