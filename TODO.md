@@ -48,6 +48,9 @@ Items marked **[recipe]** should be documented as patterns — added per-project
 - [ ] **[recipe]** tRPC subscriptions — SSE via `httpSubscriptionLink` (preferred over WebSocket)
 - [ ] **[recipe]** WebSocket support — Hono `upgradeWebSocket()` + `@hono/node-ws`
 - [ ] **[recipe]** Live cache invalidation — server events → React Query invalidation
+- [ ] **[template]** Agent skill: "add real-time updates to a tRPC feature" — SKILL.md with pattern for wiring WS events to mutations + React Query cache merge (deferred from 2026-04-17 hackathon prep; Track 2 of ADLC prep)
+- [ ] **[template]** Plan template: "add WS to feature X" — skeleton plan file that agents can fill in when retrofitting a feature with real-time updates
+- [ ] **[template]** Reference examples for agents — annotated code snippets (room subscription, user-targeted unicast, replay-on-connect) that agent skills can cite
 
 ## Background Jobs
 
