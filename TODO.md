@@ -70,8 +70,11 @@ Items marked **[recipe]** should be documented as patterns — added per-project
 ## Infrastructure
 
 - [x] **[template]** CI pipeline (GitHub Actions) — lint + typecheck + BDD tests on PRs
-- [ ] **[recipe]** Docker app containers — Dockerfiles for apps/web and apps/server
-- [ ] **[recipe]** Production docker-compose — full stack with app containers + Postgres + Traefik
+- [x] **[template]** Docker app container — single root `Dockerfile` (5-stage multi-stage build) reused across migrate/server/web via YAML anchors. See `spike/demo-mode`.
+- [x] **[template]** Demo-mode docker-compose — `docker compose up` boots full stack (postgres + migrate + server + web) with seeded user. See `docker-compose.yml`.
+- [ ] **[recipe]** Production docker-compose — Traefik + TLS + external Postgres, derived from demo-mode
+- [ ] **[recipe]** CI smoke test for `docker compose up` — bring stack up in CI, hit `/health`, tear down. Guards against demo-mode rot.
+- [ ] **[recipe]** Real migrations via `prisma migrate deploy` — demo-mode uses `prisma db push`; swap in once migrations land in `packages/db/prisma/migrations/`
 - [ ] **[recipe]** Multi-environment config — dev/staging/prod env var management
 - [ ] **[recipe]** CDN — static asset caching with cache-busting
 
@@ -134,34 +137,6 @@ Items marked **[recipe]** should be documented as patterns — added per-project
 
 ---
 
-## Demo mode: `docker compose up` runs the whole app
-
-Current `docker-compose.yml` only runs Postgres (dev DB). For demo purposes, `docker compose up` should start a fully working instance — no `make dev`, no local toolchain — so people can clone + run + click around.
-
-### What's needed
-- **`apps/web/Dockerfile`** — multi-stage: `pnpm install` → `vite build` → runtime image serving `.output/server/index.mjs`. Single-runtime image (bun only — see below).
-- **`apps/server/Dockerfile`** — multi-stage: `pnpm install` → `tsc` → runtime image running the compiled server. Single-runtime image (bun only).
-- **`docker-compose.yml`** gains two services (`web`, `server`) wired to Postgres. Existing `postgres` service stays as-is.
-- **Env wiring** for inter-container comms: `DATABASE_URL=postgresql://postgres:postgres@postgres:5432/app`, `CORS_ORIGIN=http://localhost:3000`, `VITE_API_URL=http://localhost:3001` (baked into web build), `BETTER_AUTH_URL=http://localhost:3001`, `BETTER_AUTH_SECRET` from `.env` or compose env.
-- **Schema provisioning**: `prisma db push` on server container boot (or a one-shot `migrate` sidecar service).
-- **Optional**: `make db-seed` equivalent runs automatically on first boot so a demo user exists.
-
-### Runtime: bun only, not bun + node
-Images should install bun only, not both. Justification:
-- `bun` runs TS natively (`src/index.ts`) — no `tsc` build step needed for the server in the image.
-- `bun` runs the Nitro `.output/server/index.mjs` produced by `vite build` — confirmed in dev.
-- Dropping node + pnpm from runtime images cuts image size ~300MB.
-- Caveat: `vite build` itself (in the build stage) still needs node. So the **build stage** uses `node + pnpm + bun`; the **runtime stage** uses bun only. Multi-stage builds ship only the runtime layer.
-
-### Trigger
-- When we want to hand someone "try this locally in 1 minute" or put this on a demo server without the dev toolchain.
-- Before any public release or conference demo.
-
-### Est effort
-2–3 hours. Not cleanup — a real feature, deserves its own branch.
-
----
-
 ## `spike/bun-test-migration` — deferred ideas
 
 Surfaced during the bun-test + build-for-test + e2e-hardening spike (branch `spike/bun-test-migration`). Each item: what it is, why we didn't do it, what would make it worth picking up.
@@ -186,10 +161,8 @@ Playwright fixture auto-generating `${scenarioTitleHash}@example.com`. We shippe
 - **Why not**: lint catches it at commit time, zero runtime cost.
 - **Trigger**: someone bypasses the lint, or feature files exceed ~50 scenarios.
 
-### `apps/server` local dev under bun (not just tests)
-Currently `dev = tsx watch`. Tests already use `bun src/index.ts`. Local dev could match.
-- **Why not**: hot dev path, untested with Better-Auth + HMR.
-- **Trigger**: dev restart time becomes painful, or we drop tsx as a dep.
+### ~~`apps/server` local dev under bun (not just tests)~~ — done in `spike/demo-mode`
+`apps/server/package.json` now uses `bun --watch` with a POSIX-sh conditional to preserve `--env-file-if-exists` semantics. `tsx` dropped from apps/server devDeps. Verified: hot-reload works, Better-Auth survives reload, `.env` override still wins.
 
 ### Reverse proxy for `VITE_API_URL`
 `/api/*` proxied from web to API, eliminating the build-time env-var bake. Research's "option 3".
