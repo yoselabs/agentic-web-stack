@@ -1,5 +1,4 @@
 import path from "node:path";
-import { DEV_API_PORT, DEV_WEB_PORT } from "@project/config/ports";
 import { defineConfig } from "vitest/config";
 import { testDbEnv } from "../../scripts/test-db.ts";
 
@@ -19,10 +18,9 @@ process.env.DATABASE_URL = env.TEST_DATABASE_URL;
 process.env.BETTER_AUTH_SECRET =
   process.env.BETTER_AUTH_SECRET ??
   "test-secret-key-for-unit-tests-only-32chars";
-process.env.CORS_ORIGIN =
-  process.env.CORS_ORIGIN ?? `http://localhost:${DEV_WEB_PORT}`;
+process.env.CORS_ORIGIN = process.env.CORS_ORIGIN ?? "http://localhost:3000";
 process.env.BETTER_AUTH_URL =
-  process.env.BETTER_AUTH_URL ?? `http://localhost:${DEV_API_PORT}`;
+  process.env.BETTER_AUTH_URL ?? "http://localhost:3001";
 
 export default defineConfig({
   test: {
@@ -35,8 +33,8 @@ export default defineConfig({
     env: {
       DATABASE_URL: env.TEST_DATABASE_URL,
       BETTER_AUTH_SECRET: "test-secret-key-for-unit-tests-only-32chars",
-      CORS_ORIGIN: `http://localhost:${DEV_WEB_PORT}`,
-      BETTER_AUTH_URL: `http://localhost:${DEV_API_PORT}`,
+      CORS_ORIGIN: "http://localhost:3000",
+      BETTER_AUTH_URL: "http://localhost:3001",
     },
     // Forks snapshot process.env at spawn — the DATABASE_URL set above pins
     // into every worker. Threads share a live process.env by reference, which
