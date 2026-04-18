@@ -12,6 +12,16 @@ export type TestSuite = "e2e" | "unit";
 
 export const PROJECT_ROOT = path.resolve(import.meta.dirname, "..");
 
+// Port bases per suite, per service. Bases are spaced by ≥100 so the
+// modulo-100 offset below can never produce overlapping ranges — not
+// across services within one suite, not across suites, not across
+// worktrees on the same host. Adding a service = one column per suite.
+// Example for future Redis: `redis: 6300` (e2e) / `redis: 6400` (unit).
+const PROFILES = {
+  e2e: { db: 5400, web: 3100, api: 3200 },
+  unit: { db: 5500, web: 3300, api: 3400 },
+} as const satisfies Record<TestSuite, Record<string, number>>;
+
 export function testDbEnv(suite: TestSuite) {
   const hash = createHash("md5").update(PROJECT_ROOT).digest("hex");
   const hash8 = hash.slice(0, 8);
@@ -20,15 +30,10 @@ export function testDbEnv(suite: TestSuite) {
   // (hash8) don't collide, but the host port bind will — docker fails loudly
   // with "port already allocated", which is acceptable and rare in practice.
   const portOffset = Number.parseInt(hash.slice(0, 4), 16) % 100;
-  // Bases are spaced by ≥100 so the modulo-100 offset never produces
-  // overlapping ranges — web/api/DB ports can't collide across worktrees or
-  // between the e2e and unit suites.
-  const dbPortBase = suite === "e2e" ? 5400 : 5500;
-  const webPortBase = suite === "e2e" ? 3100 : 3300;
-  const apiPortBase = suite === "e2e" ? 3200 : 3400;
-  const port = dbPortBase + portOffset;
-  const webPort = webPortBase + portOffset;
-  const apiPort = apiPortBase + portOffset;
+  const profile = PROFILES[suite];
+  const port = profile.db + portOffset;
+  const webPort = profile.web + portOffset;
+  const apiPort = profile.api + portOffset;
   const container = `agentic-postgres-${suite}-${hash8}`;
   return {
     TEST_PORT: port,
