@@ -51,6 +51,8 @@ Step definitions are written AFTER the UI exists (Phase 3), not before. The Gher
 
 See `docs/superpowers/specs/2026-04-12-development-cycle-handover.md` for the full process spec.
 
+For testing approach — unit vs BDD, the multi-user browser-context pattern for real-time features, and common gotchas — see `docs/testing-guidelines.md`.
+
 ## Package Naming
 
 All workspace packages use `@project/*` prefix (e.g., `@project/api`, `@project/db`).

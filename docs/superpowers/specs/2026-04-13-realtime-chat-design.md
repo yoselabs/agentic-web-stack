@@ -1,5 +1,12 @@
 # Real-Time Chat Room — Design Spec
 
+> **Superseded by** `docs/superpowers/specs/2026-04-18-realtime-chat-reference-design.md`.
+> The 2026-04-18 spec expands scope (DMs, file sharing, unique usernames, user
+> search, single-instance realtime abstraction inside `packages/api/`) and
+> aligns with the updated domain conventions (`packages/api/src/domains/`,
+> subpath exports, `apiClient`). This file is retained for historical context
+> only; do not implement from it.
+
 ## Summary
 
 Add WebSocket-based real-time chat as a reference implementation for the template. Includes a typed channel abstraction (`packages/realtime/`), tRPC subscriptions over WebSocket, and a chat room feature with messages, presence, and typing indicators.
