@@ -1,5 +1,6 @@
 import { randomBytes } from "node:crypto";
 import { createReadStream, mkdirSync, unlink, writeFile } from "node:fs";
+import type { IncomingMessage } from "node:http";
 import { join, resolve } from "node:path";
 import { serve } from "@hono/node-server";
 import { trpcServer } from "@hono/trpc-server";
@@ -14,9 +15,12 @@ import { appRouter } from "@project/api/router";
 import { auth } from "@project/auth";
 import { db } from "@project/db";
 import { env } from "@project/env/server";
+import { TRPCError } from "@trpc/server";
+import { applyWSSHandler } from "@trpc/server/adapters/ws";
 import { Hono } from "hono";
 import { cors } from "hono/cors";
 import { secureHeaders } from "hono/secure-headers";
+import { WebSocketServer } from "ws";
 
 import { logger } from "./logger.js";
 
@@ -246,6 +250,44 @@ app.use(
   }),
 );
 
-serve({ fetch: app.fetch, port: env.PORT }, (info) => {
+const httpServer = serve({ fetch: app.fetch, port: env.PORT }, (info) => {
   logger.info(`Server running at http://localhost:${info.port}`);
 });
+
+if (env.ENABLE_CHAT) {
+  const wss = new WebSocketServer({ noServer: true });
+
+  httpServer.on("upgrade", (req, socket, head) => {
+    const { pathname } = new URL(req.url ?? "/", "http://localhost");
+    if (pathname !== "/trpc-ws") {
+      socket.destroy();
+      return;
+    }
+    wss.handleUpgrade(req, socket, head, (ws) => {
+      wss.emit("connection", ws, req);
+    });
+  });
+
+  applyWSSHandler({
+    wss,
+    router: appRouter,
+    createContext: async ({ req }) => wsContext(req),
+    keepAlive: { enabled: true, pingMs: 30_000, pongWaitMs: 5_000 },
+  });
+
+  logger.info(`WebSocket endpoint: ws://localhost:${env.PORT}/trpc-ws`);
+}
+
+async function wsContext(req: IncomingMessage) {
+  const headers = new Headers();
+  for (const [name, value] of Object.entries(req.headers)) {
+    if (value === undefined) continue;
+    if (Array.isArray(value)) headers.set(name, value.join(", "));
+    else headers.set(name, value);
+  }
+  const session = await auth.api.getSession({ headers });
+  if (!session) {
+    throw new TRPCError({ code: "UNAUTHORIZED" });
+  }
+  return createContext({ session });
+}
