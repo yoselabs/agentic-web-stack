@@ -26,12 +26,12 @@ Addressing them together is cheap because they interlock: fixing (3) unblocks (4
 
 ## Scope
 
-Four independent pieces, landed in the order below so later pieces can depend on earlier ones:
+Four independent pieces (problem-statement order below; the **land order** is separate and appears in "Ordering and dependencies" near the end of this document):
 
-1. **A1** — drop the `@tanstack/start-client-core` type-only shim if newer Start types the `server:` key natively.
-2. **A2** — replace the `useEffect`-redirect auth guard with `beforeLoad` + `throw redirect(...)`, sourcing the session server-side via a Start `createServerFn`.
-3. **B1** — move the todo import/export Hono routing into `packages/api/src/domains/todo/http.ts`, and consume it from the web via `hc<TodoHttpType>` (typed Hono RPC client).
-4. **B2** — rewrite `apps/web/src/routes/login.tsx` using TanStack Form + Zod.
+- **A1** — drop the `@tanstack/start-client-core` type-only shim if newer Start types the `server:` key natively.
+- **A2** — replace the `useEffect`-redirect auth guard with `beforeLoad` + `throw redirect(...)`, sourcing the session server-side via a Start `createServerFn`.
+- **B1** — move the todo import/export Hono routing into `packages/api/src/domains/todo/http.ts`, and consume it from the web via `hc<TodoHttpType>` (typed Hono RPC client).
+- **B2** — rewrite `apps/web/src/routes/login.tsx` using TanStack Form + Zod.
 
 Each piece compiles independently; A2 and B1 are the two that touch shared contracts.
 
@@ -51,9 +51,9 @@ Plus a 4-line comment block explaining that the import loads module augmentation
 
 ### Change
 
-1. Delete the `import type {}` line and the 4-line comment.
-2. Run `tsc -b`. If the `server:` key still type-checks, remove `@tanstack/start-client-core` from `apps/web/package.json` dependencies.
-3. If `tsc -b` fails, keep the line but compress the comment to one line, and leave the dep.
+1. Delete the `import type {}` line and the 4-line comment. Run `tsc -b`.
+2. **If `tsc -b` passes:** remove `@tanstack/start-client-core` from `apps/web/package.json` dependencies, run `pnpm install`, re-run `tsc -b` to confirm.
+3. **If `tsc -b` fails:** restore a single-line `import type {} from "@tanstack/start-client-core";` (drop the 4-line comment, keep the import), leave the dep in place.
 
 ### Risk
 
@@ -83,7 +83,11 @@ import { apiClient } from "./api-client";
 export type SessionData = { user: { id: string; email: string; name: string | null } } | null;
 
 export const getSession = createServerFn({ method: "GET" }).handler(async (): Promise<SessionData> => {
-  const cookie = getHeaders().cookie ?? "";
+  const raw = getHeaders().cookie;
+  // getHeaders() delegates to h3/Nitro; under some proxy configurations cookie
+  // headers arrive as string[]. Coerce to a single string so the downstream
+  // `fetch` always sends a well-formed Cookie header.
+  const cookie = Array.isArray(raw) ? raw.join("; ") : (raw ?? "");
   if (!cookie) return null;
   const res = await apiClient.fetch("/api/auth/get-session", {
     headers: { cookie },
@@ -94,7 +98,9 @@ export const getSession = createServerFn({ method: "GET" }).handler(async (): Pr
 });
 ```
 
-Exact Start server-fn API surface (`createServerFn` chaining, header access helper name) may differ in the installed version — the implementation plan verifies against installed types. The contract this module owes the rest of the spec: a `getSession()` that runs on the web Nitro, returns `SessionData`, and forwards incoming cookies.
+The contract this module owes the rest of the spec: a `getSession()` that runs **server-only** on the web Nitro, returns `SessionData` (never throws), and forwards incoming cookies. The exact `createServerFn` chaining and `getHeaders()` import path are installed-version-specific — the plan step verifies both against the pinned Start version; the contract above is what the plan is held to, not the surface syntax.
+
+**Server-only execution + hydration.** `createServerFn` emits a server-only handler that the client reaches via an RPC call. On **initial SSR**, `beforeLoad` runs on the server, calls the handler directly (no HTTP hop), and the resulting `session` is dehydrated into the router context and serialized into the SSR HTML. On **hydration**, the client reuses the dehydrated `session` from router state — it does **not** re-invoke the server-fn, and therefore does not issue an unsolicited `/api/auth/get-session` call from the browser on first paint. On **subsequent client navigations**, `beforeLoad` re-runs and the server-fn is invoked over the wire only when the router actually needs a fresh session (e.g., after sign-in/sign-out `router.invalidate()`). This is the intended Start pattern; the acceptance criteria below pin it down.
 
 **Router context** — extend `apps/web/src/routes/__root.tsx`'s `RouterContext`:
 
@@ -106,7 +112,7 @@ export interface RouterContext {
 }
 ```
 
-`router.tsx`'s `createTanStackRouter({ context })` receives `session` from the root route's `beforeLoad`, which calls `getSession()`. (Start re-runs `beforeLoad` per navigation, so logout/login reflect correctly.)
+`router.tsx`'s `createTanStackRouter({ context })` seeds `session: null` initially; the root route's `beforeLoad` calls `getSession()` and returns `{ session }` so it merges into `context` for all descendants. `router.invalidate()` after sign-in/sign-out re-runs the root `beforeLoad` → refreshed session propagates.
 
 **Authenticated layout — `apps/web/src/routes/_authenticated.tsx`:**
 
@@ -151,9 +157,9 @@ Better-Auth defaults to http-only cookies. Http-only prevents JS reads, not cook
 
 ### Risk
 
-- **Extra HTTP hop per SSR request.** Web Nitro → Hono on :3001 per navigation. Acceptable: both containers run on the same Docker network in the demo compose, <1 ms localhost RTT. In future we can cache the session in the server-fn for the duration of a single request (trivial), but not needed initially.
-- **Tighter coupling of `apps/web` to `apps/server` availability.** Previously the web could render an unauthenticated shell even if the API was down; now `beforeLoad` fails. Matches user expectation (no API ⇒ no app) and surfaces outages honestly.
-- **Start server-fn API may have evolved** — plan step verifies `createServerFn`/`getHeaders` names against the installed version.
+- **Extra HTTP hop per SSR request.** Web Nitro → Hono on :3001 for every authenticated navigation that hits the server (initial SSR, client nav with a `router.invalidate()`). Acceptable: both containers are on the same Docker network in the demo compose, <1 ms localhost RTT. For a production-grade template a follow-up step can memoize the session within a single request (React cache / AsyncLocalStorage); not load-bearing for this spec.
+- **Tighter coupling of `apps/web` to `apps/server` availability.** Previously the web could render an unauthenticated shell even if the API was down; now a broken API degrades to "redirect to /login" because `getSession()` returns `null` on non-2xx. Matches user expectation (no API ⇒ no app) and surfaces outages honestly.
+- **Start server-fn surface version drift** — plan step verifies `createServerFn`, `getHeaders`, and the server-only execution guarantee against the installed version. If the guarantee doesn't hold in the installed version (client-side rehydration re-invokes the handler), fallback is to load the session inside `router.tsx` during `getRouter()` using a direct `apiClient.fetch` server-side guarded by `typeof window === "undefined"`.
 
 ---
 
@@ -192,19 +198,28 @@ import { db } from "@project/db";
 import { MAX_UPLOAD_BYTES, CSV_MIME_TYPES } from "./constants.js";
 import { importTodosFromCSV, exportTodosAsCSV } from "./service.js";
 
-const importSchema = z.object({
-  file: z.instanceof(File).refine((f) => f.size <= MAX_UPLOAD_BYTES, "File too large (max 10 MB)"),
-  todoListId: z.string().min(1),
-});
-
 const exportSchema = z.object({ todoListId: z.string().min(1) });
 
 export const todoHttpRouter = new Hono()
-  .post("/import", zValidator("form", importSchema), async (c) => {
+  .post("/import", async (c) => {
     const session = await auth.api.getSession({ headers: c.req.raw.headers });
     if (!session) return c.json({ error: "Unauthorized" }, 401);
 
-    const { file, todoListId } = c.req.valid("form");
+    // Manual parse: zValidator + z.instanceof(File) is brittle across Node
+    // runtimes because undici's File and the global File can differ at the
+    // constructor level, causing false-negative instanceof. c.req.parseBody()
+    // returns File | string | null per field — we check the shape directly.
+    const body = await c.req.parseBody();
+    const file = body.file;
+    const todoListId = body.todoListId;
+
+    if (!(file instanceof File)) return c.json({ error: "No file provided" }, 400);
+    if (typeof todoListId !== "string" || !todoListId) {
+      return c.json({ error: "todoListId is required" }, 400);
+    }
+    if (file.size > MAX_UPLOAD_BYTES) {
+      return c.json({ error: "File too large (max 10 MB)" }, 413);
+    }
     const mimeOk =
       CSV_MIME_TYPES.has(file.type) || file.name.toLowerCase().endsWith(".csv");
     if (!mimeOk) return c.json({ error: "Only CSV files are accepted" }, 400);
@@ -234,7 +249,13 @@ export type TodoHttpRouter = typeof todoHttpRouter;
 
 Method chaining on `new Hono()` is the pattern `hc` requires to preserve route types. `CSV_MIME_TYPES` moves from inlined comparisons into `constants.ts` (set-based lookup).
 
-**Package exports** — extend `packages/api/package.json`:
+**Intentional behavior changes** vs. the current handlers in `apps/server/src/index.ts`:
+
+- File extension check becomes case-insensitive (`TODOS.CSV` now accepts). Current code uses `file.name.endsWith(".csv")` (case-sensitive).
+- Error bodies keep the existing shape `{ error: string }` — BDD and any caller that destructures `err.error` are unaffected.
+- Status codes preserved exactly: 401 unauthorized, 400 missing/invalid inputs, 413 file too large, 201 success.
+
+**Package exports** — extend `packages/api/package.json` **before** adding any import site (otherwise `@project/api/domains/todo/http` resolves to the package root and explodes — same class of bug as the no-barrel rule):
 
 ```json
 "./domains/todo/http": { "default": "./src/domains/todo/http.ts" }
@@ -299,8 +320,9 @@ The existing BDD flow in `e2e/features/todo-import-export.feature` (or equivalen
 
 ### Risk
 
-- **Hono `hc` quirks:** form-data typing in `hc` requires the `zValidator("form", ...)` pattern specifically. If installed `@hono/zod-validator` has an incompatible API, fall back to manual `c.req.formData()` + Zod parse inside the handler — the client-side type still works via the explicit `TodoHttpRouter` export.
+- **`hc` + File on the wire:** browser `File` passed into `$post({ form })` must serialize as multipart; `hc` does this when the input contains a `File` instance. If a future bundler transform strips the `File` check, the body goes out as JSON and the server returns 400. Mitigation: the e2e BDD scenario covers the success path; a unit test in `http.test.ts` exercises an actual `FormData` request against `todoHttpRouter.request(...)`.
 - **Subpath import discipline:** if any consumer does `import { TodoHttpRouter } from "@project/api/domains/todo/http"` as a value instead of `import type`, it leaks the server bundle into web. Same class of bug as `import { appRouter }`. Enforced by the existing `agent-harness lint` rule or added to it.
+- **Rollback:** URLs, payload shapes, status codes, and error-body shape are preserved. Reverting the B1 commit restores the previous server without client-side coordination.
 
 ---
 
@@ -312,58 +334,30 @@ The existing BDD flow in `e2e/features/todo-import-export.feature` (or equivalen
 
 ### Change
 
-Add dependencies to `apps/web/package.json`:
+Add `@tanstack/react-form` to `apps/web/package.json`. Version pinned during the plan step against the latest minor compatible with the installed TanStack Router/Start pair. **Do not** default to adding `@tanstack/zod-form-adapter` — recent `@tanstack/react-form` releases accept Zod schemas directly via Standard Schema; the plan step verifies which API the pinned version uses and only adds the adapter dep if the pinned version still requires it.
 
-```json
-"@tanstack/react-form": "^x.y.z",
-"@tanstack/zod-form-adapter": "^x.y.z"
-```
+**Spec contract** (what the rewritten `login.tsx` must satisfy — exact method and option names verified against the installed API during the plan step, not this spec):
 
-Version lookup during plan step; both are in active parallel release with other TanStack packages.
+- The schema below is used for client-side validation. The password `min(MIN_PASSWORD_LENGTH)` value is imported from `@project/auth/constants` (already used by the current `login.tsx:110`).
+  ```ts
+  const loginSchema = z.object({
+    email: z.string().email(),
+    password: z.string().min(MIN_PASSWORD_LENGTH),
+    name: z.string().optional(),
+  });
+  ```
+- Form state uses `useForm` from `@tanstack/react-form` with `defaultValues: { email: "", password: "", name: "" }`.
+- Field-level validation runs on change against `loginSchema` (exact option name — `validators.onChange` vs. standard-schema alternative — verified at plan step).
+- Submit handler is async: it calls either `signUp.email` or `signIn.email` based on the `isSignUp` local-state toggle (toggle stays a `useState` — it's a mode switch, not a form value), threads `value.email`/`value.password` (plus derived `name` when signing up: `value.name || value.email.split("@")[0]`), then either `navigate({ to: "/dashboard" })` on success or surfaces `result.error.message` as a form-level error (exact form-error API — `setErrorMap`, returning a string from `onSubmit`, or form-level validator result — verified at plan step).
+- Each input renders inside a `form.Field` render-prop so field-level errors from `loginSchema` surface near the input.
+- No `useSession`, no `useEffect`, no redirect logic — A2's `beforeLoad` handles the logged-in-already case.
 
-Define the schema next to the form:
-
-```ts
-const loginSchema = z.object({
-  email: z.string().email(),
-  password: z.string().min(MIN_PASSWORD_LENGTH),
-  name: z.string().optional(),
-});
-```
-
-Form shape:
-
-```tsx
-const form = useForm({
-  defaultValues: { email: "", password: "", name: "" },
-  validatorAdapter: zodValidator(),
-  validators: { onChange: loginSchema },
-  onSubmit: async ({ value }) => {
-    const fn = isSignUp ? signUp.email : signIn.email;
-    const result = await fn({
-      email: value.email,
-      password: value.password,
-      ...(isSignUp ? { name: value.name || value.email.split("@")[0] } : {}),
-    });
-    if (result.error) {
-      form.setErrorMap({ onSubmit: result.error.message ?? "Auth failed" });
-      return;
-    }
-    navigate({ to: "/dashboard" });
-  },
-});
-```
-
-Each field renders via `<form.Field name="email">{(field) => <Input ... />}</form.Field>`, surfacing `field.state.meta.errors` per field. The top-level error moves into the submit error map.
-
-The `isSignUp` toggle stays local state — it's a mode switch, not a form value. The `<form onSubmit>` hooks into `form.handleSubmit`.
-
-The redirect-if-already-logged-in concern is A2's job (now in `beforeLoad`); this file no longer reads `useSession` at all.
+The goal of this section is the *shape* of the refactor, not copy-paste-ready TanStack Form code; the plan step produces the runnable version against the pinned API.
 
 ### Risk
 
 - **New dep** (~20 KB gzipped). Acceptable; it's the forms primitive for a template.
-- **TanStack Form API still stabilizing.** Install pinned minor; track changelogs before major bumps.
+- **TanStack Form API still stabilizing.** Pin a minor; plan step verifies the exact form-level error API and the validator-adapter vs. standard-schema choice.
 
 ---
 
@@ -379,14 +373,15 @@ Each piece is its own commit; each piece leaves `make lint && make test && make 
 ## Open questions
 
 - **Does `@tanstack/start-client-core` still need to be a direct dep of `apps/web`** after A1, or did newer Start fold its types into `@tanstack/react-start`? Plan step resolves by running `tsc -b` after deletion.
-- **Can Start's `createServerFn` run inside a root-route `beforeLoad`** without triggering a double-fetch during hydration? Start's `beforeLoad` already supports server-only context; needs a 5-minute test on a throwaway route.
-- **Does Better-Auth's `/api/auth/get-session` return a consistent shape** for "logged out" vs. "logged in"? The server-fn contract assumes `null` on non-2xx or empty body. Plan step probes live response both ways before committing to the shape.
-- **Hono `hc` + multipart + `File` instances in browser** — verified-working pattern exists but API churn is real. Fallback path (manual `FormData` + `fetch` through `apiClient.fetch`) keeps the hc client for `export` only if `import` hits a wall.
+- **Does Better-Auth's `/api/auth/get-session` return a consistent shape** for "logged out" vs. "logged in"? The server-fn contract assumes `null` on non-2xx or empty body; on 2xx the response is `{ user, session }` or similar. Plan step probes live response both ways before committing to the parsing.
+- **TanStack Form's form-level error API** on the pinned minor — `setErrorMap`, returning a string from `onSubmit`, or another shape. Resolved by reading the installed `.d.ts` at plan time, not by the spec.
 
 ## Acceptance criteria
 
 - No file in `apps/web/src/` calls `useEffect` to trigger a `navigate()` on session state.
-- No file in `apps/server/src/` contains domain business logic or domain routing — `apps/server/src/index.ts` is a pure transport host (auth handler mount, tRPC mount, domain HTTP sub-app mounts, middleware).
+- `apps/server/src/index.ts` imports only from `@project/api/*`, `@project/auth`, `@project/env/server`, `@project/db` (for the `/health` DB ping), and `hono`/`@hono/*`/`@hono/node-server` — no imports from `@project/api/domains/*/service` or domain-level CSV helpers. Domain HTTP sub-apps are mounted via one-line `app.route(...)` calls.
 - `apps/web/src/features/todo/use-todos.ts` contains zero hand-assembled `FormData` or string-path `apiClient.fetch` calls. Both import/export go through `todoHttpClient`.
 - `apps/web/src/routes/login.tsx` has zero `useState` for field values.
+- **SSR-no-refetch:** loading any authenticated page server-side issues exactly one `GET /api/auth/get-session` (from the web Nitro to the Hono server). The browser's DevTools Network tab for the same initial page load shows **zero** requests to `/api/auth/get-session` from the browser. Verified manually with `make dev` during plan step #3's execution and captured in the plan's verification notes.
+- **Server-bundle hygiene:** `pnpm --filter @project/web build` produces a client bundle that does not contain strings from `@project/auth`'s runtime (`better-auth`), `@project/db`'s runtime (`@prisma/client`), or `papaparse`. Checked via `grep` on the built JS after B1 lands.
 - `make lint && make test && make test-unit` pass on each of the four piece commits independently.
