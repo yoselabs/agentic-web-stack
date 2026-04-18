@@ -6,6 +6,9 @@
   "exports": {
     "./router": { "default": "./src/router.ts" },
     "./context": { "default": "./src/context.ts" },
+    "./domains/chat/constants": {
+      "default": "./src/domains/chat/constants.ts"
+    },
     "./domains/todo/service": { "default": "./src/domains/todo/service.ts" },
     "./domains/todo/constants": {
       "default": "./src/domains/todo/constants.ts"
