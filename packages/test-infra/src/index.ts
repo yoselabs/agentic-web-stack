@@ -148,6 +148,8 @@ export function testDbEnv(suite: TestSuite) {
     TEST_PORT: port,
     TEST_WEB_PORT: webPort,
     TEST_API_PORT: apiPort,
+    TEST_WEB_URL: `http://localhost:${webPort}`,
+    TEST_API_URL: `http://localhost:${apiPort}`,
     TEST_CONTAINER: container,
     TEST_DB_NAME,
     TEST_DATABASE_URL: `postgresql://postgres:postgres@localhost:${port}/${TEST_DB_NAME}`,

@@ -2,7 +2,7 @@ import { defineConfig } from "@playwright/test";
 import { envForSubprocess } from "@project/test-infra";
 import { defineBddConfig } from "playwright-bdd";
 
-import { TEST_API_PORT, TEST_WEB_PORT } from "./test-env.js";
+import { TEST_API_PORT, TEST_WEB_PORT, TEST_WEB_URL } from "./test-env.js";
 
 // Desktop runs every scenario except @mobile-tagged ones.
 // Mobile runs ONLY @mobile-tagged scenarios — not a re-run of the full
@@ -27,15 +27,13 @@ const mobileTestDir = defineBddConfig({
   tags: "@mobile",
 });
 
-const WEB_URL = `http://localhost:${TEST_WEB_PORT}`;
-
 export default defineConfig({
   globalSetup: "./global-setup.ts",
   timeout: 30_000,
   retries: 0,
   fullyParallel: true,
   use: {
-    baseURL: WEB_URL,
+    baseURL: TEST_WEB_URL,
     trace: "on-first-retry",
   },
   projects: [
