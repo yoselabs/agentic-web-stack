@@ -28,16 +28,17 @@ catalogs:
 importers:
 
   .:
-    devDependencies:
-      '@biomejs/biome':
-        specifier: ^1.9.0
-        version: 1.9.4
+    dependencies:
       '@project/auth':
         specifier: workspace:*
         version: link:packages/auth
       '@project/db':
         specifier: workspace:*
         version: link:packages/db
+    devDependencies:
+      '@biomejs/biome':
+        specifier: ^1.9.0
+        version: 1.9.4
       '@tanstack/router-generator':
         specifier: ^1.166.29
         version: 1.166.29
