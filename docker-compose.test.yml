@@ -3,8 +3,7 @@ name: agentic-web-stack-test
 services:
   postgres:
     image: postgres:17
-    # TEST_CONTAINER, TEST_PORT are supplied by scripts/test-db.ts per
-    # worktree — not optional. Compose fails loudly if either is unset.
+    # TEST_CONTAINER, TEST_PORT supplied by scripts/test-db.ts.
     container_name: ${TEST_CONTAINER}
     environment:
       POSTGRES_DB: app
@@ -14,11 +13,6 @@ services:
       - "${TEST_PORT}:5432"
     tmpfs:
       - /var/lib/postgresql/data
-    # Durability knobs disabled — data is tmpfs (lost on container exit) and
-    # this DB is ephemeral per test suite. fsync=off + synchronous_commit=off
-    # skip disk flush on every commit; full_page_writes=off drops crash-
-    # recovery page writes. wal_level=minimal removes replication overhead.
-    # Do NOT copy these to dev or prod compose.
     command:
       - postgres
       - -c
@@ -35,6 +29,36 @@ services:
       - shared_buffers=256MB
     healthcheck:
       test: ["CMD-SHELL", "pg_isready -U postgres"]
+      interval: 1s
+      timeout: 1s
+      retries: 15
+
+  redis:
+    image: redis:7-alpine
+    container_name: ${TEST_REDIS_CONTAINER}
+    ports:
+      - "${TEST_REDIS_PORT}:6379"
+    command: ["redis-server", "--save", "", "--appendonly", "no"]
+    tmpfs:
+      - /data
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 1s
+      timeout: 1s
+      retries: 15
+
+  mailpit:
+    image: axllent/mailpit
+    container_name: ${TEST_MAILPIT_CONTAINER}
+    ports:
+      - "${TEST_MAILPIT_SMTP_PORT}:1025"
+      - "${TEST_MAILPIT_HTTP_PORT}:8025"
+    environment:
+      MP_MAX_MESSAGES: "500"
+      MP_SMTP_AUTH_ACCEPT_ANY: "1"
+      MP_SMTP_AUTH_ALLOW_INSECURE: "1"
+    healthcheck:
+      test: ["CMD-SHELL", "wget -q --spider http://localhost:8025/api/v1/info || exit 1"]
       interval: 1s
       timeout: 1s
       retries: 15
