@@ -1,4 +1,6 @@
+import type { auth } from "@project/auth";
 import type { BetterAuthClientOptions } from "better-auth/client";
+import { inferAdditionalFields } from "better-auth/client/plugins";
 import { createAuthClient } from "better-auth/react";
 import { apiClient } from "#/shared/api-client";
 
@@ -10,6 +12,7 @@ type BaseAuthClient = ReturnType<
 >;
 export const authClient = createAuthClient({
   baseURL: apiClient.baseUrl,
+  plugins: [inferAdditionalFields<typeof auth>()],
 }) as unknown as BaseAuthClient;
 
 export const { signIn, signUp, signOut, useSession } = authClient;

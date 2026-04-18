@@ -13,6 +13,15 @@ export const auth = betterAuth({
     minPasswordLength: MIN_PASSWORD_LENGTH,
   },
   trustedOrigins: [env.CORS_ORIGIN],
+  user: {
+    additionalFields: {
+      username: {
+        type: "string",
+        required: false, // tightened to true in Task 16
+        input: true,
+      },
+    },
+  },
 });
 
 export type Session = typeof auth.$Infer.Session;
