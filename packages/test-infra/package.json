@@ -1,0 +1,14 @@
+{
+  "name": "@project/test-infra",
+  "version": "0.0.0",
+  "private": true,
+  "type": "module",
+  "exports": {
+    ".": {
+      "default": "./src/index.ts"
+    }
+  },
+  "devDependencies": {
+    "@types/node": "catalog:"
+  }
+}

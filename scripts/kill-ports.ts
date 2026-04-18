@@ -1,5 +1,5 @@
 import { execSync } from "node:child_process";
-import { type TestSuite, testDbEnv } from "./test-db.ts";
+import { type TestSuite, testDbEnv } from "@project/test-infra";
 
 // Accepts either literal ports (`kill-ports.ts 3000 3001`) or a test suite
 // (`kill-ports.ts --suite=e2e`) which derives its ports via testDbEnv().

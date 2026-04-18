@@ -5,6 +5,7 @@
     { "path": "packages/env" },
     { "path": "packages/api" },
     { "path": "packages/auth" },
+    { "path": "packages/test-infra" },
     { "path": "packages/ui" },
     { "path": "apps/server" },
     { "path": "apps/web" }

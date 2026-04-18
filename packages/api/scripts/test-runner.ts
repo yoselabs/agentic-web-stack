@@ -1,6 +1,6 @@
 import { spawnSync } from "node:child_process";
 import path from "node:path";
-import { setupTestDatabase, testDbEnv } from "../../../scripts/test-db.ts";
+import { setupTestDatabase, testDbEnv } from "@project/test-infra";
 
 // Package root is one level up from this scripts/ folder. bun test discovers
 // files relative to cwd, so point it at the package root, not at scripts/.

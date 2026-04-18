@@ -1,4 +1,4 @@
-import { testDbEnv } from "../scripts/test-db.ts";
+import { testDbEnv } from "@project/test-infra";
 
 const env = testDbEnv("e2e");
 export const TEST_PORT = env.TEST_PORT;

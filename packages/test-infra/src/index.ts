@@ -1,5 +1,13 @@
+// Test infrastructure: deterministic port/container derivation per worktree,
+// Docker Postgres lifecycle, Prisma schema push. Consumed by:
+// - scripts/kill-ports.ts (derives ports to kill before a test run)
+// - packages/api/scripts/test-runner.ts (boots unit suite DB + runs bun test)
+// - e2e/global-setup.ts (boots e2e suite DB before Playwright)
+// - e2e/test-env.ts (re-exports named fields for Playwright config)
+
 import { execSync } from "node:child_process";
 import { createHash } from "node:crypto";
+import { existsSync } from "node:fs";
 import path from "node:path";
 
 // Standardized DB name for dev + test (different containers, different ports).
@@ -10,7 +18,21 @@ const TEST_DB_NAME = "app";
 
 export type TestSuite = "e2e" | "unit";
 
-export const PROJECT_ROOT = path.resolve(import.meta.dirname, "..");
+// Walk up the directory tree looking for pnpm-workspace.yaml. Robust to the
+// module's filesystem location: works whether this lives at scripts/test-db.ts
+// or packages/test-infra/src/index.ts. Evaluated once at module load.
+function findProjectRoot(): string {
+  let dir = import.meta.dirname;
+  while (dir !== path.parse(dir).root) {
+    if (existsSync(path.join(dir, "pnpm-workspace.yaml"))) return dir;
+    dir = path.dirname(dir);
+  }
+  throw new Error(
+    "test-infra: could not find pnpm-workspace.yaml in any parent directory",
+  );
+}
+
+export const PROJECT_ROOT = findProjectRoot();
 
 // Port bases per suite, per service. Bases are spaced by ≥100 so the
 // modulo-100 offset below can never produce overlapping ranges — not

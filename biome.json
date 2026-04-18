@@ -49,6 +49,7 @@
     {
       "includes": [
         "packages/env/**",
+        "packages/test-infra/**",
         "scripts/**",
         "**/scripts/**",
         "**/vite.config.ts",

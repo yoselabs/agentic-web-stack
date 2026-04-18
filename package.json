@@ -24,6 +24,7 @@
   },
   "devDependencies": {
     "@biomejs/biome": "^2.4.12",
+    "@project/test-infra": "workspace:*",
     "@tanstack/router-generator": "^1.166.29",
     "typescript": "catalog:"
   },

@@ -10,6 +10,7 @@
   },
   "devDependencies": {
     "@playwright/test": "^1.52.0",
+    "@project/test-infra": "workspace:*",
     "playwright-bdd": "^8.0.0"
   }
 }
