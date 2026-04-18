@@ -57,16 +57,17 @@ All workspace packages use `@project/*` prefix (e.g., `@project/api`, `@project/
 
 ## Critical Rules
 
-- **Single source of truth (SSOT)** — a global architectural principle, not just a config rule. Any value, type, validation rule, or structural definition referenced in 2+ places lives in exactly one declaration; every other consumer imports it. Duplication is the failure mode, not a style preference — if you change one copy and forget the other, the app silently drifts. Applies across layers:
-  - **No barrel files** — `@project/env`, `@project/config`, and `@project/api` expose named subpaths only (e.g., `@project/env/server`, `@project/config/ports`, `@project/api/router`). Barrels break native Node ESM resolution, hurt tree-shaking, and obscure where symbols come from. Prefer subpath imports everywhere.
-  - **Runtime env vars** → `@project/env` (the only module allowed to read `process.env`; `/server` and `/client` subpaths)
-  - **Static constants** (ports, limits, mount paths, dev creds) → `@project/config` (`/ports`, `/db`, `/limits`, `/api-paths` subpaths)
-  - **Type definitions** → infer from Prisma (`@project/db`) or tRPC (`inferRouterOutputs<AppRouter>`); never redeclare a shape that already exists
-  - **Validation rules** → one Zod schema, used by both server routers and client forms
-  - **Dependency versions** → `catalog:` in `pnpm-workspace.yaml`
-  - **Domain constants / enums** → a single exported const; never repeat string literals like `"pending"` or `"google"` across files
+- **Single source of truth (SSOT) — where it matters.** Values that genuinely change (domain rules, Zod schemas, Prisma types) live in exactly one place and are imported everywhere. Values that are constants-forever (dev ports, local DB creds) are literals duplicated across the 3-4 infra files that need them — SSOT prevents drift, which requires change, and these values don't change.
+  - **No barrel files** — `@project/env`, `@project/api`, `@project/auth` expose named subpaths only (e.g., `@project/env/server`, `@project/api/domains/todo/service`, `@project/auth/constants`). Barrels break native Node ESM resolution, hurt tree-shaking, and can pull server code into client bundles.
+  - **Runtime env vars** → `@project/env` (the only module that reads `process.env`; `/server` and `/client` subpaths). Zod defaults provide dev values so zero-conf boot works without a `.env` file.
+  - **Domain constants** (upload limits, password rules, status enums) → a `constants.ts` inside the owning domain (e.g., `packages/api/src/domains/todo/constants.ts`, `packages/auth/src/constants.ts`). Client imports via the domain's subpath export.
+  - **Infra constants** (dev ports `3000`/`3001`/`5432`, DB name `"app"`, user `"postgres"`) → literal in `docker-compose.yml`, `Makefile`, `.github/workflows/ci.yml`, and Zod defaults in `packages/env/src/server.ts`. Not in a shared package.
+  - **Test infrastructure** (dynamic test DB/web/API ports per worktree) → `scripts/test-db.ts`. Consumers import `testDbEnv()`. Not in `@project/env`.
+  - **Type definitions** → infer from Prisma (`@project/db`) or tRPC (`inferRouterOutputs<AppRouter>`); never redeclare a shape that already exists.
+  - **Validation rules** → one Zod schema, used by both server routers and client forms.
+  - **Dependency versions** → `catalog:` in `pnpm-workspace.yaml`.
 
-  When writing new code, ask: "is this value or shape also used elsewhere?" If yes, extract first, import everywhere.
+  When writing new code, ask: "is this value or shape also used elsewhere?" If yes, find the owning domain/boundary and import from there. If the value genuinely never changes (a literal port number), it's OK to duplicate across 3-4 infra files.
 - **Never use `verbatimModuleSyntax` in apps/web** — causes server bundle leaks in TanStack Start
 - **Always use `import type` for AppRouter** — value imports bundle the server into the client
 - **One `initTRPC.create()` call** — in `packages/api/src/trpc.ts` only
@@ -99,7 +100,9 @@ All workspace packages use `@project/*` prefix (e.g., `@project/api`, `@project/
 | Use `PointerSensor` for DnD touch support | `PointerSensor` consumes Chrome DevTools simulated touch events, blocking `TouchSensor` | Use `MouseSensor` + `TouchSensor` instead of `PointerSensor` + `TouchSensor`, add `touch-action: none` to draggable items |
 | Run `agent-harness lint` directly instead of `make lint` | `agent-harness lint` alone passes but `tsc -b` catches implicit `any`, missing imports, type mismatches | Use `make lint` (runs both `agent-harness lint` + `tsc -b`). Pre-commit hook also enforces this |
 | Read `process.env.X` outside `packages/env/` | Bypasses Zod validation; env schema changes don't propagate; caught by `make lint` grep check | Import `env` from `@project/env/server` (or `/client` for web) and read `env.X` |
-| Import from `@project/env`, `@project/config`, or `@project/api` without a subpath | There is no barrel export; the top-level path doesn't resolve. Same class of bug as `import { appRouter }` | Use subpath: `@project/env/server`, `@project/config/ports`, `@project/api/router`, etc. |
+| Import from `@project/env`, `@project/api`, or `@project/auth` without a subpath | There is no barrel export; the top-level path doesn't resolve. Same class of bug as `import { appRouter }` | Use subpath: `@project/env/server`, `@project/api/domains/todo/service`, `@project/auth/constants`, etc. |
+| Create `.env` for dev before running `make dev` | Zero-conf: `@project/env` has Zod defaults for every var. A `.env` is for *overriding* defaults, not required to boot | Just run `make setup && make dev` — no `.env` needed |
+| Add a shared `@project/config`-like package for dev ports | SSOT drift prevention only pays off when values change. Dev ports don't | Hardcode literals in Makefile / compose / CI + Zod default in env |
 
 ## Library Skills (@tanstack/intent)
 

@@ -5,7 +5,15 @@ const globalForPrisma = globalThis as unknown as {
   prisma: PrismaClient | undefined;
 };
 
-export const db = globalForPrisma.prisma ?? new PrismaClient();
+// Pass DATABASE_URL explicitly so the Zod default from @project/env applies
+// even when no .env file is present (zero-conf boot). Prisma's schema
+// `env("DATABASE_URL")` binding reads process.env directly and would not see
+// the default value — overriding here closes that gap.
+export const db =
+  globalForPrisma.prisma ??
+  new PrismaClient({
+    datasources: { db: { url: env.DATABASE_URL } },
+  });
 
 if (env.NODE_ENV !== "production") {
   globalForPrisma.prisma = db;

@@ -27,9 +27,12 @@ app.get("/health", (c) => c.json({ status: "ok" }));
 
 ## Env Vars
 
-Loaded from root `.env` via `--env-file=../../.env` in the dev script.
+Loaded from root `.env` via `--env-file-if-exists=../../.env` in the dev
+script (optional — zero-conf boot relies on `@project/env` Zod defaults when
+no `.env` exists).
 
-Required: `DATABASE_URL`, `BETTER_AUTH_SECRET`, `BETTER_AUTH_URL`, `CORS_ORIGIN`
+Required (must be set in prod, defaults fire in dev): `DATABASE_URL`,
+`BETTER_AUTH_SECRET`, `BETTER_AUTH_URL`, `CORS_ORIGIN`.
 
 ## Do Not
 
