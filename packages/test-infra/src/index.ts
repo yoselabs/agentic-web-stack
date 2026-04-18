@@ -40,8 +40,22 @@ export const PROJECT_ROOT = findProjectRoot();
 // worktrees on the same host. Adding a service = one column per suite.
 // Example for future Redis: `redis: 6300` (e2e) / `redis: 6400` (unit).
 const PROFILES = {
-  e2e: { db: 5400, web: 3100, api: 3200 },
-  unit: { db: 5500, web: 3300, api: 3400 },
+  e2e: {
+    db: 5400,
+    web: 3100,
+    api: 3200,
+    redis: 6300,
+    mailpitSmtp: 2500,
+    mailpitHttp: 8100,
+  },
+  unit: {
+    db: 5500,
+    web: 3300,
+    api: 3400,
+    redis: 6400,
+    mailpitSmtp: 2600,
+    mailpitHttp: 8200,
+  },
 } as const satisfies Record<TestSuite, Record<string, number>>;
 
 // Container-backed services: map a PROFILES port key to the env var an
@@ -58,11 +72,18 @@ export const CONTAINER_SERVICES = {
     url: (port: number) =>
       `postgresql://postgres:postgres@localhost:${port}/${TEST_DB_NAME}`,
   },
-  // Example for future Redis:
-  // redis: {
-  //   envVar: "REDIS_URL",
-  //   url: (port: number) => `redis://localhost:${port}`,
-  // },
+  redis: {
+    envVar: "REDIS_URL",
+    url: (port: number) => `redis://localhost:${port}`,
+  },
+  mailpitSmtp: {
+    envVar: "SMTP_URL",
+    url: (port: number) => `smtp://localhost:${port}`,
+  },
+  mailpitHttp: {
+    envVar: "MAILPIT_API_URL",
+    url: (port: number) => `http://localhost:${port}`,
+  },
 } as const satisfies Record<
   string,
   { envVar: string; url: (p: number) => string }
@@ -143,16 +164,28 @@ export function testDbEnv(suite: TestSuite) {
   const port = profile.db + portOffset;
   const webPort = profile.web + portOffset;
   const apiPort = profile.api + portOffset;
+  const redisPort = profile.redis + portOffset;
+  const mailpitSmtpPort = profile.mailpitSmtp + portOffset;
+  const mailpitHttpPort = profile.mailpitHttp + portOffset;
   const container = `agentic-postgres-${suite}-${hash8}`;
+  const redisContainer = `agentic-redis-${suite}-${hash8}`;
+  const mailpitContainer = `agentic-mailpit-${suite}-${hash8}`;
   return {
     TEST_PORT: port,
     TEST_WEB_PORT: webPort,
     TEST_API_PORT: apiPort,
+    TEST_REDIS_PORT: redisPort,
+    TEST_MAILPIT_SMTP_PORT: mailpitSmtpPort,
+    TEST_MAILPIT_HTTP_PORT: mailpitHttpPort,
     TEST_WEB_URL: `http://localhost:${webPort}`,
     TEST_API_URL: `http://localhost:${apiPort}`,
+    TEST_MAILPIT_API_URL: `http://localhost:${mailpitHttpPort}`,
     TEST_CONTAINER: container,
+    TEST_REDIS_CONTAINER: redisContainer,
+    TEST_MAILPIT_CONTAINER: mailpitContainer,
     TEST_DB_NAME,
     TEST_DATABASE_URL: `postgresql://postgres:postgres@localhost:${port}/${TEST_DB_NAME}`,
+    TEST_REDIS_URL: `redis://localhost:${redisPort}`,
     PROJECT_ROOT,
   };
 }
