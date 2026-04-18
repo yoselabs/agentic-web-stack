@@ -1,0 +1,53 @@
+# node_modules — installed fresh in the image
+node_modules
+**/node_modules
+
+# Build outputs — regenerated in the build stage
+**/.output
+**/dist
+apps/web/.output
+apps/web/dist
+apps/server/dist
+
+# Test artifacts
+**/.features-gen
+e2e/test-results
+e2e/playwright-report
+
+# Caches
+**/.cache
+**/.turbo
+**/.vite
+**/.vinxi
+**/tsconfig.tsbuildinfo
+
+# Dev / editor / CI config that shouldn't be baked
+.git
+.gitignore
+.github
+.vscode
+.idea
+.claude
+.cursor
+.zed
+**/.DS_Store
+
+# Docs — image doesn't need them
+docs
+
+# Local env files — never bake secrets into images
+.env
+.env.*
+!.env.example
+# Belt-and-suspenders for certs/keys — shouldn't be in the repo anyway
+*.pem
+*.key
+*.p12
+
+# Runtime artifacts from host
+coverage
+*.log
+
+# Misc
+TODO.md
+README.md
