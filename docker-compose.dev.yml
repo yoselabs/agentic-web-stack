@@ -1,3 +1,5 @@
+# Dev-mode: postgres only. Used by `make setup`, `make db`, `make clean`.
+# The full-stack demo uses docker-compose.yml (see that file + README).
 name: agentic-web-stack
 
 services:

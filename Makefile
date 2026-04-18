@@ -14,9 +14,9 @@ setup: ## Zero-conf: deps + Postgres + schema + hooks (runs prereq checks)
 	@command -v bun >/dev/null 2>&1 || { echo "✗ bun is required — install via 'brew install bun' or 'curl -fsSL https://bun.sh/install | bash'"; exit 1; }
 	@command -v docker >/dev/null 2>&1 || { echo "✗ docker is required — install Docker Desktop or OrbStack"; exit 1; }
 	pnpm install
-	docker compose up -d
+	docker compose -f docker-compose.dev.yml up -d
 	@echo "Waiting for Postgres..."
-	@until docker compose exec -T postgres pg_isready -U postgres > /dev/null 2>&1; do sleep 1; done
+	@until docker compose -f docker-compose.dev.yml exec -T postgres pg_isready -U postgres > /dev/null 2>&1; do sleep 1; done
 	pnpm -w run db:push
 	$(MAKE) routes
 	prek install
@@ -34,7 +34,7 @@ dev: db-generate ## Start web (3000) + server (3001) in watch mode
 
 # Database
 db:
-	docker compose up -d
+	docker compose -f docker-compose.dev.yml up -d
 db-push:
 	pnpm -w run db:push
 db-generate:
@@ -80,7 +80,7 @@ test-ui: db-generate ## BDD tests in Playwright interactive UI mode
 
 # Cleanup
 clean:
-	docker compose down -v
+	docker compose -f docker-compose.dev.yml down -v
 	@ids=$$(docker ps -aq --filter "name=agentic-postgres-test-" --filter "name=agentic-postgres-e2e-" --filter "name=agentic-postgres-unit-"); \
 	  [ -n "$$ids" ] && docker rm -f $$ids || true
 	rm -rf node_modules apps/*/node_modules packages/*/node_modules
