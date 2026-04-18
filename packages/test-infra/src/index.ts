@@ -243,7 +243,15 @@ export function setupTestDatabase(suite: TestSuite): void {
     PRISMA_USER_CONSENT_FOR_DANGEROUS_AI_ACTION: "yes",
   };
 
-  if (isContainerHealthy(env.TEST_CONTAINER)) {
+  // Warm path: ALL suite containers must be healthy. If only postgres is up
+  // but redis/mailpit are missing (e.g. after a previous run on an older
+  // compose file), fall through to cold boot — partial startup would make
+  // the tests fail with "connection refused" on the missing service.
+  const allHealthy =
+    isContainerHealthy(env.TEST_CONTAINER) &&
+    isContainerHealthy(env.TEST_REDIS_CONTAINER) &&
+    isContainerHealthy(env.TEST_MAILPIT_CONTAINER);
+  if (allHealthy) {
     try {
       execSync("pnpm exec prisma db push --force-reset --skip-generate", {
         cwd: prismaCwd,
