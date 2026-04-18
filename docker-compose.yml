@@ -1,0 +1,99 @@
+# Demo mode: `docker compose up` boots postgres + migrate + server + web.
+# First-impression artifact for evaluators. Clone, run, click around.
+#
+# For dev (postgres only, with `make setup && make dev`), see
+# docker-compose.dev.yml.
+#
+# Port 3000/3001 will clash with `make dev` — don't run both at once.
+
+name: agentic-web-stack-demo
+
+# Shared env across migrate, server, web. YAML anchor so one edit propagates.
+x-app-env: &app-env
+  DATABASE_URL: "postgresql://postgres:postgres@db:5432/app"
+  BETTER_AUTH_SECRET: "demo-secret-do-not-use-in-prod!!"
+  BETTER_AUTH_URL: "http://localhost:3001"
+  CORS_ORIGIN: "http://localhost:3000"
+  NODE_ENV: "production"
+
+services:
+  db:
+    image: postgres:17-alpine
+    environment:
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: postgres
+      POSTGRES_DB: app
+    volumes:
+      - postgres-demo-data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U postgres -d app"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  # All app containers share one locally-built image. Compose builds once
+  # because the image tag is identical across services.
+  migrate:
+    image: &app-image agentic-web-stack:local
+    build: &app-build
+      context: .
+      args:
+        VITE_API_URL: http://localhost:3001
+    command:
+      - "sh"
+      - "-c"
+      - "cd /app/packages/db && ./node_modules/.bin/prisma db push --skip-generate && bun /app/scripts/seed.ts"
+    environment:
+      <<: *app-env
+    depends_on:
+      db:
+        condition: service_healthy
+
+  server:
+    image: *app-image
+    build: *app-build
+    command: ["bun", "/app/apps/server/src/index.ts"]
+    environment:
+      <<: *app-env
+      PORT: "3001"
+    ports:
+      - "127.0.0.1:3001:3001"
+    depends_on:
+      migrate:
+        condition: service_completed_successfully
+    healthcheck:
+      test:
+        - "CMD"
+        - "bun"
+        - "-e"
+        - "fetch('http://127.0.0.1:3001/health').then(r => process.exit(r.status < 500 ? 0 : 1)).catch(() => process.exit(1))"
+      interval: 10s
+      timeout: 5s
+      retries: 3
+      start_period: 30s
+
+  web:
+    image: *app-image
+    build: *app-build
+    command: ["bun", "/app/apps/web/.output/server/index.mjs"]
+    environment:
+      <<: *app-env
+      PORT: "3000"
+    ports:
+      - "127.0.0.1:3000:3000"
+    depends_on:
+      migrate:
+        condition: service_completed_successfully
+    healthcheck:
+      test:
+        - "CMD"
+        - "bun"
+        - "-e"
+        - "fetch('http://127.0.0.1:3000/').then(r => process.exit(r.status < 500 ? 0 : 1)).catch(() => process.exit(1))"
+      interval: 10s
+      timeout: 5s
+      retries: 3
+      start_period: 30s
+
+volumes:
+  postgres-demo-data:

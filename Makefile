@@ -80,7 +80,8 @@ test-ui: db-generate ## BDD tests in Playwright interactive UI mode
 
 # Cleanup
 clean:
-	docker compose -f docker-compose.dev.yml down -v
+	docker compose down -v                                    # demo stack
+	docker compose -f docker-compose.dev.yml down -v          # dev postgres
 	@ids=$$(docker ps -aq --filter "name=agentic-postgres-test-" --filter "name=agentic-postgres-e2e-" --filter "name=agentic-postgres-unit-"); \
 	  [ -n "$$ids" ] && docker rm -f $$ids || true
 	rm -rf node_modules apps/*/node_modules packages/*/node_modules
