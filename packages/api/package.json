@@ -4,8 +4,8 @@
   "private": true,
   "type": "module",
   "exports": {
-    "./router": {
-      "default": "./src/router.ts"
+    "./authz": {
+      "default": "./src/authz/index.ts"
     },
     "./context": {
       "default": "./src/context.ts"
@@ -21,6 +21,9 @@
     },
     "./domains/todo-list/service": {
       "default": "./src/domains/todo-list/service.ts"
+    },
+    "./router": {
+      "default": "./src/router.ts"
     }
   },
   "scripts": {
