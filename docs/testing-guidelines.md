@@ -39,49 +39,76 @@ in the same test.
 
 ### World state for multiple users
 
-Keep a `Map<UserName, Page>` on the test world. Each step picks the page
-for the named user.
+Playwright-BDD's `createBdd()` takes no type generic — it accepts an
+extended `test` object. To give each named user their own browser context
+and page, extend `test` with a `pages` fixture (a `Map<string, Page>`),
+pass that to `createBdd`, and destructure `pages` + `browser` in each
+step.
 
 ```typescript
-// e2e/steps/chat-world.ts
-import { createBdd } from "playwright-bdd";
-import type { Page, Browser } from "@playwright/test";
+// e2e/fixtures/multi-user.ts
+import { test as base, type Page, type Browser } from "@playwright/test";
 
-type ChatWorld = {
-  browser: Browser;
+type MultiUserFixtures = {
   pages: Map<string, Page>;
 };
 
-export const { Given, When, Then } = createBdd<ChatWorld>();
+export const test = base.extend<MultiUserFixtures>({
+  pages: async ({ browser }, use) => {
+    const pages = new Map<string, Page>();
+    await use(pages);
+    // Cleanup: close contexts created during the scenario.
+    for (const page of pages.values()) {
+      await page.context().close();
+    }
+  },
+});
 
-async function pageFor(world: ChatWorld, name: string): Promise<Page> {
-  let page = world.pages.get(name);
+export async function pageFor(
+  browser: Browser,
+  pages: Map<string, Page>,
+  name: string,
+): Promise<Page> {
+  let page = pages.get(name);
   if (!page) {
-    const context = await world.browser.newContext();
+    const context = await browser.newContext();
     page = await context.newPage();
-    world.pages.set(name, page);
+    pages.set(name, page);
   }
   return page;
 }
+```
 
-Given("{word} and {word} are signed in", async ({ browser, pages }, aliceName: string, bobName: string) => {
-  const alicePage = await pageFor({ browser, pages }, aliceName);
-  const bobPage = await pageFor({ browser, pages }, bobName);
-  await signIn(alicePage, aliceName);
-  await signIn(bobPage, bobName);
+```typescript
+// e2e/steps/chat.ts
+import { createBdd } from "playwright-bdd";
+import { test, pageFor } from "../fixtures/multi-user.ts";
+
+const { Given: given, When: when, Then: then } = createBdd(test);
+
+given("{word} and {word} are signed in", async ({ browser, pages }, a: string, b: string) => {
+  const alice = await pageFor(browser, pages, a);
+  const bob = await pageFor(browser, pages, b);
+  await signIn(alice, a);
+  await signIn(bob, b);
 });
 
-When("{word} sends {string}", async ({ browser, pages }, name: string, text: string) => {
-  const page = await pageFor({ browser, pages }, name);
+when("{word} sends {string}", async ({ browser, pages }, name: string, text: string) => {
+  const page = await pageFor(browser, pages, name);
   await page.getByRole("textbox", { name: "Message" }).fill(text);
   await page.getByRole("button", { name: "Send" }).click();
 });
 
-Then("{word} sees {string} within {int} seconds", async ({ browser, pages }, name: string, text: string, seconds: number) => {
-  const page = await pageFor({ browser, pages }, name);
+then("{word} sees {string} within {int} seconds", async ({ browser, pages }, name: string, text: string, seconds: number) => {
+  const page = await pageFor(browser, pages, name);
   await page.getByText(text).waitFor({ state: "visible", timeout: seconds * 1000 });
 });
 ```
+
+Register the extended `test` in `playwright.config.ts` by importing from
+the fixtures module instead of `@playwright/test`. Existing single-user
+scenarios continue to work because the `pages` fixture is only instantiated
+when a step destructures it.
 
 ### Feature file
 

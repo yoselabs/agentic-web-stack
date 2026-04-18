@@ -148,10 +148,17 @@ discriminator on ChatRoom.
 New subpath export: `@project/api/realtime` (no barrel; single subpath per
 the root CLAUDE.md rule).
 
+### Subpath exports
+
+`packages/api/package.json` adds (one entry per file — no barrel):
+
+- `"./realtime/channel"` → `./src/realtime/channel.ts` (defines `defineChannel`, channel-instance methods)
+- `"./realtime/presence"` → `./src/realtime/presence.ts` (optional reusable presence helper; may also live inside `domains/chat/` if only chat uses it — see "Presence ownership" below)
+
 ### Public API
 
 ```typescript
-import { defineChannel } from "@project/api/realtime";
+import { defineChannel } from "@project/api/realtime/channel";
 import { z } from "zod";
 
 // A channel is a typed pub/sub group. Name is a string template.
@@ -174,6 +181,13 @@ roomChannel.publish(roomId, "message:new", { ... });
 for await (const event of roomChannel.subscribe(roomId, signal)) {
   yield event;
 }
+
+// Server side: check whether this process has any local subscriber for a
+// channel instance. Used by chat's nudge-fanout (see "Fanout pattern").
+// Typed on the channel instance — not a free function over channel names —
+// so it composes with the declared API and is easy to stub for a future
+// Redis swap.
+roomChannel.hasSubscribers(roomId); // boolean, single-instance only
 ```
 
 ### Implementation notes
@@ -185,6 +199,23 @@ for await (const event of roomChannel.subscribe(roomId, signal)) {
   production skips for throughput.
 - Zero state persistence — this module only fans out events to currently
   connected subscribers. Durable state lives in Postgres.
+- `hasSubscribers(roomId)` returns `listenerCount(channelName) > 0` — local
+  to this process. **Single-instance only.** When Redis is swapped in,
+  `hasSubscribers` becomes local-only too (for nudge fanout a missed nudge
+  is a harmless UI miss; cluster-wide presence would use a separate
+  mechanism). This is an acceptable degradation, not a bug to fix later.
+
+### Presence ownership
+
+Presence *state* (who is in which room) lives inside `domains/chat/` — not
+in `realtime/`. `realtime/` is transport only: it fans out events. The
+chat domain owns a per-room `Map<roomId, Set<userId>>` that is mutated on
+`subscribeRoom` enter/leave and queried by `chat.presence.list`. This
+keeps the realtime primitive small and prevents domain logic (3s debounce,
+membership checks) from leaking into infrastructure.
+
+If a second domain later needs presence, factor a small `presence.ts`
+helper out of chat — don't pre-factor.
 
 ### Two well-known channels for chat
 
@@ -228,26 +259,125 @@ chat.subscribeUser()                             → subscription, user inbox ev
 - Every non-DM mutation checks `ChatMembership` membership via service-level
   `requireMembership(tx, userId, roomId)` that throws `TRPCError FORBIDDEN`
   if absent.
+- **Subscriptions check membership too.** `chat.subscribeRoom({ roomId })`
+  calls `requireMembership(ctx.db, userId, roomId)` before yielding. Without
+  this, a client could subscribe to arbitrary room IDs and eavesdrop.
 - `dmFindOrCreate` allows any authenticated user to DM any other user.
 - `createGroup` with 0 members is rejected; creator is auto-added.
 - `invite` requires caller to be a member.
 
-**Cursor format:** `{ createdAt: ISO8601, id: cuid }`. `sinceCursor` returns
-messages where `(createdAt, id) > cursor` using a tuple comparison (primary
-sort: `createdAt`; tiebreak: `id`). Server timestamps always win — clients
-never set `createdAt`.
+**Cursor format:** `{ createdAt: ISO8601, id: cuid }`. Tuple comparison —
+primary sort: `createdAt`; tiebreak: `id`.
+- `messages.list({ roomId, beforeCursor? })` returns `(createdAt, id) <
+  cursor` DESC (newest first). When `beforeCursor` is absent, returns the
+  most recent N messages.
+- `messages.sinceCursor({ roomId, afterCursor })` returns `(createdAt, id) >
+  cursor` ASC (oldest first), used for gap-fill on reconnect.
+- Server timestamps always win — clients never set `createdAt`.
 
 **Fanout pattern on send:**
 1. Insert `ChatMessage` inside the `$transaction`.
 2. After `await tx.$transaction(...)` resolves (not inside it), publish
    `message:new` to `chat:room:{roomId}`.
-3. For members who are not currently subscribed to the room channel, publish
-   `unread:nudge` to each `user:{userId}`. (Tracking "who's subscribed" is
-   exposed from `realtime` via an internal `subscriberCount(channelName)`.)
+3. Iterate the room's memberships; for each member who is **not** currently
+   subscribed to that room channel, publish `unread:nudge` to their
+   `user:{userId}` channel. The per-user subscription check uses
+   `roomChannel.hasSubscribers(roomId)` combined with the chat domain's
+   presence set to resolve "who among the members is actually subscribed."
+   Concretely: `for (m of members) if (!presenceSet.get(roomId)?.has(m.userId))
+   userChannel.publish(m.userId, "unread:nudge", ...)`.
+
+**No additional presence leak from nudge fanout.** Presence (enter/leave) is
+already broadcast to all members of a room via the room channel. The nudge
+flow uses the same presence state the sender's browser already receives.
+If nudges are missed because of a race between enter and publish, the
+client falls back to periodic `chat.rooms.listMine()` polling (cheap, just
+unread counts).
 
 **Unread count** is derived from `lastReadAt` on `ChatMembership` and is
 returned by `chat.rooms.listMine()`. Clients call `chat.messages.markRead({
 roomId, lastSeenMessageId })` on room open / activity.
+
+## WebSocket Server Attachment — `apps/server/src/index.ts`
+
+The Hono app ships HTTP via `@hono/node-server`'s `serve(...)`. tRPC's WS
+adapter is a separate package (`@trpc/server/adapters/ws`) and takes a `ws`
+`WebSocketServer` instance — not a Hono/Fetch handler. The two coexist on
+one `http.Server` by using `noServer: true` and routing upgrades by URL
+pathname.
+
+New dependencies on `apps/server`: `ws`, `@types/ws`.
+
+```typescript
+import { serve } from "@hono/node-server";
+import { applyWSSHandler } from "@trpc/server/adapters/ws";
+import { appRouter } from "@project/api/router";
+import { createContext } from "@project/api/context";
+import { auth } from "@project/auth";
+import { env } from "@project/env/server";
+import { WebSocketServer } from "ws";
+import type { IncomingMessage } from "node:http";
+
+const httpServer = serve({ fetch: app.fetch, port: env.PORT }, (info) => {
+  logger.info(`Server running at http://localhost:${info.port}`);
+});
+
+if (env.ENABLE_CHAT) {
+  const wss = new WebSocketServer({ noServer: true });
+
+  httpServer.on("upgrade", (req, socket, head) => {
+    const { pathname } = new URL(req.url ?? "/", "http://localhost");
+    // NOTE: "/trpc-ws" inlined by design — matches client wsLink URL.
+    if (pathname !== "/trpc-ws") {
+      socket.destroy();
+      return;
+    }
+    wss.handleUpgrade(req, socket, head, (ws) => {
+      wss.emit("connection", ws, req);
+    });
+  });
+
+  applyWSSHandler({
+    wss,
+    router: appRouter,
+    createContext: async ({ req }) => wsContext(req),
+    // keepAlive helps detect half-closed connections behind proxies.
+    keepAlive: { enabled: true, pingMs: 30_000, pongWaitMs: 5_000 },
+  });
+}
+
+// IncomingMessage.headers is IncomingHttpHeaders (string | string[] | undefined).
+// Better-Auth's getSession wants a Fetch Headers object. Coerce by flattening.
+async function wsContext(req: IncomingMessage) {
+  const headers = new Headers();
+  for (const [name, value] of Object.entries(req.headers)) {
+    if (value === undefined) continue;
+    if (Array.isArray(value)) headers.set(name, value.join(", "));
+    else headers.set(name, value);
+  }
+  const session = await auth.api.getSession({ headers });
+  if (!session) {
+    // tRPC's adapter will bubble this as a subscription error; the client
+    // detects via closeCode / error link and redirects to /login.
+    throw new TRPCError({ code: "UNAUTHORIZED" });
+  }
+  return createContext({ session });
+}
+```
+
+**Authentication failure close code.** tRPC's default handler closes with a
+generic code on context error. To emit `4401` so the client can distinguish
+"auth" from "generic disconnect," wrap the upgrade handler to inspect the
+result of `wsContext(req)` before `handleUpgrade` accepts the socket — or,
+simpler, let the context error bubble and rely on the client's existing
+session polling (`useSession`) to redirect on 401 from the next HTTP
+request. For prep, the simpler path is sufficient; the explicit `4401`
+code is a polish item.
+
+**Why not `@hono/trpc-server` for WS.** `@hono/trpc-server` is an HTTP
+adapter only; it does not implement tRPC's subscription transport. Using
+two adapters (HTTP via Hono, WS via `@trpc/server/adapters/ws`) is the
+supported pattern with tRPC v11 and `ws` ^8.
 
 ## Non-tRPC Endpoints — `apps/server/src/index.ts`
 
@@ -263,9 +393,12 @@ POST /files                    multipart/form-data, field name "file"
 
 - Max size 10 MB (constant `MAX_CHAT_FILE_BYTES` in
   `packages/api/src/domains/chat/constants.ts`).
-- Mime whitelist: permissive (anything that doesn't start with
-  `application/x-` executable-ish). Stored as declared by client; not
-  re-sniffed.
+- **No MIME whitelist.** The real XSS defense is forcing download with
+  `Content-Disposition: attachment` and `X-Content-Type-Options: nosniff`
+  on the GET response (see below). A mime blocklist is theater; arbitrary
+  `application/octet-stream` uploads bypass it.
+- Client-declared `file.type` is stored in `ChatFile.mimeType` for display
+  purposes only; never used to decide how the server treats the content.
 - Disk write path: `./var/files/{id}` (no extension on disk, original
   filename held in `ChatFile.filename`). `./var/files/` is `.gitignore`d.
 - Transaction: file row insert is a single statement; no lock needed.
@@ -295,10 +428,13 @@ if (!accessible) return c.json({ error: "Not found" }, 404);
 Return 404 (not 403) to avoid leaking existence.
 
 Response headers:
-- `Content-Type: {file.mimeType}`
+- `Content-Type: {file.mimeType}` (display-only; see below)
 - `Content-Disposition: attachment; filename="{sanitizedFilename}"` —
   sanitization strips quotes, newlines, and backslashes; if empty after
   sanitization, falls back to `file.id`.
+- `X-Content-Type-Options: nosniff` — prevents the browser from sniffing
+  an attacker-declared `text/html` mime into a rendered page. Load-bearing
+  given the "no MIME whitelist" decision above.
 - Streamed from disk (`createReadStream`), not buffered in memory.
 
 ## User Domain — `packages/api/src/domains/user/`
@@ -321,6 +457,25 @@ user.search({ query })           → [{ userId, username, name, image? }, ...]
 
 Adds `username String @unique` to `User` in `packages/db/prisma/schema/auth.prisma`.
 
+**Migration handling for existing dev installs.** A developer with rows
+already in `User` will fail `make db-push` on a non-null `username` with
+no backfill. Two-phase approach:
+
+1. **Initial push:** add `username String? @unique` (nullable). `make
+   db-push` succeeds against an existing DB.
+2. **Backfill:** `scripts/seed.ts` gains a pass that, for any user with
+   `username = null`, generates `email.split("@")[0]` + a short random
+   suffix, retrying on unique collision. Run via `make db-seed` (existing
+   target).
+3. **Tighten:** once all rows have a value, change schema to
+   `username String @unique` (non-null). `make db-push` succeeds.
+
+For greenfield installs (CI, fresh clones) step 2 is a no-op. For
+hackathon prep where we control the dev DB, steps 1+3 can be collapsed —
+drop the dev DB with `docker compose -f docker-compose.yml down -v &&
+make setup` and go straight to non-null. The spec records both paths so
+the implementation plan can pick.
+
 ### Better-Auth configuration
 
 In `packages/auth/src/index.ts`, enable `additionalFields`:
@@ -342,6 +497,13 @@ user: {
 
 Uniqueness is enforced at the DB level via `@unique`; Better-Auth surfaces
 the constraint violation as a sign-up error which the client shows inline.
+
+**Client-side typing.** Better-Auth's `additionalFields` must also be
+declared on the client's `createAuthClient` config (e.g., via the
+`inferAdditionalFields` plugin) so `signUp.email({ email, password, name,
+username })` type-checks. `apps/web/src/features/auth/auth-client.ts` needs
+the plugin + the matching additional-fields block, otherwise the call in
+`login.tsx` will produce a TS error on `username`.
 
 ### Signup form
 
@@ -455,9 +617,10 @@ cookies, and cross-origin requires CORS which is already configured.
 sendFile → message appears in list with download link.
 
 **Typing:** `MessageComposer` throttles `typing:start` to at most once per
-2s on input change. On unmount or 3s idle, emits `typing:stop`. Client-side
-auto-expiry at 5s since last `typing:start` prevents stuck indicators on
-network blips.
+2s on input change. On unmount or 3s idle, emits `typing:stop`. `typing:stop`
+is **best-effort**; the 5s client-side auto-expiry since the last
+`typing:start` is the authoritative source — UI must not depend on a
+`typing:stop` actually arriving.
 
 **Presence:** On `/chat/{roomId}` mount, `useLiveRoom` subscribes — the
 subscription's server-side handler adds the user to the room's presence set
@@ -471,7 +634,11 @@ within the window — handles brief reconnects).
   reason `unauthorized`. Client detects close code, redirects to `/login`.
 - **WS reconnect:** `wsClient` handles exponential backoff. On successful
   reconnect, active subscriptions are re-opened automatically; `useLiveRoom`
-  fetches `sinceCursor` to fill the message gap.
+  fetches `sinceCursor` to fill the message gap. The hook tracks
+  `lastSeenMessageId` on **every** incoming `message:new`, not only at
+  reconnect — so a disconnect that happens mid-stream still has a usable
+  cursor. Dedupe by id when the gap-fill result overlaps with events that
+  arrived before disconnect detection.
 - **File size limit:** 413 response; UI shows "File too large (max 10 MB)".
 - **Disk write failure:** 500 response; message is not sent.
 - **Message insert after successful file upload failed:** file row stays;
@@ -559,15 +726,21 @@ Deferred to hackathon-time agent skill retrofits if the challenge demands them:
 ## Deliverables
 
 1. `packages/db/prisma/schema/chat.prisma` — four models + User additions.
-2. `packages/api/src/realtime/` — channel primitive with tests.
-3. `packages/api/src/domains/chat/` — service + router + constants + tests.
+2. `packages/api/src/realtime/` — channel primitive (`channel.ts`) with tests.
+3. `packages/api/src/domains/chat/` — service + router + constants + tests
+   (owns presence state per "Presence ownership").
 4. `packages/api/src/domains/user/` — user search router + service + tests.
-5. `packages/api/package.json` — add new subpath exports.
+5. `packages/api/package.json` — add subpath exports: `./realtime/channel`,
+   `./domains/chat/service`, `./domains/chat/router`, `./domains/chat/constants`,
+   `./domains/user/service`, `./domains/user/router`. One entry per file —
+   no barrel.
 6. `packages/auth/src/index.ts` — `additionalFields.username` config.
 7. `packages/env/src/server.ts` — `ENABLE_CHAT` var + Zod default `false`.
 8. `packages/env/src/client.ts` — `VITE_ENABLE_CHAT` var + Zod default `false`.
 9. `apps/server/src/index.ts` — chat flag, file endpoints, WS adapter
-   attachment to `serve()`'s `http.Server`.
+   attachment to `serve()`'s `http.Server` (see "WebSocket Server
+   Attachment" for the concrete snippet). Also: `apps/server/package.json`
+   gets `ws` + `@types/ws` dependencies.
 10. `apps/web/src/routes/_authenticated/chat/index.tsx` + `$roomId.tsx`.
 11. `apps/web/src/features/chat/` — `use-live-room.ts`, `upload-file.ts`,
     components.
@@ -598,3 +771,8 @@ Deferred to hackathon-time agent skill retrofits if the challenge demands them:
 - BDD scenario + testing-guidelines doc: 0.5 h
 
 Polish, debugging, and the agent skill doc consume any remaining budget.
+
+**Add ~25% buffer if library surprises appear** — tRPC v11's WS adapter
+paired with Hono via `noServer: true`, Better-Auth's `additionalFields`
+client typing, and the first multi-user Playwright-BDD scenario are the
+three places that routinely eat time.
