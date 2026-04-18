@@ -3,7 +3,9 @@
 **Date:** 2026-04-18
 **Branch:** `spike/demo-mode`
 **Motivated by:** deferred item A from `docs/superpowers/specs/2026-04-11-bun-test-spike-handover.md`
-**Related:** also folds in three small cleanups as separate commits — (B) `apps/server` `tsx watch` → `bun --watch`, (C) zero-conf dev compose (literals, no `${DEV_DB_*}`), (D) `@project/auth` barrel removal (compliance with root CLAUDE.md)
+**Related:** also folds in two small cleanups as separate commits — (B) `apps/server` `tsx watch` → `bun --watch`, (C) zero-conf dev compose (literals, no `${DEV_DB_*}`)
+
+**Not folded in (intentionally):** `@project/auth` barrel-to-subpath migration. An earlier iteration of this spec proposed it, but `docs/superpowers/specs/2026-04-18-zero-conf-architecture-handover.md:127-136` explicitly carves `@project/auth` out of the no-barrel rule ("`@project/auth`'s root IS the primary module — it exports the configured `auth` instance and the `Session` type, not re-exports from subpaths"). Reversing that carve-out is a scope outside this spike's remit. The `scripts/seed.ts` edits below keep the existing `import { auth } from "@project/auth"` as-is.
 
 ## Goal
 
@@ -81,13 +83,39 @@ Five build stages:
 2. **`deps`** — full install (dev dependencies included). Produces the tooling tree used by the build stage (`vite`, `prisma` CLI). Uses `pnpm-workspace.yaml` (includes `e2e/`). Uses `--mount=type=cache,target=/root/.local/share/pnpm/store` so repeat builds reuse pnpm's content-addressable store.
 3. **`prod-deps`** — parallel stage, same inputs but `--prod` and `pnpm-workspace.prod.yaml` (excludes `e2e/`, so Playwright + fixtures don't land in the runtime). Same pnpm cache mount. This is the tree the runtime inherits.
 4. **`build`** — starts from `deps`, `COPY . .`, restores `pnpm-workspace.prod.yaml` (the full `COPY` clobbered it), then narrowly: `pnpm --filter @project/db generate && pnpm --filter @project/web build`. **Deliberately skips `pnpm -r build`** — `apps/server` has a `tsc` build script but we don't ship its `dist/` (bun runs TS directly); `packages/*` export source; only `apps/web` produces an artifact we actually need. Accepts `ARG VITE_API_URL` → `ENV VITE_API_URL=...` so vite bakes the correct browser-facing API URL into the client bundle before `vite build` runs.
-5. **`runtime`** — **fresh `FROM oven/bun:1-slim`** (not an overlay on `node:24-slim`). Then `COPY --from=prod-deps /app /app` (workspace + prod node_modules) + `COPY --from=build /app/apps/web/.output /app/apps/web/.output` + `COPY --from=build --parents /app/./packages/*/src /app` + `COPY --from=build /app/apps/server/src /app/apps/server/src` + `COPY --from=build /app/packages/db/prisma /app/packages/db/prisma`. Add non-root `app` user, `USER app`. `HEALTHCHECK NONE` at image level — compose services each define their own.
+5. **`runtime`** — **fresh `FROM oven/bun:1-slim`** (not an overlay on `node:24-slim`). COPY list:
+   - `COPY --from=prod-deps /app /app` — workspace + prod `node_modules` (includes `prisma` CLI binary at `/app/node_modules/.bin/prisma` — see `packages/db` dep change below)
+   - `COPY --from=build /app/apps/web/.output /app/apps/web/.output` — Nitro SSR bundle
+   - `COPY --from=build --parents /app/./packages/*/src /app` — shared TS source for domain packages
+   - `COPY --from=build /app/apps/server/src /app/apps/server/src` — bun runs this directly, no dist
+   - `COPY --from=build /app/packages/db/prisma /app/packages/db/prisma` — prisma schema (used by migrate sidecar)
+   - `COPY --from=build /app/scripts /app/scripts` — seed script + credentials module (new)
+   - `COPY --from=build /app/tsconfig.base.json /app/tsconfig.base.json` — bun needs it for path resolution when running TS from the scripts/ dir
+   - Add non-root `app` user, `USER app`. `HEALTHCHECK NONE` at image level — compose services each define their own.
 
 Dockerfile uses `# syntax=docker/dockerfile:1-labs` for `COPY --parents` (preserves workspace layout with glob patterns so new packages don't require Dockerfile edits). Buildx / modern Docker Desktop default to BuildKit; CI environments without BuildKit need `DOCKER_BUILDKIT=1` set.
 
 ### `pnpm-workspace.prod.yaml`
 
 New file. Same as `pnpm-workspace.yaml` minus `e2e/*`. Runtime images don't need Playwright or feature files. Keeps the runtime image ~250MB smaller and its security surface narrower.
+
+### `packages/db` dep change: `prisma` → dependencies
+
+Today `packages/db/package.json` has `prisma` in **devDependencies** (only used at build time for `prisma generate`). The demo migrate sidecar needs the `prisma` CLI at runtime to run `prisma db push`. Move it to `dependencies`:
+
+```diff
+ "dependencies": {
+   "@prisma/client": "catalog:",
++  "prisma": "catalog:",
+   "@project/env": "workspace:*"
+ },
+ "devDependencies": {
+   "@types/node": "catalog:",
+-  "prisma": "catalog:"
+ }
+```
+
+After this change, `pnpm install --prod` includes `prisma`, and `/app/node_modules/.bin/prisma` resolves in the runtime image. Pattern matches a2sdlc-demo3 (which uses `/app/node_modules/.pnpm/node_modules/.bin/prisma` directly from its prod tree).
 
 ### Compose services
 
@@ -122,7 +150,10 @@ services:
       context: .
       args:
         VITE_API_URL: http://localhost:3001
-    command: ["sh", "-c", "pnpm --filter @project/db exec prisma db push --skip-generate && bun /app/scripts/seed-demo.ts"]
+    command:
+      - "sh"
+      - "-c"
+      - "cd /app/packages/db && /app/node_modules/.bin/prisma db push --skip-generate && bun /app/scripts/seed.ts"
     environment: { <<: *app-env }
     depends_on:
       db: { condition: service_healthy }
@@ -187,50 +218,61 @@ Five env vars reach the app through different paths — getting this wrong silen
 
 ### Seed — reuse `scripts/seed.ts`
 
-The repo already has `scripts/seed.ts` that creates the demo user via `auth.api.signUpEmail` and checks existence first. Wired to `make db-seed`. Reuse it as-is with two small edits:
+The repo already has `scripts/seed.ts` that creates the demo user via `auth.api.signUpEmail` and checks existence first. Wired to `make db-seed`. Reuse it with two small edits:
 
-1. **Drop the 5 sample todos block** (`db.todo.createMany({...})`) — per the design decision that the demo user lands in the empty state. Net reduction: ~30 lines deleted from `scripts/seed.ts`.
-2. **Update imports** to use the new named subpath after the barrel-removal commit (see below): `import { auth } from "@project/auth/server"`.
+1. **Drop the 5 sample todos block** (`db.todo.createMany({...})`) — per the design decision that the demo user lands in the empty state. Net reduction: ~30 lines deleted.
+2. **Invert the credentials import** (see below). Today `scripts/seed.ts` imports `SEED_USER` from `e2e/fixtures/credentials.ts`. Problem: `e2e/` is excluded from the runtime image (`pnpm-workspace.prod.yaml` and `.dockerignore`), so the sidecar would fail to resolve the import. Fix by inverting direction.
 
-Credentials stay: `SEED_USER` in `e2e/fixtures/credentials.ts` is `demo@example.com` / `TestPassword!123`. The complex password is deliberate (the fixture comment explains: future-proofs against Better-Auth adding complexity rules). The demo README and seed output both reflect this value — **don't substitute `demodemo`**, that would break the e2e invariant that one credential works across seed + test scenarios.
+**Credentials stay**: `demo@example.com` / `TestPassword!123`. The complex password is deliberate (the existing fixture comment explains: future-proofs against Better-Auth adding complexity rules). The demo README and seed output both reflect this value — **don't substitute `demodemo`**, that would break the invariant that one credential works across seed + test scenarios.
 
-Migrate sidecar runs:
+**Migrate sidecar runs** (note: direct prisma binary, not via pnpm — `pnpm` isn't in the runtime image; see §Image strategy):
 
 ```yaml
-command: ["sh", "-c", "pnpm --filter @project/db exec prisma db push --skip-generate && bun /app/scripts/seed.ts"]
+command:
+  - "sh"
+  - "-c"
+  - "cd /app/packages/db && /app/node_modules/.bin/prisma db push --skip-generate && bun /app/scripts/seed.ts"
 ```
 
-`scripts/seed.ts` already disconnects Prisma in a `.finally()` block and exits cleanly — compatible with sidecar `service_completed_successfully` semantics.
+`scripts/seed.ts` disconnects Prisma in a `.finally()` block and exits cleanly — compatible with sidecar `service_completed_successfully` semantics.
 
-### Barrel cleanup on `@project/auth`
+### Credentials module inversion (`scripts/seed-credentials.ts`)
 
-Root CLAUDE.md forbids barrels on `@project/auth`: *"`@project/env`, `@project/api`, `@project/auth` expose named subpaths only"*. The current `packages/auth/package.json` exposes `.` → `./src/index.ts` — a barrel in violation of the rule. Three files import through it: `apps/server/src/index.ts:10`, `packages/api/src/context.ts:1`, `scripts/seed.ts:1`.
+**Today:**
+- `e2e/fixtures/credentials.ts` owns `SEED_USER` / `TEST_USER` / `SHARED_PASSWORD`
+- `scripts/seed.ts` imports from there via relative path `../e2e/fixtures/credentials.ts`
 
-**Why fix this now:** the spike already touches `scripts/seed.ts` (drop the todos block). Rather than perpetuate the barrel in an edited file, fix it. The package has only two public files (`index.ts` + `constants.ts`), so the cleanup is two `exports` entries — not file-by-file enumeration.
+**Problem:** in the demo runtime image, `e2e/` is excluded — the import fails.
 
-**Change** in `packages/auth/package.json`:
+**Fix:** invert direction. The *canonical* values move to a small file under `scripts/` (which IS in the runtime image); e2e re-exports.
 
-```diff
- "exports": {
--  ".": { "default": "./src/index.ts" },
-+  "./server": { "default": "./src/index.ts" },
-   "./constants": { "default": "./src/constants.ts" }
- }
-```
+1. **New file** `scripts/seed-credentials.ts`:
+   ```typescript
+   // Canonical demo / test credentials. Used by:
+   // - scripts/seed.ts (demo-mode migrate sidecar + `make db-seed`)
+   // - e2e/fixtures/credentials.ts (re-exports for test scenarios)
+   //
+   // Complex password future-proofs e2e against Better-Auth adding
+   // upper/lower/digit/symbol rules.
+   export const SHARED_PASSWORD = "TestPassword!123";
+   export const SEED_USER = {
+     email: "demo@example.com",
+     password: SHARED_PASSWORD,
+   } as const;
+   export const TEST_USER = {
+     email: "test@example.com",
+     password: SHARED_PASSWORD,
+   } as const;
+   ```
 
-**Callsite updates** (3 files):
+2. **Update `e2e/fixtures/credentials.ts`** to re-export:
+   ```typescript
+   export { SHARED_PASSWORD, SEED_USER, TEST_USER } from "../../scripts/seed-credentials.ts";
+   ```
 
-```diff
--import { auth } from "@project/auth";
-+import { auth } from "@project/auth/server";
-```
+3. **Update `scripts/seed.ts`** to import from the same-dir local path: `import { SEED_USER } from "./seed-credentials.ts"`.
 
-```diff
--import type { Session } from "@project/auth";
-+import type { Session } from "@project/auth/server";
-```
-
-Dropping the `.` entry entirely (no bare `@project/auth` import works) prevents drift: any future stray barrel import fails at resolve time. `make lint` + `make test` + `make test-unit` catch any miss.
+Nothing breaks in the existing e2e code because `e2e/fixtures/credentials.ts` still exports the same names — it's just a pass-through now. Single source of truth, runtime image has what it needs.
 
 ### `.dockerignore`
 
@@ -242,19 +284,24 @@ Three existing targets gain `-f docker-compose.dev.yml`:
 
 ```makefile
 setup:
-    ...
+    # …prereq checks, pnpm install unchanged…
     docker compose -f docker-compose.dev.yml up -d
     @until docker compose -f docker-compose.dev.yml exec -T postgres pg_isready -U postgres > /dev/null 2>&1; do sleep 1; done
-    ...
+    # …db:push, routes, prek install unchanged…
 
 db:
     docker compose -f docker-compose.dev.yml up -d
 
 clean:
-    docker compose down -v
-    docker compose -f docker-compose.dev.yml down -v
-    ...
+    docker compose down -v                                 # demo stack
+    docker compose -f docker-compose.dev.yml down -v       # dev postgres
+    @ids=$$(docker ps -aq --filter "name=agentic-postgres-test-" --filter "name=agentic-postgres-e2e-" --filter "name=agentic-postgres-unit-"); \
+      [ -n "$$ids" ] && docker rm -f $$ids || true        # test suite containers (existing)
+    rm -rf node_modules apps/*/node_modules packages/*/node_modules  # existing
+    rm -rf apps/web/.output apps/web/dist apps/server/dist           # existing
 ```
+
+The `rm -rf` lines and the test-container sweep are preserved verbatim from the current `Makefile:82-87`; only the `docker compose down -v` lines are edited (to cover both files).
 
 No new `make demo` target. The whole point is that `docker compose up` works unaided. A `make demo` wrapper would be misleading — it suggests `make` is required.
 
@@ -298,26 +345,25 @@ The branch lands multiple commits so either can be reverted independently:
 - Verify `make setup && make dev` works on a clean checkout with no `.env`
 - Isolated from demo-mode work — if demo-mode hits snags, this zero-conf fix stands on its own
 
-**Commit 3 — `refactor(auth): drop barrel, expose ./server subpath`**
-- `packages/auth/package.json`: replace `.` export with `./server` (keep `./constants`)
-- Update 3 callsites: `apps/server/src/index.ts:10`, `packages/api/src/context.ts:1`, `scripts/seed.ts:1` — all `@project/auth` → `@project/auth/server`
-- Brings the repo into compliance with root CLAUDE.md's barrel rule
-- Touches the same `scripts/seed.ts` that commit 4 edits — ordering avoids merge churn
-- `make lint && make test-unit && make test` verifies no callsites missed
-
-**Commit 4 — `refactor(seed): drop sample todos, keep demo user only`**
-- `scripts/seed.ts`: delete the `db.todo.createMany` block + "Created 5 sample todos" log
-- Keeps: user creation via `auth.api.signUpEmail`, existence check, credentials print
-- Prepares the file to be invoked by the migrate sidecar
+**Commit 3 — `refactor(seed): invert credentials import + drop sample todos`**
+- New `scripts/seed-credentials.ts` — canonical `SEED_USER` / `TEST_USER` / `SHARED_PASSWORD`
+- `e2e/fixtures/credentials.ts` becomes a 1-line re-export from `scripts/seed-credentials.ts`
+- `scripts/seed.ts`: import from `./seed-credentials.ts` (local, runtime-resident); delete the `db.todo.createMany` block + "Created 5 sample todos" log
 - `make db-seed` on a fresh DB produces just the user now
+- `make test` + `make test-unit` confirm e2e still uses the same fixture values
+
+**Commit 4 — `chore(db): move prisma CLI to dependencies`**
+- `packages/db/package.json`: move `prisma` from `devDependencies` → `dependencies`
+- Enables `pnpm install --prod` to include the prisma binary in the runtime image
+- Tiny but load-bearing for the migrate sidecar
 
 **Commits 5–N — demo mode proper**
 - `pnpm-workspace.prod.yaml`
-- Root `Dockerfile` (5-stage, pnpm cache mounts, pinned pnpm@10.32.1)
+- Root `Dockerfile` (5-stage, pnpm cache mounts, pinned pnpm@10.32.1, runtime copies `scripts/`)
 - `docker-compose.yml` (new file, full demo stack — docker-compose.dev.yml was split out in commit 2)
+- `Makefile` — `clean` target gains the second `down -v` line (preserves existing `rm -rf` + test-container cleanup)
 - `.dockerignore`
 - `README.md` quick-start prepend
-- (no new `scripts/seed-demo.ts` — sidecar reuses `scripts/seed.ts` from commit 4)
 
 ## Testing
 
