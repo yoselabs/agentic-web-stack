@@ -1,8 +1,11 @@
 import { defineConfig } from "@playwright/test";
-import { TEST_API_PORT, TEST_WEB_PORT } from "@project/config/ports";
 import { defineBddConfig } from "playwright-bdd";
 
 import { TEST_DATABASE_URL } from "./test-env.js";
+
+// Static 3100/3101 until Task 5 makes test ports dynamic per worktree.
+const TEST_WEB_PORT = 3100;
+const TEST_API_PORT = 3101;
 
 // Desktop runs every scenario except @mobile-tagged ones.
 // Mobile runs ONLY @mobile-tagged scenarios — not a re-run of the full

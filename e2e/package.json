@@ -8,9 +8,6 @@
     "test:ui": "playwright test --ui",
     "generate": "bddgen"
   },
-  "dependencies": {
-    "@project/config": "workspace:*"
-  },
   "devDependencies": {
     "@playwright/test": "^1.52.0",
     "playwright-bdd": "^8.0.0"

@@ -1,7 +1,10 @@
 import { execSync } from "node:child_process";
 import { createHash } from "node:crypto";
 import path from "node:path";
-import { TEST_DB_NAME } from "@project/config/db";
+
+// Standardized DB name for dev + test (different containers, different ports).
+// See docs/superpowers/specs/2026-04-18-zero-conf-architecture-design.md §D2.
+const TEST_DB_NAME = "app";
 
 export type TestSuite = "e2e" | "unit";
 
