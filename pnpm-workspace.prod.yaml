@@ -1,0 +1,18 @@
+# Runtime image's workspace manifest. Mirrors pnpm-workspace.yaml exactly,
+# minus the `e2e` package (Playwright + feature files don't ship to runtime).
+#
+# Keep catalog: identical to pnpm-workspace.yaml. If a catalog entry is added
+# there, mirror it here or the Docker build fails (loudly) on any package
+# that imports via `catalog:`.
+
+packages:
+  - "apps/*"
+  - "packages/*"
+
+catalog:
+  "@prisma/client": ^6.19.3
+  prisma: ^6.19.3
+  zod: ^3.25.76
+  "@t3-oss/env-core": ^0.12.0
+  "@types/node": ^25.6.0
+  typescript: ^5.7.2
