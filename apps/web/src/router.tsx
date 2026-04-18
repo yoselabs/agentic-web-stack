@@ -1,7 +1,14 @@
 import type { AppRouter } from "@project/api/router";
+import { env } from "@project/env/client";
 import { QueryClient } from "@tanstack/react-query";
 import { createRouter as createTanStackRouter } from "@tanstack/react-router";
-import { createTRPCClient, httpBatchLink } from "@trpc/client";
+import {
+  createTRPCClient,
+  createWSClient,
+  httpBatchLink,
+  splitLink,
+  wsLink,
+} from "@trpc/client";
 import { createTRPCOptionsProxy } from "@trpc/tanstack-react-query";
 import { apiClient } from "#/shared/api-client";
 import { routeTree } from "./routeTree.gen";
@@ -28,14 +35,26 @@ function getQueryClient() {
   return browserQueryClient;
 }
 
+const httpLink = httpBatchLink({
+  // NOTE: "/trpc" inlined by design — matches server mount. See zero-conf design spec §D3.
+  url: `${apiClient.baseUrl}/trpc`,
+  fetch: apiClient.fetch,
+});
+
+const wsClientInstance = env.VITE_ENABLE_CHAT
+  ? createWSClient({ url: env.VITE_WS_URL })
+  : null;
+
 const trpcClient = createTRPCClient<AppRouter>({
-  links: [
-    httpBatchLink({
-      // NOTE: "/trpc" inlined by design — matches server mount. See zero-conf design spec §D3.
-      url: `${apiClient.baseUrl}/trpc`,
-      fetch: apiClient.fetch,
-    }),
-  ],
+  links: wsClientInstance
+    ? [
+        splitLink({
+          condition: (op) => op.type === "subscription",
+          true: wsLink({ client: wsClientInstance }),
+          false: httpLink,
+        }),
+      ]
+    : [httpLink],
 });
 
 export function getRouter() {
