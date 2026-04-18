@@ -68,15 +68,51 @@ export const CONTAINER_SERVICES = {
   { envVar: string; url: (p: number) => string }
 >;
 
-// Returns the env vars every subprocess spawned by test-runner.ts or
-// playwright.config.ts must receive. Add a service to CONTAINER_SERVICES
-// above and every subprocess consumer picks it up automatically — no need
-// to edit test-runner.ts and playwright.config.ts separately.
-export function envForSubprocess(suite: TestSuite): Record<string, string> {
+// Role-specific env a process needs. Passed as the second arg to
+// envForSubprocess; omit when the subprocess doesn't bind a server port
+// (e.g. `bun test` in the unit suite).
+//
+//   "api" → PORT bound to the API suite port
+//   "web" → PORT bound to the web suite port + VITE_API_URL for the
+//           Vite build that runs inline as part of the web process.
+export type ProcessRole = "api" | "web";
+
+// Returns the full env var set every subprocess spawned by test-runner.ts
+// or playwright.config.ts must receive. Groups:
+//
+//  1. Container-service URLs (DATABASE_URL, REDIS_URL, ...) — derived
+//     from CONTAINER_SERVICES + PROFILES. Adding a service = one entry
+//     in CONTAINER_SERVICES + one column per suite in PROFILES.
+//  2. Auth + CORS vars (BETTER_AUTH_URL, CORS_ORIGIN, BETTER_AUTH_SECRET)
+//     — derived from the suite's web/api ports. Kept in sync across
+//     both test runners; no per-consumer duplication.
+//  3. Role-specific vars (PORT, VITE_API_URL) — only included when the
+//     role argument identifies an API or web server subprocess.
+//
+// Callers spread this AFTER process.env so test-infra values win over any
+// ambient shell environment (dev DATABASE_URL, etc.):
+//
+//     env: { ...process.env, ...envForSubprocess("e2e", "api") }
+export function envForSubprocess(
+  suite: TestSuite,
+  role?: ProcessRole,
+): Record<string, string> {
   const hash = createHash("md5").update(PROJECT_ROOT).digest("hex");
   const portOffset = Number.parseInt(hash.slice(0, 4), 16) % 100;
   const profile = PROFILES[suite] as Record<string, number>;
-  const out: Record<string, string> = {};
+  const apiPort = profile.api + portOffset;
+  const webPort = profile.web + portOffset;
+  const apiUrl = `http://localhost:${apiPort}`;
+  const webUrl = `http://localhost:${webPort}`;
+  const out: Record<string, string> = {
+    BETTER_AUTH_URL: apiUrl,
+    // Any 32+ char string works — Better-Auth only needs stability within
+    // one test process lifetime. Per-suite value documents the scope in
+    // logs and keeps the two suites' sessions naturally unforgeable
+    // across each other.
+    BETTER_AUTH_SECRET: `test-secret-key-for-${suite}-tests-only-32chars`,
+    CORS_ORIGIN: webUrl,
+  };
   for (const [svc, cfg] of Object.entries(CONTAINER_SERVICES)) {
     const base = profile[svc];
     if (base === undefined) {
@@ -85,6 +121,12 @@ export function envForSubprocess(suite: TestSuite): Record<string, string> {
       );
     }
     out[cfg.envVar] = cfg.url(base + portOffset);
+  }
+  if (role === "api") {
+    out.PORT = String(apiPort);
+  } else if (role === "web") {
+    out.PORT = String(webPort);
+    out.VITE_API_URL = apiUrl;
   }
   return out;
 }

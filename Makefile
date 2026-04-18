@@ -46,10 +46,11 @@ db-seed:
 
 # Quality gates
 check: lint ## Alias for lint — full quality gate
-lint: db-generate ## Run agent-harness + tsc + email-uniqueness
+lint: db-generate ## Run agent-harness + tsc + email-uniqueness + test-infra integrity
 	@agent-harness lint
 	pnpm -w run typecheck
 	@bun e2e/scripts/check-feature-emails.ts
+	@bun scripts/check-test-infra-integrity.ts
 fix: db-generate ## Auto-fix lint issues + typecheck
 	@agent-harness fix
 	pnpm -w run typecheck

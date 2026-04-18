@@ -28,7 +28,6 @@ const mobileTestDir = defineBddConfig({
 });
 
 const WEB_URL = `http://localhost:${TEST_WEB_PORT}`;
-const API_URL = `http://localhost:${TEST_API_PORT}`;
 
 export default defineConfig({
   globalSetup: "./global-setup.ts",
@@ -66,15 +65,10 @@ export default defineConfig({
       command: "pnpm --filter @project/server exec bun src/index.ts",
       port: TEST_API_PORT,
       reuseExistingServer: !process.env.CI,
-      env: {
-        PORT: String(TEST_API_PORT),
-        // All container-service URLs (DATABASE_URL, future REDIS_URL, ...)
-        // derived from the e2e suite's PROFILES + CONTAINER_SERVICES.
-        ...envForSubprocess("e2e"),
-        BETTER_AUTH_SECRET: "test-secret-key-for-e2e-tests-only-32chars",
-        BETTER_AUTH_URL: API_URL,
-        CORS_ORIGIN: WEB_URL,
-      },
+      // All env vars (DATABASE_URL, BETTER_AUTH_URL, BETTER_AUTH_SECRET,
+      // CORS_ORIGIN, PORT, future REDIS_URL, ...) derived from
+      // @project/test-infra's single source of truth.
+      env: envForSubprocess("e2e", "api"),
     },
     // Web runs in BUILT mode, not `vite dev`. Dev-server on-demand SSR
     // compilation can't keep up when N Playwright workers cold-hit routes
@@ -100,10 +94,9 @@ export default defineConfig({
       port: TEST_WEB_PORT,
       reuseExistingServer: !process.env.CI,
       timeout: 120_000,
-      env: {
-        VITE_API_URL: API_URL,
-        PORT: String(TEST_WEB_PORT),
-      },
+      // Same SSOT as the API server above — "web" role adds VITE_API_URL
+      // (baked into the Vite build) + PORT (Nitro listener).
+      env: envForSubprocess("e2e", "web"),
     },
   ],
 });

@@ -21,14 +21,11 @@ const result = spawnSync(
     cwd: PACKAGE_ROOT,
     env: {
       ...process.env,
-      // All container-service URLs (DATABASE_URL, future REDIS_URL, ...)
-      // derived from the unit suite's PROFILES + CONTAINER_SERVICES.
+      // All test-infra-derived env vars (DATABASE_URL, BETTER_AUTH_URL,
+      // BETTER_AUTH_SECRET, CORS_ORIGIN, future REDIS_URL, ...). Single
+      // source of truth — adding a service in CONTAINER_SERVICES flows
+      // through automatically, no hand-wiring here.
       ...envForSubprocess("unit"),
-      BETTER_AUTH_SECRET:
-        process.env.BETTER_AUTH_SECRET ??
-        "test-secret-key-for-unit-tests-only-32chars",
-      CORS_ORIGIN: process.env.CORS_ORIGIN ?? "http://localhost:3000",
-      BETTER_AUTH_URL: process.env.BETTER_AUTH_URL ?? "http://localhost:3001",
     },
   },
 );

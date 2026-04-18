@@ -26,8 +26,6 @@ jobs:
     name: Integration & BDD Tests
     runs-on: ubuntu-latest
     needs: check
-    env:
-      BETTER_AUTH_SECRET: test-secret-key-for-ci-tests-only-32chars
     steps:
       - uses: actions/checkout@v4
       - uses: oven-sh/setup-bun@v2
