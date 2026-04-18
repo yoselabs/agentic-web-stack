@@ -13,6 +13,8 @@
     "./domains/todo-list/service": {
       "default": "./src/domains/todo-list/service.ts"
     },
+    "./domains/user/service": { "default": "./src/domains/user/service.ts" },
+    "./domains/user/router": { "default": "./src/domains/user/router.ts" },
     "./realtime/channel": { "default": "./src/realtime/channel.ts" }
   },
   "scripts": {

@@ -1,5 +1,6 @@
 import { todoListRouter } from "./domains/todo-list/router.js";
 import { todoRouter } from "./domains/todo/router.js";
+import { userRouter } from "./domains/user/router.js";
 import { router } from "./trpc.js";
 
 // Append-alpha convention: register sub-routers one per line in alphabetical
@@ -9,6 +10,7 @@ import { router } from "./trpc.js";
 export const appRouter = router({
   todo: todoRouter,
   todoList: todoListRouter,
+  user: userRouter,
 });
 
 export type AppRouter = typeof appRouter;
