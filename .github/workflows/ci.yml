@@ -25,14 +25,8 @@ jobs:
     name: Integration & BDD Tests
     runs-on: ubuntu-latest
     needs: check
-    # No Postgres service container: both test suites provision their own
-    # per-suite containers via scripts/test-db.ts. ubuntu-latest has Docker + Compose.
     env:
       BETTER_AUTH_SECRET: test-secret-key-for-ci-tests-only-32chars
-      # Static test ports used by playwright.config.ts and vitest until Task 5
-      # makes them dynamic per-worktree via scripts/test-db.ts.
-      CORS_ORIGIN: http://localhost:3100
-      BETTER_AUTH_URL: http://localhost:3101
     steps:
       - uses: actions/checkout@v4
       - uses: pnpm/action-setup@v4
@@ -41,6 +35,13 @@ jobs:
           node-version: 22
           cache: pnpm
       - run: pnpm install --frozen-lockfile
+      - name: Compute dynamic test ports
+        run: |
+          pnpm exec tsx scripts/print-test-env.ts e2e >> "$GITHUB_ENV"
+      - name: Promote CORS / auth URLs to workflow env
+        run: |
+          echo "CORS_ORIGIN=http://localhost:${TEST_WEB_PORT}" >> "$GITHUB_ENV"
+          echo "BETTER_AUTH_URL=http://localhost:${TEST_API_PORT}" >> "$GITHUB_ENV"
       - run: pnpm --filter @project/api test
       - run: pnpm exec playwright install chromium --with-deps
       - run: cd e2e && pnpm exec bddgen && pnpm exec playwright test

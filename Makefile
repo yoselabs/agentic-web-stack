@@ -63,10 +63,12 @@ test-unit: db-generate
 #                 make test ARGS="--headed"
 # ARGS forwarded to `playwright test` verbatim. See `playwright test --help`.
 test: db-generate
-	@pnpm exec tsx scripts/kill-ports.ts 3100 3101
+	@eval "$$(pnpm exec tsx scripts/print-test-env.ts e2e)" && \
+	  pnpm exec tsx scripts/kill-ports.ts $$TEST_WEB_PORT $$TEST_API_PORT
 	cd e2e && pnpm exec bddgen && pnpm exec playwright test $(ARGS)
 test-ui: db-generate
-	@pnpm exec tsx scripts/kill-ports.ts 3100 3101
+	@eval "$$(pnpm exec tsx scripts/print-test-env.ts e2e)" && \
+	  pnpm exec tsx scripts/kill-ports.ts $$TEST_WEB_PORT $$TEST_API_PORT
 	cd e2e && pnpm exec bddgen && pnpm exec playwright test --ui $(ARGS)
 
 # Cleanup

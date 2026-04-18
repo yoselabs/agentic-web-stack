@@ -3,6 +3,8 @@ import { createHash } from "node:crypto";
 import path from "node:path";
 
 // Standardized DB name for dev + test (different containers, different ports).
+// Pinned to "app" per design §D2 — docker-compose.test.yml also hardcodes this;
+// TEST_DATABASE_URL below is the single derived consumer.
 // See docs/superpowers/specs/2026-04-18-zero-conf-architecture-design.md §D2.
 const TEST_DB_NAME = "app";
 
@@ -18,11 +20,20 @@ export function testDbEnv(suite: TestSuite) {
   // (hash8) don't collide, but the host port bind will — docker fails loudly
   // with "port already allocated", which is acceptable and rare in practice.
   const portOffset = Number.parseInt(hash.slice(0, 4), 16) % 100;
-  const portBase = suite === "e2e" ? 5400 : 5500;
-  const port = portBase + portOffset;
+  // Bases are spaced by ≥100 so the modulo-100 offset never produces
+  // overlapping ranges — web/api/DB ports can't collide across worktrees or
+  // between the e2e and unit suites.
+  const dbPortBase = suite === "e2e" ? 5400 : 5500;
+  const webPortBase = suite === "e2e" ? 3100 : 3300;
+  const apiPortBase = suite === "e2e" ? 3200 : 3400;
+  const port = dbPortBase + portOffset;
+  const webPort = webPortBase + portOffset;
+  const apiPort = apiPortBase + portOffset;
   const container = `agentic-postgres-${suite}-${hash8}`;
   return {
     TEST_PORT: port,
+    TEST_WEB_PORT: webPort,
+    TEST_API_PORT: apiPort,
     TEST_CONTAINER: container,
     TEST_DB_NAME,
     TEST_DATABASE_URL: `postgresql://postgres:postgres@localhost:${port}/${TEST_DB_NAME}`,
@@ -58,17 +69,11 @@ function assertDockerRunning(): void {
 // injection surface. If Windows support is ever added, convert to execFileSync.
 export function setupTestDatabase(suite: TestSuite): void {
   assertDockerRunning();
-  const {
-    TEST_PORT,
-    TEST_CONTAINER,
-    TEST_DB_NAME: dbName,
-    TEST_DATABASE_URL,
-  } = testDbEnv(suite);
+  const { TEST_PORT, TEST_CONTAINER, TEST_DATABASE_URL } = testDbEnv(suite);
   const composeEnv = {
     ...process.env,
     TEST_PORT: String(TEST_PORT),
     TEST_CONTAINER,
-    TEST_DB_NAME: dbName,
   };
   const prismaCwd = path.join(PROJECT_ROOT, "packages/db");
   const pushEnv = {
