@@ -1,0 +1,56 @@
+enum ChatMessageKind {
+  TEXT
+  FILE
+}
+
+model ChatRoom {
+  id        String   @id @default(cuid())
+  name      String?
+  dmKey     String?  @unique
+  createdAt DateTime @default(now())
+
+  memberships ChatMembership[]
+  messages    ChatMessage[]
+}
+
+model ChatMembership {
+  roomId     String
+  userId     String
+  joinedAt   DateTime  @default(now())
+  lastReadAt DateTime?
+
+  room ChatRoom @relation(fields: [roomId], references: [id], onDelete: Cascade)
+  user User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@id([roomId, userId])
+  @@index([userId])
+}
+
+model ChatMessage {
+  id        String          @id @default(cuid())
+  roomId    String
+  userId    String
+  kind      ChatMessageKind
+  text      String?
+  fileId    String?
+  createdAt DateTime        @default(now())
+
+  room ChatRoom  @relation(fields: [roomId], references: [id], onDelete: Cascade)
+  user User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+  file ChatFile? @relation(fields: [fileId], references: [id])
+
+  @@index([roomId, createdAt, id])
+}
+
+model ChatFile {
+  id         String   @id @default(cuid())
+  storedPath String
+  filename   String
+  mimeType   String
+  size       Int
+  uploadedBy String
+  createdAt  DateTime @default(now())
+
+  uploader User          @relation(fields: [uploadedBy], references: [id])
+  messages ChatMessage[]
+}

@@ -6,13 +6,18 @@ model User {
   email         String    @unique
   emailVerified Boolean   @default(false)
   image         String?
+  username      String?   @unique
   createdAt     DateTime  @default(now())
   updatedAt     DateTime  @updatedAt
 
-  sessions Session[]
-  accounts Account[]
+  sessions  Session[]
+  accounts  Account[]
   todos     Todo[]
   todoLists TodoList[]
+
+  chatMemberships ChatMembership[]
+  chatMessages    ChatMessage[]
+  chatFiles       ChatFile[]
 }
 
 model Session {

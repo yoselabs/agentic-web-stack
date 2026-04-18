@@ -137,3 +137,9 @@ vite.config.ts.timestamp-*
 web_modules/
 yarn-debug.log*
 yarn-error.log*
+
+# Local compose overrides
+docker-compose.override.yml
+
+# Chat reference — local file storage
+var/
