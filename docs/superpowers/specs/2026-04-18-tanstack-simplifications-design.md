@@ -100,7 +100,15 @@ export const getSession = createServerFn({ method: "GET" }).handler(async (): Pr
 
 The contract this module owes the rest of the spec: a `getSession()` that runs **server-only** on the web Nitro, returns `SessionData` (never throws), and forwards incoming cookies. The exact `createServerFn` chaining and `getHeaders()` import path are installed-version-specific — the plan step verifies both against the pinned Start version; the contract above is what the plan is held to, not the surface syntax.
 
-**Server-only execution + hydration.** `createServerFn` emits a server-only handler that the client reaches via an RPC call. On **initial SSR**, `beforeLoad` runs on the server, calls the handler directly (no HTTP hop), and the resulting `session` is dehydrated into the router context and serialized into the SSR HTML. On **hydration**, the client reuses the dehydrated `session` from router state — it does **not** re-invoke the server-fn, and therefore does not issue an unsolicited `/api/auth/get-session` call from the browser on first paint. On **subsequent client navigations**, `beforeLoad` re-runs and the server-fn is invoked over the wire only when the router actually needs a fresh session (e.g., after sign-in/sign-out `router.invalidate()`). This is the intended Start pattern; the acceptance criteria below pin it down.
+**Server-only execution + hydration.** `createServerFn` emits a handler that runs only on the server; the client reaches it via an RPC call. The guarantees this spec relies on:
+
+- **Initial SSR:** `beforeLoad` runs on the web Nitro, calls the server-fn handler directly (in-process, no HTTP hop), and the resulting `session` is merged into router context and serialized into the SSR HTML via router dehydration.
+- **First-paint hydration:** the client reuses the dehydrated router context — no `/api/auth/get-session` call is issued from the browser on the initial page load.
+
+What the spec does **not** guarantee (Router-version-specific; verified at plan step):
+
+- **Client-side navigation between authenticated routes:** Router's match-reuse rules decide whether `beforeLoad` re-runs on a nav from `/dashboard` → `/_authenticated/todo-lists/abc`. If it does, the server-fn is invoked over the wire (HTTP to Nitro). If cached route context is reused, it isn't. The plan step measures actual re-invocation with browser DevTools and pins the behavior in the plan's verification notes. Either behavior is acceptable for this spec's correctness (both produce a valid guard); the measurement informs whether a follow-up memoization step is needed.
+- **After `router.invalidate()`** (e.g., post-sign-in/sign-out): `beforeLoad` re-runs, server-fn is invoked, fresh session propagates. This is intended.
 
 **Router context** — extend `apps/web/src/routes/__root.tsx`'s `RouterContext`:
 
@@ -157,7 +165,7 @@ Better-Auth defaults to http-only cookies. Http-only prevents JS reads, not cook
 
 ### Risk
 
-- **Extra HTTP hop per SSR request.** Web Nitro → Hono on :3001 for every authenticated navigation that hits the server (initial SSR, client nav with a `router.invalidate()`). Acceptable: both containers are on the same Docker network in the demo compose, <1 ms localhost RTT. For a production-grade template a follow-up step can memoize the session within a single request (React cache / AsyncLocalStorage); not load-bearing for this spec.
+- **Extra HTTP hop on session loads.** Each `beforeLoad` call to the server-fn triggers one Web Nitro → Hono `/api/auth/get-session` request. Frequency is bounded by: (a) every initial SSR page load (one hop, definitely happens), (b) `router.invalidate()` post-auth (rare), and (c) client-side navigations that don't reuse cached route context (Router-version-specific, measured at plan step). Both containers are on the same Docker network (<1 ms RTT); acceptable for the demo. For a production-grade template a follow-up step can memoize the session within a single request (React cache / AsyncLocalStorage); not load-bearing for this spec.
 - **Tighter coupling of `apps/web` to `apps/server` availability.** Previously the web could render an unauthenticated shell even if the API was down; now a broken API degrades to "redirect to /login" because `getSession()` returns `null` on non-2xx. Matches user expectation (no API ⇒ no app) and surfaces outages honestly.
 - **Start server-fn surface version drift** — plan step verifies `createServerFn`, `getHeaders`, and the server-only execution guarantee against the installed version. If the guarantee doesn't hold in the installed version (client-side rehydration re-invokes the handler), fallback is to load the session inside `router.tsx` during `getRouter()` using a direct `apiClient.fetch` server-side guarded by `typeof window === "undefined"`.
 
@@ -198,25 +206,29 @@ import { db } from "@project/db";
 import { MAX_UPLOAD_BYTES, CSV_MIME_TYPES } from "./constants.js";
 import { importTodosFromCSV, exportTodosAsCSV } from "./service.js";
 
+// Scalar-only schema: todoListId is validated by zValidator so hc propagates
+// its input type to the client. The file itself is checked manually in the
+// handler because z.instanceof(File) is unreliable across Node runtimes
+// (undici's File vs. global File can differ at the constructor level,
+// causing false-negative instanceof). This split preserves hc's typed
+// `form: { todoListId }` input while keeping the File check robust.
+const importFormSchema = z.object({ todoListId: z.string().min(1) });
 const exportSchema = z.object({ todoListId: z.string().min(1) });
 
 export const todoHttpRouter = new Hono()
-  .post("/import", async (c) => {
+  .post("/import", zValidator("form", importFormSchema), async (c) => {
     const session = await auth.api.getSession({ headers: c.req.raw.headers });
     if (!session) return c.json({ error: "Unauthorized" }, 401);
 
-    // Manual parse: zValidator + z.instanceof(File) is brittle across Node
-    // runtimes because undici's File and the global File can differ at the
-    // constructor level, causing false-negative instanceof. c.req.parseBody()
-    // returns File | string | null per field — we check the shape directly.
+    const { todoListId } = c.req.valid("form");
+
+    // parseBody() re-reads the multipart body; zValidator already consumed it
+    // once for the scalar field, but Hono's body-cache makes this cheap.
+    // Returns File | string | null per field.
     const body = await c.req.parseBody();
     const file = body.file;
-    const todoListId = body.todoListId;
 
     if (!(file instanceof File)) return c.json({ error: "No file provided" }, 400);
-    if (typeof todoListId !== "string" || !todoListId) {
-      return c.json({ error: "todoListId is required" }, 400);
-    }
     if (file.size > MAX_UPLOAD_BYTES) {
       return c.json({ error: "File too large (max 10 MB)" }, 413);
     }
@@ -283,7 +295,7 @@ export const todoHttpClient = hc<TodoHttpRouter>(`${apiClient.baseUrl}/api/todos
 });
 ```
 
-The client inherits `apiClient.fetch`'s `credentials: "include"` + base-URL rule, so no bypassing the `apps/web/CLAUDE.md` "all HTTP through `apiClient`" guard.
+`apiClient.baseUrl` is the bare origin (no trailing slash, no path) — established by `apps/web/src/shared/api-client.ts:13` (`API_BASE_URL = env.VITE_API_URL`). `hc`'s first arg is the path-prefix for the router; `${baseUrl}/api/todos` matches the server-side mount at `app.route("/api/todos", todoHttpRouter)` exactly. The client inherits `apiClient.fetch`'s `credentials: "include"` + base-URL rule, so no bypassing the `apps/web/CLAUDE.md` "all HTTP through `apiClient`" guard.
 
 **Type-only import** — importing `TodoHttpRouter` from `@project/api/domains/todo/http` must be `import type` to avoid pulling the Hono app (which imports `@project/auth` → `@project/db` → Prisma) into the web bundle. This is the same discipline as `import type { AppRouter }` for tRPC.
 
@@ -312,7 +324,7 @@ const exportTodos = async () => {
 };
 ```
 
-Gains: typed request bodies, typed success responses, typed error discriminant. Size check moves to the server (authoritative); the 10 MB client-side pre-check that duplicated `MAX_UPLOAD_BYTES` is deleted.
+Gains: typed scalar inputs (`todoListId` flows through `hc` from the `zValidator("form", importFormSchema)` metadata), typed success and error response bodies via the handler's `c.json(...)` return types, typed query params for export. The `file: File` field is accepted by `hc`'s multipart form input type; exact typing (`File` vs. `Blob | File`) depends on `hc`'s form-input helpers on the pinned version and is verified at plan step. Either way, the shape is tighter than today's `apiClient.fetch` + `res.json() as Promise<{ count: number }>` cast. Size check moves to the server (authoritative); the 10 MB client-side pre-check that duplicated `MAX_UPLOAD_BYTES` is deleted.
 
 ### Testing
 
@@ -348,7 +360,7 @@ Add `@tanstack/react-form` to `apps/web/package.json`. Version pinned during the
   ```
 - Form state uses `useForm` from `@tanstack/react-form` with `defaultValues: { email: "", password: "", name: "" }`.
 - Field-level validation runs on change against `loginSchema` (exact option name — `validators.onChange` vs. standard-schema alternative — verified at plan step).
-- Submit handler is async: it calls either `signUp.email` or `signIn.email` based on the `isSignUp` local-state toggle (toggle stays a `useState` — it's a mode switch, not a form value), threads `value.email`/`value.password` (plus derived `name` when signing up: `value.name || value.email.split("@")[0]`), then either `navigate({ to: "/dashboard" })` on success or surfaces `result.error.message` as a form-level error (exact form-error API — `setErrorMap`, returning a string from `onSubmit`, or form-level validator result — verified at plan step).
+- Submit handler is async: it calls either `signUp.email` or `signIn.email` based on the `isSignUp` local-state toggle (toggle stays a `useState` — it's a mode switch, not a form value), threads `value.email`/`value.password` (plus derived `name` when signing up: `value.name || value.email.split("@")[0]`), then either `navigate({ to: "/dashboard" })` on success or surfaces `result.error.message` as a form-level error (exact form-error API — `setErrorMap`, returning a string from `onSubmit`, or form-level validator result — verified at plan step). **Fallback** if no pinned-version API cleanly maps submit-time errors: a single `const [formError, setFormError] = useState<string | null>(null)` rendered in a non-field error slot (same pattern as the existing `login.tsx:27`). This keeps the refactor shippable regardless of TanStack Form's form-error ergonomics in the pinned version.
 - Each input renders inside a `form.Field` render-prop so field-level errors from `loginSchema` surface near the input.
 - No `useSession`, no `useEffect`, no redirect logic — A2's `beforeLoad` handles the logged-in-already case.
 
@@ -382,6 +394,9 @@ Each piece is its own commit; each piece leaves `make lint && make test && make 
 - `apps/server/src/index.ts` imports only from `@project/api/*`, `@project/auth`, `@project/env/server`, `@project/db` (for the `/health` DB ping), and `hono`/`@hono/*`/`@hono/node-server` — no imports from `@project/api/domains/*/service` or domain-level CSV helpers. Domain HTTP sub-apps are mounted via one-line `app.route(...)` calls.
 - `apps/web/src/features/todo/use-todos.ts` contains zero hand-assembled `FormData` or string-path `apiClient.fetch` calls. Both import/export go through `todoHttpClient`.
 - `apps/web/src/routes/login.tsx` has zero `useState` for field values.
-- **SSR-no-refetch:** loading any authenticated page server-side issues exactly one `GET /api/auth/get-session` (from the web Nitro to the Hono server). The browser's DevTools Network tab for the same initial page load shows **zero** requests to `/api/auth/get-session` from the browser. Verified manually with `make dev` during plan step #3's execution and captured in the plan's verification notes.
-- **Server-bundle hygiene:** `pnpm --filter @project/web build` produces a client bundle that does not contain strings from `@project/auth`'s runtime (`better-auth`), `@project/db`'s runtime (`@prisma/client`), or `papaparse`. Checked via `grep` on the built JS after B1 lands.
+- **SSR-no-refetch (initial load):** on server-side load of any authenticated page, the web Nitro issues exactly one `GET /api/auth/get-session` to the Hono server. The browser's DevTools Network tab for the same initial page load shows **zero** requests to `/api/auth/get-session` from the browser. Verified manually during plan execution and captured in the plan's verification notes.
+- **Client-navigation behavior characterized (not constrained):** the plan records whether client-side navigation between two authenticated routes re-invokes the session server-fn (a browser request to Nitro) or reuses cached router context. Either outcome is acceptable; the measurement is a deliverable of the plan, not a gate of this spec.
+- **Server-bundle hygiene** is enforced by **two** checks, not a grep alone:
+  1. **Lint gate** (primary): `agent-harness lint` (or an added Biome/custom rule) flags any non-`import type` import of `@project/api/domains/todo/http` from `apps/web/**`, mirroring the existing `import type { AppRouter }` discipline. This is the enforcement mechanism.
+  2. **Bundle-analyzer smoke check** (diagnostic): `pnpm --filter @project/web build` is run with Vite's `rollup-plugin-visualizer` (or `vite-bundle-visualizer`) to produce a module-graph report; the report must contain no chunk referencing `better-auth`, `@prisma/client`, or `papaparse` as module IDs. A plain-text `grep` on the minified output is kept as a fast preflight but not the acceptance gate — identifier mangling makes grep unreliable.
 - `make lint && make test && make test-unit` pass on each of the four piece commits independently.
