@@ -192,6 +192,37 @@ importers:
         specifier: ^8.0.0
         version: 8.0.8(@types/node@25.6.0)(esbuild@0.27.7)(jiti@2.6.1)(tsx@4.21.0)(yaml@2.8.3)
 
+  apps/worker:
+    dependencies:
+      '@project/db':
+        specifier: workspace:*
+        version: link:../../packages/db
+      '@project/email':
+        specifier: workspace:*
+        version: link:../../packages/email
+      '@project/env':
+        specifier: workspace:*
+        version: link:../../packages/env
+      '@project/jobs':
+        specifier: workspace:*
+        version: link:../../packages/jobs
+      bullmq:
+        specifier: 'catalog:'
+        version: 5.74.1
+      ioredis:
+        specifier: 'catalog:'
+        version: 5.10.1
+    devDependencies:
+      '@types/node':
+        specifier: 'catalog:'
+        version: 25.6.0
+      tsx:
+        specifier: ^4.19.2
+        version: 4.21.0
+      typescript:
+        specifier: 'catalog:'
+        version: 5.9.3
+
   e2e:
     devDependencies:
       '@playwright/test':

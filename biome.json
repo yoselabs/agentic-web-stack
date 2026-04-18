@@ -55,7 +55,8 @@
         "**/vite.config.ts",
         "**/playwright.config.ts",
         "packages/db/prisma.config.ts",
-        "apps/server/src/logger.ts"
+        "apps/server/src/logger.ts",
+        "apps/worker/src/**"
       ],
       "linter": {
         "rules": {
