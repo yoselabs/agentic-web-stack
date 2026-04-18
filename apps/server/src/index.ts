@@ -1,6 +1,10 @@
+import { randomBytes } from "node:crypto";
+import { createReadStream, mkdirSync, unlink, writeFile } from "node:fs";
+import { join, resolve } from "node:path";
 import { serve } from "@hono/node-server";
 import { trpcServer } from "@hono/trpc-server";
 import { createContext } from "@project/api/context";
+import { MAX_CHAT_FILE_BYTES } from "@project/api/domains/chat/constants";
 import { MAX_UPLOAD_BYTES } from "@project/api/domains/todo/constants";
 import {
   exportTodosAsCSV,
@@ -146,6 +150,85 @@ app.get("/api/todos/export", async (c) => {
     },
   });
 });
+
+if (env.ENABLE_CHAT) {
+  const FILES_DIR = resolve(process.cwd(), "var/files");
+  mkdirSync(FILES_DIR, { recursive: true });
+
+  app.post("/files", async (c) => {
+    const session = await auth.api.getSession({ headers: c.req.raw.headers });
+    if (!session) return c.json({ error: "Unauthorized" }, 401);
+
+    const form = await c.req.formData();
+    const file = form.get("file");
+    if (!(file instanceof File))
+      return c.json({ error: "No file provided" }, 400);
+    if (file.size > MAX_CHAT_FILE_BYTES)
+      return c.json({ error: "File too large (max 10 MB)" }, 413);
+
+    const id = `f_${randomBytes(16).toString("hex")}`;
+    const path = join(FILES_DIR, id);
+    const buf = Buffer.from(await file.arrayBuffer());
+
+    await new Promise<void>((ok, fail) =>
+      writeFile(path, buf, (err) => (err ? fail(err) : ok())),
+    );
+
+    try {
+      const record = await db.chatFile.create({
+        data: {
+          id,
+          storedPath: path,
+          filename: file.name || "attachment",
+          mimeType: file.type || "application/octet-stream",
+          size: file.size,
+          uploadedBy: session.user.id,
+        },
+      });
+      return c.json(
+        {
+          fileId: record.id,
+          filename: record.filename,
+          size: record.size,
+          mimeType: record.mimeType,
+        },
+        201,
+      );
+    } catch (err) {
+      // Roll back on DB failure
+      unlink(path, () => {});
+      throw err;
+    }
+  });
+
+  app.get("/files/:id", async (c) => {
+    const session = await auth.api.getSession({ headers: c.req.raw.headers });
+    if (!session) return c.json({ error: "Unauthorized" }, 401);
+
+    const id = c.req.param("id");
+    const accessible = await db.chatMessage.findFirst({
+      where: {
+        fileId: id,
+        room: { memberships: { some: { userId: session.user.id } } },
+      },
+    });
+    if (!accessible) return c.json({ error: "Not found" }, 404);
+
+    const file = await db.chatFile.findUnique({ where: { id } });
+    if (!file) return c.json({ error: "Not found" }, 404);
+
+    const safeName =
+      (file.filename ?? file.id).replace(/[\r\n"\\]/g, "").trim() || file.id;
+
+    return new Response(createReadStream(file.storedPath) as never, {
+      headers: {
+        "Content-Type": file.mimeType,
+        "Content-Disposition": `attachment; filename="${safeName}"`,
+        "X-Content-Type-Options": "nosniff",
+      },
+    });
+  });
+}
 
 // tRPC handler — pass session into context.
 // NOTE: "/trpc" is inlined by design — ≤2 call sites and no library
