@@ -13,9 +13,20 @@ async function signUpOrSignIn(
   await page.goto("/login");
   await page.waitForLoadState("networkidle");
 
-  // Try sign up first
+  // Try sign up first — toggle to sign-up mode and wait for the form to switch
   await page.getByRole("button", { name: "Sign Up" }).click();
-  await page.getByLabel("Name").fill(email.split("@")[0]);
+  await page
+    .getByLabel("Username")
+    .waitFor({ state: "visible", timeout: 5000 });
+  await page.getByLabel("Display Name").fill(email.split("@")[0]);
+  // Generate a BDD-safe username from the email local-part
+  const handle = email
+    .split("@")[0]
+    .toLowerCase()
+    .replace(/[^a-z0-9_]/g, "_")
+    .slice(0, 20)
+    .padEnd(3, "_");
+  await page.getByLabel("Username").fill(handle);
   await page.getByLabel("Email").fill(email);
   await page.getByLabel("Password").fill(password);
   await page.locator('button[type="submit"]').click();
@@ -83,7 +94,18 @@ when(
   "I sign up as {string} with email {string}",
   async ({ page }, name: string, email: string) => {
     await page.getByRole("button", { name: "Sign Up" }).click();
-    await page.getByLabel("Name").fill(name);
+    await page
+      .getByLabel("Username")
+      .waitFor({ state: "visible", timeout: 5000 });
+    await page.getByLabel("Display Name").fill(name);
+    // Generate a BDD-safe username from the email local-part
+    const handle = email
+      .split("@")[0]
+      .toLowerCase()
+      .replace(/[^a-z0-9_]/g, "_")
+      .slice(0, 20)
+      .padEnd(3, "_");
+    await page.getByLabel("Username").fill(handle);
     await page.getByLabel("Email").fill(email);
     await page.getByLabel("Password").fill(SHARED_PASSWORD);
     await page.locator('button[type="submit"]').click();
