@@ -6,6 +6,9 @@
   "exports": {
     ".": {
       "default": "./src/index.ts"
+    },
+    "./constants": {
+      "default": "./src/constants.ts"
     }
   },
   "dependencies": {

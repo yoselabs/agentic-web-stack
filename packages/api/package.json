@@ -6,7 +6,8 @@
   "exports": {
     "./router": { "default": "./src/router.ts" },
     "./context": { "default": "./src/context.ts" },
-    "./services/todo": { "default": "./src/services/todo.ts" }
+    "./services/todo": { "default": "./src/services/todo.ts" },
+    "./constants/todo": { "default": "./src/constants/todo.ts" }
   },
   "scripts": {
     "test": "vitest run"

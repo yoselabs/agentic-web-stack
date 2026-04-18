@@ -1,8 +1,8 @@
-import { MIN_PASSWORD_LENGTH } from "@project/config/limits";
 import { db } from "@project/db";
 import { env } from "@project/env/server";
 import { betterAuth } from "better-auth";
 import { prismaAdapter } from "better-auth/adapters/prisma";
+import { MIN_PASSWORD_LENGTH } from "./constants.js";
 
 export const auth = betterAuth({
   database: prismaAdapter(db, {

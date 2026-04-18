@@ -105,6 +105,9 @@ importers:
       '@project/api':
         specifier: workspace:*
         version: link:../../packages/api
+      '@project/auth':
+        specifier: workspace:*
+        version: link:../../packages/auth
       '@project/config':
         specifier: workspace:*
         version: link:../../packages/config

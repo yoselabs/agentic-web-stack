@@ -1,5 +1,4 @@
 import type { AppRouter } from "@project/api/router";
-import { TRPC_MOUNT } from "@project/config/api-paths";
 import { QueryClient } from "@tanstack/react-query";
 import { createRouter as createTanStackRouter } from "@tanstack/react-router";
 import { createTRPCClient, httpBatchLink } from "@trpc/client";
@@ -32,7 +31,8 @@ function getQueryClient() {
 const trpcClient = createTRPCClient<AppRouter>({
   links: [
     httpBatchLink({
-      url: `${apiClient.baseUrl}${TRPC_MOUNT}`,
+      // NOTE: "/trpc" inlined by design — matches server mount. See zero-conf design spec §D3.
+      url: `${apiClient.baseUrl}/trpc`,
       fetch: apiClient.fetch,
     }),
   ],

@@ -1,5 +1,6 @@
 import { serve } from "@hono/node-server";
 import { trpcServer } from "@hono/trpc-server";
+import { MAX_UPLOAD_BYTES } from "@project/api/constants/todo";
 import { createContext } from "@project/api/context";
 import { appRouter } from "@project/api/router";
 import {
@@ -7,8 +8,6 @@ import {
   importTodosFromCSV,
 } from "@project/api/services/todo";
 import { auth } from "@project/auth";
-import { AUTH_MOUNT, TRPC_MOUNT } from "@project/config/api-paths";
-import { MAX_UPLOAD_BYTES } from "@project/config/limits";
 import { db } from "@project/db";
 import { env } from "@project/env/server";
 import { Hono } from "hono";
@@ -83,8 +82,11 @@ app.get("/health", async (c) => {
   return c.json(body, dbStatus === "ok" ? 200 : 503);
 });
 
-// Better-Auth handler
-app.on(["POST", "GET"], `${AUTH_MOUNT}/**`, (c) => {
+// Better-Auth handler.
+// NOTE: "/api/auth" is inlined by design — Better-Auth's client hardcodes
+// this path internally, so a shared constant would be a false SSOT. See
+// docs/superpowers/specs/2026-04-18-zero-conf-architecture-design.md §D3.
+app.on(["POST", "GET"], "/api/auth/**", (c) => {
   return auth.handler(c.req.raw);
 });
 
@@ -145,9 +147,11 @@ app.get("/api/todos/export", async (c) => {
   });
 });
 
-// tRPC handler — pass session into context
+// tRPC handler — pass session into context.
+// NOTE: "/trpc" is inlined by design — ≤2 call sites and no library
+// coupling. See docs/superpowers/specs/2026-04-18-zero-conf-architecture-design.md §D3.
 app.use(
-  `${TRPC_MOUNT}/*`,
+  "/trpc/*",
   trpcServer({
     router: appRouter,
     createContext: async (_opts, c) => {
