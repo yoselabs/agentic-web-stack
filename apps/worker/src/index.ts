@@ -1,4 +1,4 @@
-import { closeQueues } from "@project/jobs/queues";
+import { closeTransport } from "@project/email/handler";
 import { startEmailWorker } from "./handlers/email.js";
 import { startMaintenanceWorker } from "./handlers/maintenance.js";
 
@@ -9,7 +9,7 @@ console.log("[worker] started email + maintenance workers");
 async function shutdown(signal: NodeJS.Signals) {
   console.log(`[worker] received ${signal}, shutting down`);
   await Promise.all(workers.map((w) => w.close()));
-  await closeQueues();
+  closeTransport();
   process.exit(0);
 }
 

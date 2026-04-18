@@ -46,3 +46,11 @@ export async function handleEmailJob(data: EmailJobData): Promise<void> {
     text: rendered.text,
   });
 }
+
+// Call from the process's graceful-shutdown handler. Nodemailer's SMTP pool
+// leaks connections on process exit without this — matters in prod when the
+// worker is restarted frequently.
+export function closeTransport(): void {
+  transportInstance?.close();
+  transportInstance = null;
+}
