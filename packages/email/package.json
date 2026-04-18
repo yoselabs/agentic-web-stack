@@ -1,0 +1,24 @@
+{
+  "name": "@project/email",
+  "version": "0.0.0",
+  "private": true,
+  "type": "module",
+  "exports": {
+    "./service": {
+      "default": "./src/service.ts"
+    },
+    "./handler": {
+      "default": "./src/handler.ts"
+    }
+  },
+  "dependencies": {
+    "@project/env": "workspace:*",
+    "@project/jobs": "workspace:*",
+    "nodemailer": "catalog:"
+  },
+  "devDependencies": {
+    "@types/nodemailer": "catalog:",
+    "@types/node": "catalog:",
+    "typescript": "catalog:"
+  }
+}
