@@ -14,11 +14,18 @@
 
 ---
 
-### Task 1: Add `role` + `username` to Better-Auth via `additionalFields`
+### Task 1: Add `role` + `username` — schema, Better-Auth config, signup flow (atomic)
+
+This task is atomic to avoid a broken intermediate state where `username` is
+`required: true` at Better-Auth but the signup form doesn't send it. No
+backward compatibility — existing dev users get wiped by `db push --force-reset`.
 
 **Files:**
 - Modify: `packages/db/prisma/schema/auth.prisma`
 - Modify: `packages/auth/src/index.ts` (or wherever `betterAuth({...})` lives)
+- Modify: `apps/web/src/features/auth/auth-client.ts` (if it wraps signUp; likely no change)
+- Modify: the signup route form (find via `grep -rln "signUp\\.email\\|signUp\\b" apps/web/src/routes`)
+- Modify: existing e2e auth step defs (find via `grep -rln "signUp" e2e/steps e2e/features`)
 
 - [ ] **Step 1: Add columns to User model**
 
@@ -43,19 +50,7 @@ model User {
 }
 ```
 
-- [ ] **Step 2: Push schema (destructive — template has no prod data)**
-
-```bash
-make db-push
-```
-
-Expected: schema applied. Existing users will need `username` — since this is dev data, a reset is fine. If Prisma complains about existing rows, run:
-
-```bash
-pnpm --filter @project/db exec prisma db push --force-reset
-```
-
-- [ ] **Step 3: Declare additionalFields in Better-Auth config**
+- [ ] **Step 2: Declare additionalFields in Better-Auth config**
 
 In the `betterAuth({...})` call, add (or extend if present):
 
@@ -65,12 +60,12 @@ user: {
     role: {
       type: "string",
       defaultValue: "user",
-      input: false, // not set at signup
+      input: false,
       unique: false,
     },
     username: {
       type: "string",
-      input: true, // must be supplied at signup
+      input: true,
       unique: true,
       required: true,
     },
@@ -78,19 +73,63 @@ user: {
 },
 ```
 
-- [ ] **Step 4: Lint**
+- [ ] **Step 3: Update the signup form UI to collect username**
+
+Find the signup route:
+
+```bash
+grep -rln "signUp\.email\|signUp\b" apps/web/src/routes apps/web/src/features
+```
+
+Add a `username` field to the form (shadcn `Input` matching the existing
+email/password/name pattern), and include it in the `signUp.email({...})`
+payload:
+
+```tsx
+await signUp.email({
+  email,
+  password,
+  name,
+  username, // NEW — required
+});
+```
+
+- [ ] **Step 4: Update e2e auth step defs / helpers**
+
+```bash
+grep -rln "signUp\|sign up\|sign-up" e2e/steps e2e/features 2>/dev/null
+```
+
+Every existing step that creates a user via the sign-up API or UI now must
+pass `username`. If your steps take only an email, derive the username from
+the email's local-part (e.g., `alice@example.com` → `alice`) or add an
+explicit username parameter. Update all call sites; existing feature files
+may need a `And username is "<value>"` step added.
+
+- [ ] **Step 5: Push schema destructively (template has no prod data)**
+
+```bash
+pnpm --filter @project/db exec prisma db push --force-reset
+```
+
+- [ ] **Step 6: Lint + run existing auth-touching tests**
 
 ```bash
 make lint
+make test-unit
+make test ARGS="--grep 'sign'"
 ```
 
-Expected: PASS.
+Expected: PASS. Failures at this point mean an existing signup call site
+missed the `username` update — grep + fix until green. Do NOT make username
+optional to pass tests; the atomicity of this task is load-bearing for
+Plan C's invite-by-username flow.
 
-- [ ] **Step 5: Commit**
+- [ ] **Step 7: Commit**
 
 ```bash
-git add packages/db/prisma/schema/auth.prisma packages/auth/
-git commit -m "feat(auth): add User.role + User.username via additionalFields"
+git add packages/db/prisma/schema/auth.prisma packages/auth/ apps/web/src/ e2e/
+git commit -m "feat(auth): add User.role + User.username + signup-flow plumbing (destructive)"
 ```
 
 ---
@@ -195,6 +234,113 @@ pnpm install
 ```bash
 git add pnpm-workspace.yaml packages/api/package.json apps/web/package.json pnpm-lock.yaml
 git commit -m "deps: add @casl/ability, @casl/prisma, @casl/react"
+```
+
+---
+
+### Task 3.5: tRPC usage lint-guard
+
+The repo uses `@trpc/tanstack-react-query`'s `createTRPCOptionsProxy` pattern
+(see `apps/web/CLAUDE.md` + `apps/web/src/features/todo/use-todos.ts`). The
+old-style `createTRPCReact` API (`trpc.x.useMutation(...)`) compiles with no
+errors if imported from an unrelated module but will NOT work against the
+existing proxy. Add a grep-based lint check to fail builds that drift into
+the wrong API — matches the repo's existing `process.env` outside
+`@project/env` check style.
+
+**Files:**
+- Create: `scripts/check-trpc-patterns.ts`
+- Modify: `Makefile` (add the check to `make lint`) or `agent-harness` config
+
+- [ ] **Step 1: Create `scripts/check-trpc-patterns.ts`**
+
+```ts
+// Rejects the createTRPCReact style. The repo uses
+// createTRPCOptionsProxy from @trpc/tanstack-react-query.
+//
+// Forbidden patterns (in apps/web/src):
+//   - import of createTRPCReact
+//   - trpc.<path>.useMutation( / useQuery( / useSubscription(
+//
+// Canonical pattern:
+//   const { trpc } = Route.useRouteContext();
+//   useMutation(trpc.x.mutationOptions({...}))
+//   useQuery(trpc.x.queryOptions({...}))
+//   useSubscription(trpc.x.subscriptionOptions({...}))
+//
+// Exits 1 on any match; prints file:line for every hit.
+
+import { execSync } from "node:child_process";
+
+type Rule = { pattern: string; message: string };
+
+const rules: Rule[] = [
+  {
+    pattern: "createTRPCReact",
+    message:
+      "Use createTRPCOptionsProxy from @trpc/tanstack-react-query. See apps/web/CLAUDE.md.",
+  },
+  {
+    pattern: "trpc(\\.[A-Za-z_][A-Za-z0-9_]*)+\\.(useMutation|useQuery|useSubscription)\\(",
+    message:
+      "Use useMutation(trpc.x.mutationOptions(...)) / useQuery(trpc.x.queryOptions(...)) / useSubscription(trpc.x.subscriptionOptions(...)).",
+  },
+];
+
+let failed = false;
+for (const rule of rules) {
+  const out = execSync(
+    `grep -rEn --include='*.ts' --include='*.tsx' ${JSON.stringify(rule.pattern)} apps/web/src || true`,
+    { encoding: "utf8" },
+  ).trim();
+  if (out) {
+    console.error(`\n[check-trpc-patterns] forbidden pattern matched:\n`);
+    console.error(`  ${rule.message}\n`);
+    console.error(out);
+    console.error("");
+    failed = true;
+  }
+}
+
+if (failed) process.exit(1);
+console.log("[check-trpc-patterns] OK");
+```
+
+- [ ] **Step 2: Wire into `make lint`**
+
+Inspect the current `lint` target:
+
+```bash
+grep -nA3 "^lint:" Makefile
+```
+
+Add a line to invoke the check, either directly or via `agent-harness`.
+Minimal direct wiring:
+
+```makefile
+lint:
+	@bun run scripts/check-test-infra-integrity.ts
+	@bun run scripts/check-trpc-patterns.ts
+	agent-harness lint
+	pnpm exec tsc -b
+```
+
+(Adjust to the actual `lint:` body — this is illustrative.)
+
+- [ ] **Step 3: Smoke-run the check**
+
+```bash
+bun run scripts/check-trpc-patterns.ts
+```
+
+Expected: `[check-trpc-patterns] OK`. If any existing code uses the old
+pattern, fix it now — the repo's existing `use-todos.ts` is the reference.
+
+- [ ] **Step 4: Commit**
+
+```bash
+git add scripts/check-trpc-patterns.ts Makefile
+git commit -m "feat(lint): grep-guard for tRPC createTRPCOptionsProxy pattern"
 ```
 
 ---
@@ -478,14 +624,23 @@ Update the `Context` type export to include `ability: ReturnType<typeof abilityF
 make lint
 ```
 
-Expected: PASS. If typecheck complains `session.user.role` doesn't exist, the Better-Auth `additionalFields` typegen hasn't propagated — regenerate:
+Expected: PASS. Better-Auth's `additionalFields` does NOT automatically
+propagate to the session typing in this repo — there's no build-time typegen
+wired up. The idiomatic solution here is to cast at the authz boundary
+(the ONE place where role is read to build the ability); do not sprinkle
+casts elsewhere. Acceptable:
 
-```bash
-pnpm --filter @project/auth exec better-auth generate || true
-make lint
+```ts
+const user = session?.user
+  ? {
+      id: session.user.id,
+      role: (session.user as { role?: string }).role ?? "user",
+    }
+  : null;
 ```
 
-If still failing, cast via `as { role?: string }` at the boundary.
+This cast is the intended permanent solution for the spike. If you later
+add Better-Auth typegen, the cast can be deleted in one commit.
 
 - [ ] **Step 4: Commit**
 
@@ -637,7 +792,19 @@ const bullBoardAdapter = createBullBoardAdapter();
 app.route("/admin/queues", bullBoardAdapter.registerPlugin());
 ```
 
-The exact Bull Board Hono API is version-dependent. If `registerPlugin()` differs in your installed version, consult `node_modules/@bull-board/hono/README.md`.
+The `@bull-board/hono` API surface varies across 6.x minors. If
+`registerPlugin()` isn't a function on your installed version, inspect the
+adapter:
+
+```bash
+node -e "const { HonoAdapter } = require('@bull-board/hono'); console.log(Object.getOwnPropertyNames(HonoAdapter.prototype));"
+```
+
+Typical alternatives: `.registerPlugin()` returning a Hono sub-app (what the
+plan assumes), or exposing an `app` property you pass to `app.route()`. The
+acceptance test (Task 9 — unauthenticated → 403, admin → 200 with "email"
+and "maintenance" visible) is the oracle. Do not proceed until both cases
+pass.
 
 - [ ] **Step 6: Boot + smoke-test**
 

@@ -976,7 +976,7 @@ git commit -m "feat(worker): add apps/worker with email + maintenance BullMQ con
 
 **Files:**
 - Modify: `packages/auth/src/index.ts` (path may differ — find the file via `find packages/auth -name "*.ts" | head`)
-- Modify: `apps/server/src/index.ts` (CORS / server wiring — only if needed for the reset-password URL)
+- Modify: the login/signup route in `apps/web/src/routes/` (add "Forgot password?" link if not present)
 
 - [ ] **Step 1: Read current Better-Auth config**
 
@@ -984,11 +984,20 @@ git commit -m "feat(worker): add apps/worker with email + maintenance BullMQ con
 cat packages/auth/src/index.ts 2>/dev/null || find packages/auth/src -name "*.ts" -exec cat {} \;
 ```
 
-Note: the existing Better-Auth `betterAuth({...})` call. You'll extend it with `emailAndPassword.sendResetPassword`.
+Verify BOTH of these:
+1. `emailAndPassword: { enabled: true }` is present. If absent, the Better-Auth
+   forgot-password endpoint doesn't exist at all and Task 9's test will 404.
+   Add `{ enabled: true }` if needed.
+2. The login UI exposes a "Forgot password?" link. If not, the flow isn't
+   reachable end-to-end. Grep:
+
+```bash
+grep -rn "forget\|forgot\|reset.*password\|resetPassword" apps/web/src
+```
 
 - [ ] **Step 2: Add the reset-password hook**
 
-In the primary auth config file (where `betterAuth({...})` is called), locate the `emailAndPassword` block (or add one if absent). Add the `sendResetPassword` function:
+In the primary auth config file, extend `emailAndPassword`:
 
 ```ts
 import { sendEmail } from "@project/email/service";
@@ -1006,13 +1015,23 @@ emailAndPassword: {
 },
 ```
 
-If `emailAndPassword` already exists, add `sendResetPassword` to it without removing existing keys. Add `@project/email` as a dependency of `@project/auth` if not already present:
+Add `@project/email` as a dependency of `@project/auth`:
 
 ```bash
 pnpm --filter @project/auth add @project/email@workspace:*
 ```
 
-- [ ] **Step 3: Lint**
+- [ ] **Step 3: Add a minimal "Forgot password" + "Reset password" flow if absent**
+
+If the grep in Step 1 turned up nothing, add:
+- A "Forgot password?" link on the login route
+- A route that calls `authClient.forgetPassword({ email, redirectTo: "/reset-password" })`
+- A `/reset-password` route that accepts the `?token=` query and calls `authClient.resetPassword({ newPassword, token })`
+
+These are standard Better-Auth client-side calls and can be minimal (one
+form per screen, no extensive styling). If they already exist, skip.
+
+- [ ] **Step 4: Lint**
 
 ```bash
 make lint
@@ -1020,11 +1039,11 @@ make lint
 
 Expected: PASS.
 
-- [ ] **Step 4: Commit**
+- [ ] **Step 5: Commit**
 
 ```bash
-git add packages/auth/
-git commit -m "feat(auth): wire sendResetPassword through @project/email queue"
+git add packages/auth/ apps/web/src/
+git commit -m "feat(auth): wire sendResetPassword through email queue + minimal reset UI"
 ```
 
 ---
@@ -1098,11 +1117,27 @@ export async function getMessageBody(id: string): Promise<{
 
 - [ ] **Step 3: Write the failing test**
 
+Note: the test signs up via Better-Auth's API rather than `db.user.create`.
+Better-Auth's reset-password flow requires a matching `Account` row (for
+`provider: "credential"`); direct DB inserts skip that and the reset flow
+will silently fail to match the user.
+
+Verify the Mailpit URL before writing assertions:
+
+```bash
+echo $MAILPIT_API_URL
+```
+
+If empty, the test-runner isn't spreading `envForSubprocess("unit")` — fix
+`packages/api/scripts/test-runner.ts` first or the test will poll the dev
+Mailpit on port 8025 and contaminate it.
+
 Create `packages/api/src/__tests__/password-reset.test.ts`:
 
 ```ts
 import { auth } from "@project/auth";
 import { db } from "@project/db";
+import { env } from "@project/env/server";
 import {
   emailQueue,
   closeQueues,
@@ -1120,26 +1155,36 @@ import {
 // nodemailer delivers → Mailpit receives.
 
 const TEST_EMAIL = "reset-user@example.com";
-const TEST_USER_ID = "test-user-reset";
+const TEST_USERNAME = "reset-user";
 
-beforeAll(async () => {
+beforeAll(() => {
+  // Fail-loud: if the test-runner isn't injecting the suite Mailpit URL,
+  // we'd silently poll the dev inbox on :8025. This assertion prevents
+  // cross-contamination between dev and test.
+  if (!env.MAILPIT_API_URL.includes(":8")) {
+    throw new Error(
+      `Suspicious MAILPIT_API_URL: ${env.MAILPIT_API_URL} — check test-runner envForSubprocess wiring.`,
+    );
+  }
+});
+
+beforeEach(async () => {
   await db.user.deleteMany({ where: { email: TEST_EMAIL } });
-  await db.user.create({
-    data: {
-      id: TEST_USER_ID,
-      name: "Reset User",
+  await deleteAllMail();
+
+  // Create the user via Better-Auth so the credential Account row exists.
+  await auth.api.signUpEmail({
+    body: {
       email: TEST_EMAIL,
-      emailVerified: true,
+      password: "initial-pw-123!",
+      name: "Reset User",
+      username: TEST_USERNAME,
     },
   });
 });
 
-beforeEach(async () => {
-  await deleteAllMail();
-});
-
 afterAll(async () => {
-  await db.user.delete({ where: { id: TEST_USER_ID } }).catch(() => {});
+  await db.user.deleteMany({ where: { email: TEST_EMAIL } });
   await closeQueues();
   await db.$disconnect();
 });
@@ -1155,9 +1200,6 @@ async function drainEmailQueue() {
 
 describe("password reset end-to-end", () => {
   it("enqueues, delivers, and a reset link appears in Mailpit", async () => {
-    // Trigger the Better-Auth reset request. The exact API shape depends on
-    // the Better-Auth version — check packages/auth/src/index.ts exports.
-    // Below is the generic form; adjust if the repo wraps it.
     await auth.api.forgetPassword({
       body: { email: TEST_EMAIL, redirectTo: "http://localhost:3000/reset" },
     });
@@ -1170,6 +1212,13 @@ describe("password reset end-to-end", () => {
   });
 });
 ```
+
+Note: the test uses `username` in `signUpEmail` because Plan B marks it as
+a required additionalField. This file will only land AFTER Plan B Task 1
+updates the signup plumbing — running it before that breaks on the
+`username` requirement. If you're executing Plan A before Plan B, comment
+out the `username:` line until Plan B lands (or defer writing this test to
+after Plan B).
 
 - [ ] **Step 4: Run test**
 
