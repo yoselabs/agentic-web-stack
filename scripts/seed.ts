@@ -1,6 +1,26 @@
+// Canonical demo / test credentials + demo-mode seed runner.
+//
+// Constants are consumed by:
+// - This file's main() (demo-mode migrate sidecar + `make db-seed`)
+// - e2e/fixtures/credentials.ts (re-exports for test scenarios)
+//
+// Complex password future-proofs e2e against Better-Auth adding
+// upper/lower/digit/symbol rules.
+
 import { auth } from "@project/auth";
 import { db } from "@project/db";
-import { SEED_USER } from "./seed-credentials.ts";
+
+export const SHARED_PASSWORD = "TestPassword!123";
+
+export const SEED_USER = {
+  email: "demo@example.com",
+  password: SHARED_PASSWORD,
+} as const;
+
+export const TEST_USER = {
+  email: "test@example.com",
+  password: SHARED_PASSWORD,
+} as const;
 
 async function main() {
   console.log("Seeding database...");
@@ -31,9 +51,14 @@ async function main() {
   console.log(`  Password: ${SEED_USER.password}`);
 }
 
-main()
-  .catch((e) => {
-    console.error(e);
-    process.exit(1);
-  })
-  .finally(() => db.$disconnect());
+// Only run the seed when invoked as a script (`bun scripts/seed.ts`), not
+// when imported as a module (e.g. e2e/fixtures/credentials.ts reaches in
+// for the constant exports above). import.meta.main is Bun-native.
+if (import.meta.main) {
+  main()
+    .catch((e) => {
+      console.error(e);
+      process.exit(1);
+    })
+    .finally(() => db.$disconnect());
+}

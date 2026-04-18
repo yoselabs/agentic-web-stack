@@ -69,12 +69,10 @@ test-all: test-unit test ## Run unit + BDD suites (pre-merge confidence check)
 #                 make test ARGS="--headed"
 # ARGS forwarded to `playwright test` verbatim. See `playwright test --help`.
 test: db-generate ## BDD tests (isolated test DB, builds web app). ARGS forwarded to playwright.
-	@eval "$$(bun scripts/print-test-env.ts e2e)" && \
-	  bun scripts/kill-ports.ts $$TEST_WEB_PORT $$TEST_API_PORT
+	@bun scripts/kill-ports.ts --suite=e2e
 	cd e2e && pnpm exec bddgen && pnpm exec playwright test $(ARGS)
 test-ui: db-generate ## BDD tests in Playwright interactive UI mode
-	@eval "$$(bun scripts/print-test-env.ts e2e)" && \
-	  bun scripts/kill-ports.ts $$TEST_WEB_PORT $$TEST_API_PORT
+	@bun scripts/kill-ports.ts --suite=e2e
 	cd e2e && pnpm exec bddgen && pnpm exec playwright test --ui $(ARGS)
 
 # Cleanup
