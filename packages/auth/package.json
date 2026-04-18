@@ -14,6 +14,7 @@
   "dependencies": {
     "@prisma/client": "catalog:",
     "@project/db": "workspace:*",
+    "@project/email": "workspace:*",
     "@project/env": "workspace:*",
     "better-auth": "^1.6.2"
   },

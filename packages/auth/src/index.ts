@@ -1,4 +1,5 @@
 import { db } from "@project/db";
+import { sendEmail } from "@project/email/service";
 import { env } from "@project/env/server";
 import { betterAuth } from "better-auth";
 import { prismaAdapter } from "better-auth/adapters/prisma";
@@ -11,6 +12,13 @@ export const auth = betterAuth({
   emailAndPassword: {
     enabled: true,
     minPasswordLength: MIN_PASSWORD_LENGTH,
+    sendResetPassword: async ({ user, url }) => {
+      await sendEmail({
+        template: "password-reset",
+        to: user.email,
+        vars: { userName: user.name, resetUrl: url },
+      });
+    },
   },
   trustedOrigins: [env.CORS_ORIGIN],
 });

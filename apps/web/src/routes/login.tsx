@@ -12,6 +12,7 @@ import { Label } from "@project/ui/components/label";
 import { useForm } from "@tanstack/react-form";
 import {
   createFileRoute,
+  Link,
   redirect,
   useNavigate,
   useRouter,
@@ -181,6 +182,17 @@ function LoginPage() {
                 </Button>
               )}
             </form.Subscribe>
+
+            {!isSignUp && (
+              <p className="text-center text-sm text-muted-foreground">
+                <Link
+                  to={"/forgot-password" as string}
+                  className="text-foreground underline underline-offset-4 hover:text-primary"
+                >
+                  Forgot password?
+                </Link>
+              </p>
+            )}
           </form>
 
           <p className="mt-4 text-center text-sm text-muted-foreground">
