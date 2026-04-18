@@ -1,7 +1,11 @@
-import { Prisma, type PrismaClient } from "@project/db";
+import { ChatMessageKind, Prisma, type PrismaClient } from "@project/db";
 import { TRPCError } from "@trpc/server";
+import { roomChannel, userChannel } from "./channels.js";
+import { MESSAGE_PAGE_SIZE } from "./constants.js";
+import { isUserInRoom } from "./presence.js";
 
 type DbClient = PrismaClient | Prisma.TransactionClient;
+type Cursor = { createdAt: Date; id: string };
 
 function dmKeyOf(a: string, b: string): string {
   return [a, b].sort().join(":");
@@ -158,5 +162,129 @@ export async function getRoom(db: DbClient, userId: string, roomId: string) {
         },
       },
     },
+  });
+}
+
+export async function listMessages(
+  db: DbClient,
+  userId: string,
+  roomId: string,
+  beforeCursor?: Cursor,
+) {
+  await requireMembership(db, userId, roomId);
+  const where = beforeCursor
+    ? {
+        roomId,
+        OR: [
+          { createdAt: { lt: beforeCursor.createdAt } },
+          { createdAt: beforeCursor.createdAt, id: { lt: beforeCursor.id } },
+        ],
+      }
+    : { roomId };
+  return db.chatMessage.findMany({
+    where,
+    orderBy: [{ createdAt: "desc" }, { id: "desc" }],
+    take: MESSAGE_PAGE_SIZE,
+  });
+}
+
+export async function messagesSince(
+  db: DbClient,
+  userId: string,
+  roomId: string,
+  afterCursor: Cursor,
+) {
+  await requireMembership(db, userId, roomId);
+  return db.chatMessage.findMany({
+    where: {
+      roomId,
+      OR: [
+        { createdAt: { gt: afterCursor.createdAt } },
+        { createdAt: afterCursor.createdAt, id: { gt: afterCursor.id } },
+      ],
+    },
+    orderBy: [{ createdAt: "asc" }, { id: "asc" }],
+    take: MESSAGE_PAGE_SIZE * 4,
+  });
+}
+
+async function nudgeAbsentMembers(
+  tx: Prisma.TransactionClient,
+  roomId: string,
+) {
+  const members = await tx.chatMembership.findMany({
+    where: { roomId },
+    select: { userId: true },
+  });
+  for (const { userId } of members) {
+    if (!isUserInRoom(roomId, userId)) {
+      userChannel.publish(userId, "unread:nudge", { roomId });
+    }
+  }
+}
+
+export async function sendTextMessage(
+  tx: Prisma.TransactionClient,
+  userId: string,
+  roomId: string,
+  text: string,
+) {
+  await requireMembership(tx, userId, roomId);
+  const msg = await tx.chatMessage.create({
+    data: { roomId, userId, kind: ChatMessageKind.TEXT, text },
+  });
+  // Publish AFTER the transaction commits. Within the tx, the row exists for
+  // readers at this REPEATABLE READ snapshot; outside, $transaction wraps
+  // BEGIN/COMMIT. We emit here because service is called inside the router's
+  // $transaction — subscribers will still see the row once tx closes.
+  roomChannel.publish(roomId, "message:new", {
+    id: msg.id,
+    roomId: msg.roomId,
+    userId: msg.userId,
+    kind: "TEXT",
+    text: msg.text,
+    fileId: null,
+    createdAt: msg.createdAt,
+  });
+  await nudgeAbsentMembers(tx, roomId);
+  return msg;
+}
+
+export async function sendFileMessage(
+  tx: Prisma.TransactionClient,
+  userId: string,
+  roomId: string,
+  fileId: string,
+) {
+  await requireMembership(tx, userId, roomId);
+  const file = await tx.chatFile.findUnique({ where: { id: fileId } });
+  if (!file || file.uploadedBy !== userId) {
+    throw new TRPCError({ code: "FORBIDDEN", message: "File not available" });
+  }
+  const msg = await tx.chatMessage.create({
+    data: { roomId, userId, kind: ChatMessageKind.FILE, fileId },
+  });
+  roomChannel.publish(roomId, "message:new", {
+    id: msg.id,
+    roomId: msg.roomId,
+    userId: msg.userId,
+    kind: "FILE",
+    text: null,
+    fileId: msg.fileId,
+    createdAt: msg.createdAt,
+  });
+  await nudgeAbsentMembers(tx, roomId);
+  return msg;
+}
+
+export async function markRead(
+  tx: Prisma.TransactionClient,
+  userId: string,
+  roomId: string,
+  _lastSeenMessageId: string,
+) {
+  await tx.chatMembership.update({
+    where: { roomId_userId: { roomId, userId } },
+    data: { lastReadAt: new Date() },
   });
 }

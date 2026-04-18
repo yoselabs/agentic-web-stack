@@ -6,8 +6,12 @@ import {
   getRoom,
   inviteToRoom,
   leaveRoom,
+  listMessages,
   listMyRooms,
+  markRead,
+  messagesSince,
   requireMembership,
+  sendTextMessage,
 } from "../service.js";
 
 const U1 = "chat-test-u1";
@@ -170,5 +174,70 @@ describe("listMyRooms + getRoom", () => {
     const got = await getRoom(db, U1, room.id);
     expect(got?.id).toBe(room.id);
     expect(got?.memberships.length).toBe(2);
+  });
+});
+
+describe("sendTextMessage + listMessages", () => {
+  it("persists and returns messages newest-first", async () => {
+    const room = await db.$transaction((tx) =>
+      createGroupRoom(tx, U1, "m1", [U2]),
+    );
+    const a = await db.$transaction((tx) =>
+      sendTextMessage(tx, U1, room.id, "one"),
+    );
+    const b = await db.$transaction((tx) =>
+      sendTextMessage(tx, U1, room.id, "two"),
+    );
+    const msgs = await listMessages(db, U1, room.id);
+    expect(msgs.map((m) => m.id)).toEqual([b.id, a.id]);
+  });
+
+  it("rejects text send from non-member", async () => {
+    const room = await db.$transaction((tx) =>
+      createGroupRoom(tx, U1, "m2", [U2]),
+    );
+    await expect(
+      db.$transaction((tx) => sendTextMessage(tx, U3, room.id, "hi")),
+    ).rejects.toThrow();
+  });
+});
+
+describe("messagesSince cursor", () => {
+  it("returns only messages strictly after the cursor, ASC", async () => {
+    const room = await db.$transaction((tx) =>
+      createGroupRoom(tx, U1, "m3", [U2]),
+    );
+    const a = await db.$transaction((tx) =>
+      sendTextMessage(tx, U1, room.id, "a"),
+    );
+    const b = await db.$transaction((tx) =>
+      sendTextMessage(tx, U1, room.id, "b"),
+    );
+    const c = await db.$transaction((tx) =>
+      sendTextMessage(tx, U1, room.id, "c"),
+    );
+    const since = await messagesSince(db, U1, room.id, {
+      createdAt: a.createdAt,
+      id: a.id,
+    });
+    expect(since.map((m) => m.id)).toEqual([b.id, c.id]);
+  });
+});
+
+describe("markRead", () => {
+  it("updates lastReadAt for the membership", async () => {
+    const room = await db.$transaction((tx) =>
+      createGroupRoom(tx, U1, "m4", [U2]),
+    );
+    const m = await db.$transaction((tx) =>
+      sendTextMessage(tx, U2, room.id, "hello"),
+    );
+    await db.$transaction((tx) => markRead(tx, U1, room.id, m.id));
+    const updated = await db.chatMembership.findUnique({
+      where: { roomId_userId: { roomId: room.id, userId: U1 } },
+    });
+    expect(updated?.lastReadAt?.getTime()).toBeGreaterThanOrEqual(
+      m.createdAt.getTime(),
+    );
   });
 });
