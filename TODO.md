@@ -86,6 +86,7 @@ Items marked **[recipe]** should be documented as patterns — added per-project
 - [ ] **[recipe]** CSRF protection — for custom forms beyond Better-Auth
 - [ ] **[recipe]** Input sanitization — sanitize HTML in user-generated content (DOMPurify)
 - [ ] **[recipe]** Row-level security — Prisma middleware to enforce user/org data isolation
+- [ ] **[template]** Server-bundle import hygiene — lint gate + bundle analyzer (see §Bundle Hygiene Guardrails below)
 
 ## Quality & Testing
 
@@ -246,6 +247,83 @@ Currently in `RootDocument`'s `useEffect` at `apps/web/src/routes/__root.tsx:42`
 ### Dead-ends (not todos, just remembered)
 - **Vitest under Bun runtime** (`bun --bun vitest`): blocked by Vite SSR transform losing Zod's named export. Moved to `bun test` instead. Not revisitable until [bun#4145](https://github.com/oven-sh/bun/issues/4145) closes.
 - **Prisma `--skip-if-unchanged`**: no native flag. We built `packages/db/scripts/generate.ts` (content-hash). Open request: [prisma/prisma#29308](https://github.com/prisma/prisma/issues/29308).
+
+---
+
+## Bundle Hygiene Guardrails
+
+Defense-in-depth against server code leaking into the web bundle. Both should ship together; each catches what the other misses. Referenced from the "Security" section.
+
+### Gate 1: Lint rule (primary enforcement) — `scripts/check-server-imports.ts`
+
+**Goal:** fail `make lint` when `apps/web/src/**` contains a value-import from a server-only module. Allow `import type { ... }` from the same paths (elides at compile time).
+
+**Why not Biome's `noRestrictedImports`:** on Biome 1.9 (installed), the rule doesn't distinguish value imports from type-only imports — would forbid `import type { AppRouter }` too, breaking the intended pattern.
+
+**Why not Biome 2.x GritQL plugins:** would require upgrading Biome (major-version bump), learning GritQL, and a known bug (biome#5801) is that GritQL patterns don't match different import-statement kinds reliably. Not mature enough.
+
+**Why not Rego/conftest:** not currently used in the repo. Adding OPA + conftest as a new tool in the lint pipeline for one rule is overkill, and Rego isn't well-suited to JS AST/substring matching.
+
+**The idiomatic fit:** extend the existing `scripts/check-env-boundary.ts` + `e2e/scripts/check-feature-emails.ts` pattern — a short TS script using ripgrep, wired into `make lint`. Zero new deps.
+
+**Spec:**
+
+- File: `scripts/check-server-imports.ts`.
+- Scope: `.ts` / `.tsx` under `apps/web/src/**`.
+- Forbid value imports (`^import\s+\{`) from:
+  - `@project/api/router`
+  - `@project/api/domains/*/http`
+  - `@project/api/domains/*/service`
+  - `@project/auth` (the root — not the `/constants` subpath)
+  - `@project/db`
+- Allow `^import\s+type\s+\{` from those same paths (and bare `import type {}` augmentation loads).
+- Allowlist escape hatch: hardcoded list of paths that may legitimately break the rule (should stay empty initially; each addition reviewed).
+- Fail message: cite the file, the offending line, and "Use `import type` — value imports leak the server bundle into the client. See root CLAUDE.md."
+- Wire into `Makefile`'s `lint` target right after `check-env-boundary.ts`.
+
+**Estimated effort:** 30-60 min (script + test that it fires on a crafted violation + hook into Makefile).
+
+### Gate 2: Bundle analyzer (diagnostic) — `scripts/check-bundle-hygiene.ts`
+
+**Goal:** catch leaks the lint rule can't see — transitive leaks through a package that re-exports server modules, dynamic `import()` with computed paths, or a missing `type` keyword deep in a helper file that slipped past code review.
+
+**Why the grep-on-built-JS approach from Task 5 is insufficient:** identifier minification + string-literal matching + Nitro's multiple output paths (`.output/` vs `apps/web/dist/`) make grep fragile and high-false-positive (`better-auth/react` matches the forbidden `better-auth` regex too).
+
+**Spec:**
+
+- Add `rollup-plugin-visualizer` to `apps/web` devDeps.
+- In `apps/web/vite.config.ts`, gate it on `ANALYZE=1`:
+  ```ts
+  process.env.ANALYZE && visualizer({
+    filename: ".stats/bundle.json",
+    template: "raw-data",
+    gzipSize: true,
+  })
+  ```
+- New Makefile target `make check-bundle`:
+  ```make
+  check-bundle:
+      ANALYZE=1 pnpm --filter @project/web build
+      bun scripts/check-bundle-hygiene.ts
+  ```
+- `scripts/check-bundle-hygiene.ts` (~30 lines): parse `.stats/bundle.json`, fail if any module ID matches:
+  - `/^better-auth($|\/(?!react|client))/` — matches bare `better-auth` and `better-auth/api`; allows `/react` + `/client`
+  - `/^@prisma\/client/`
+  - `/^papaparse/`
+  - `/^@project\/auth(?!\/constants)/`
+  - `/^@project\/db/`
+- Wire into CI (`.github/workflows/ci.yml`) as a separate job — doesn't need to run in the inner dev loop.
+- Optional: write one deliberate-leak test fixture to confirm the analyzer actually fails when it should.
+
+**Estimated effort:** 60-90 min (plugin install, vite config, check script, make target, CI job). Worth adding a "canary" test that introduces a known leak and confirms the analyzer catches it.
+
+### Why both (can't one replace the other?)
+
+- Lint alone misses transitive leaks through packages you don't control. The server can change underneath you; the import site stays clean while the graph silently grows.
+- Analyzer alone is slow (requires a full build), runs late (after CI), and if someone ignores the failure they're blocked on a fix they could've caught at `make lint`.
+- Grep alone (today's preflight) is unreliable.
+
+Lint fails in seconds on typos. Analyzer catches the weird stuff in minutes on CI. Defense in depth.
 
 ---
 
