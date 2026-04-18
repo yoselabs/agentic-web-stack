@@ -218,11 +218,20 @@ function assertDockerRunning(): void {
 // injection surface. If Windows support is ever added, convert to execFileSync.
 export function setupTestDatabase(suite: TestSuite): void {
   assertDockerRunning();
-  const { TEST_PORT, TEST_CONTAINER, TEST_DATABASE_URL } = testDbEnv(suite);
+  const env = testDbEnv(suite);
+  const { TEST_DATABASE_URL } = env;
+  // Every var substituted in docker-compose.test.yml must appear here —
+  // otherwise `docker compose up` silently expands to the empty string
+  // and the container binds the wrong port or dies on a bad name.
   const composeEnv = {
     ...process.env,
-    TEST_PORT: String(TEST_PORT),
-    TEST_CONTAINER,
+    TEST_PORT: String(env.TEST_PORT),
+    TEST_CONTAINER: env.TEST_CONTAINER,
+    TEST_REDIS_PORT: String(env.TEST_REDIS_PORT),
+    TEST_REDIS_CONTAINER: env.TEST_REDIS_CONTAINER,
+    TEST_MAILPIT_SMTP_PORT: String(env.TEST_MAILPIT_SMTP_PORT),
+    TEST_MAILPIT_HTTP_PORT: String(env.TEST_MAILPIT_HTTP_PORT),
+    TEST_MAILPIT_CONTAINER: env.TEST_MAILPIT_CONTAINER,
   };
   const prismaCwd = path.join(PROJECT_ROOT, "packages/db");
   const pushEnv = {
@@ -234,7 +243,7 @@ export function setupTestDatabase(suite: TestSuite): void {
     PRISMA_USER_CONSENT_FOR_DANGEROUS_AI_ACTION: "yes",
   };
 
-  if (isContainerHealthy(TEST_CONTAINER)) {
+  if (isContainerHealthy(env.TEST_CONTAINER)) {
     try {
       execSync("pnpm exec prisma db push --force-reset --skip-generate", {
         cwd: prismaCwd,
