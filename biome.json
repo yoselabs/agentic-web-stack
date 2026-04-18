@@ -7,6 +7,18 @@
       "recommended": true,
       "nursery": {
         "noFloatingPromises": "error"
+      },
+      "performance": {
+        "noBarrelFile": "error",
+        "noReExportAll": "error"
+      },
+      "style": {
+        "noProcessEnv": "error",
+        "noParameterAssign": "error",
+        "noCommonJs": "error"
+      },
+      "suspicious": {
+        "noConsole": "error"
       }
     }
   },
@@ -32,5 +44,55 @@
       "!**/.features-gen",
       "!**/test-results"
     ]
-  }
+  },
+  "overrides": [
+    {
+      "includes": [
+        "packages/env/**",
+        "scripts/**",
+        "**/scripts/**",
+        "**/vite.config.ts",
+        "**/playwright.config.ts",
+        "packages/db/prisma.config.ts",
+        "apps/server/src/logger.ts"
+      ],
+      "linter": {
+        "rules": {
+          "style": { "noProcessEnv": "off" },
+          "suspicious": { "noConsole": "off" }
+        }
+      }
+    },
+    {
+      "includes": ["apps/web/**"],
+      "linter": {
+        "rules": {
+          "style": {
+            "noRestrictedImports": {
+              "level": "error",
+              "options": {
+                "paths": {
+                  "@project/api": "Use a subpath: @project/api/router, @project/api/context, @project/api/domains/<name>/<service|router|constants|http>. Root imports leak server-only modules into the web bundle.",
+                  "@project/auth": "Use a subpath: @project/auth/constants, @project/auth/client. Root imports leak server-only modules into the web bundle.",
+                  "@project/env": "Use @project/env/server (server code) or @project/env/client (web code). Root imports leak server-only env vars into the client bundle.",
+                  "@project/db": "Never import Prisma client in web code. Derive types via @project/api/router + inferRouterOutputs."
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    {
+      "includes": ["packages/db/src/index.ts", "e2e/fixtures/credentials.ts"],
+      "linter": {
+        "rules": {
+          "performance": {
+            "noBarrelFile": "off",
+            "noReExportAll": "off"
+          }
+        }
+      }
+    }
+  ]
 }
