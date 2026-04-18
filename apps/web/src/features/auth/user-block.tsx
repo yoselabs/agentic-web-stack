@@ -10,7 +10,7 @@ export function UserBlock() {
 
   const handleSignOut = async () => {
     await signOut();
-    navigate({ to: "/" });
+    await navigate({ to: "/" });
   };
 
   return (

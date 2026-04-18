@@ -78,7 +78,7 @@ function LoginPage() {
         }
       }
       await router.invalidate();
-      navigate({ to: "/dashboard" });
+      await navigate({ to: "/dashboard" });
     },
   });
 
