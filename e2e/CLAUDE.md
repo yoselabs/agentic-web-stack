@@ -13,6 +13,38 @@
 
 Step definitions are written AFTER the UI exists so selectors reference real elements. The Gherkin spec (written first) is the behavior contract; step defs are the implementation detail.
 
+## Running Scoped Subsets
+
+`make test` runs the full suite (desktop + mobile). For the inner dev loop, filter with `ARGS`:
+
+```bash
+# A single scenario by title regex (matches the Gherkin scenario name)
+make test ARGS="--grep 'Create a todo'"
+
+# All scenarios in one feature (feature name is part of the test title)
+make test ARGS="--grep Authentication"
+make test ARGS="--grep 'Todo Lists'"
+
+# Skip the mobile viewport project (desktop only — faster)
+make test ARGS="--project desktop"
+
+# Combine filters
+make test ARGS="--project desktop --grep 'Sign in'"
+
+# Watch the browser drive the test (debugging UI)
+make test ARGS="--headed"
+
+# Open Playwright's interactive UI, filtered
+make test-ui ARGS="--grep Authentication"
+
+# List matching tests without running them (dry run)
+make test ARGS="--list --grep auth"
+```
+
+`ARGS` is forwarded to `playwright test` verbatim. See `pnpm exec playwright test --help` from `e2e/` for the full flag list. Common picks: `--grep`, `--grep-invert`, `--project`, `--headed`, `--debug`, `--list`, `--repeat-each`, `--retries`.
+
+The full `make test` is authoritative — never claim work is done on a scoped run alone.
+
 ## Scenario Strategy
 
 ### What BDD Covers (and What It Doesn't)

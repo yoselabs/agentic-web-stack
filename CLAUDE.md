@@ -22,7 +22,12 @@ Each directory with a CLAUDE.md has area-specific guidance. Read it before worki
 - `make check` — alias for `make lint`
 - `make lint` — full quality gate (MUST pass before claiming done): `agent-harness lint` + `tsc -b`
 - `make fix` — auto-fix lint issues + typecheck
-- `make test` — BDD tests (isolated e2e-suite Postgres, dynamic port per worktree — see `scripts/test-db.ts`)
+- `make test` — BDD tests (isolated e2e-suite Postgres, dynamic port per worktree — see `scripts/test-db.ts`). Pass filters via `ARGS`:
+  - `make test ARGS="--grep 'Create a todo'"` — scenarios matching a title regex
+  - `make test ARGS="--grep Authentication"` — all scenarios in a feature
+  - `make test ARGS="--project desktop"` — skip the mobile viewport (faster inner loop)
+  - `make test ARGS="--headed"` — watch the browser drive the test
+  - ARGS is forwarded to `playwright test` verbatim; see `e2e/CLAUDE.md`.
 - `make test-unit` — unit/integration tests (isolated unit-suite Postgres, dynamic port per worktree — see `scripts/test-db.ts`)
 - `make routes` — regenerate TanStack Router route tree without starting dev server
 - `make db-push` — push Prisma schema to database

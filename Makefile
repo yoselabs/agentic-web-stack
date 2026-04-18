@@ -67,12 +67,20 @@ test-unit: db-generate
 	pnpm --filter @project/api test
 
 # BDD Tests (uses separate test database, dynamic port per suite — see scripts/test-db.ts)
+#
+# Full suite:     make test
+# Filtered run:   make test ARGS="--grep 'Create a todo'"     # scenario title regex
+#                 make test ARGS="--grep Authentication"      # feature name regex
+#                 make test ARGS="--project desktop"          # skip mobile viewport
+#                 make test ARGS="--project desktop --grep auth"
+#                 make test ARGS="--headed"                   # see the browser
+# ARGS is forwarded to `playwright test` verbatim. See `playwright test --help`.
 test: db-generate
 	@export $(CONFIG_SH) && pnpm exec tsx scripts/kill-ports.ts $$TEST_WEB_PORT $$TEST_API_PORT
-	cd e2e && pnpm exec bddgen && pnpm exec playwright test
+	cd e2e && pnpm exec bddgen && pnpm exec playwright test $(ARGS)
 test-ui: db-generate
 	@export $(CONFIG_SH) && pnpm exec tsx scripts/kill-ports.ts $$TEST_WEB_PORT $$TEST_API_PORT
-	cd e2e && pnpm exec bddgen && pnpm exec playwright test --ui
+	cd e2e && pnpm exec bddgen && pnpm exec playwright test --ui $(ARGS)
 
 # Cleanup
 clean:
