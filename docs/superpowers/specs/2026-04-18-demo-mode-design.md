@@ -3,7 +3,7 @@
 **Date:** 2026-04-18
 **Branch:** `spike/demo-mode`
 **Motivated by:** deferred item A from `docs/superpowers/specs/2026-04-11-bun-test-spike-handover.md`
-**Related:** also folds in deferred item B (`apps/server` `tsx watch` → `bun --watch`) as a separate commit
+**Related:** also folds in three small cleanups as separate commits — (B) `apps/server` `tsx watch` → `bun --watch`, (C) zero-conf dev compose (literals, no `${DEV_DB_*}`), (D) `@project/auth` barrel removal (compliance with root CLAUDE.md)
 
 ## Goal
 
@@ -21,7 +21,7 @@ docker compose up
 
 1. Plain `docker compose up` (no flags, no profiles, no env files) boots postgres + migrate + server + web cold on a clean machine.
 2. First-boot schema provision runs automatically; server does not start before the schema is ready.
-3. Seeded user `demo@example.com` / `demodemo` can sign in immediately.
+3. Seeded user `demo@example.com` / `TestPassword!123` (from `e2e/fixtures/credentials.ts::SEED_USER`) can sign in immediately.
 4. `make dev`, `make setup`, `make test`, `make test-unit`, `make lint` remain unchanged in behavior — dev workflow untouched.
 5. `make clean` tears down both demo and dev compose stacks.
 6. Rerunning `docker compose up` against the same volume is idempotent (migrate sidecar and seed both no-op if state already exists).
@@ -185,34 +185,52 @@ Five env vars reach the app through different paths — getting this wrong silen
 
 **Note on seed path:** the seed script (see below) uses Better-Auth's **in-process `auth.api.signUpEmail`**, which bypasses HTTP entirely — so it's not subject to `trustedOrigins` / `CORS_ORIGIN` checks. The seed works even if we ever got `BETTER_AUTH_URL` wrong, because it never hits the wire.
 
-### Seed script (`scripts/seed-demo.ts`)
+### Seed — reuse `scripts/seed.ts`
 
-Single file at repo root, ~15 lines. Uses the existing `@project/auth` barrel (which is server-only by design — it wraps Better-Auth's `auth` instance) and `@project/db` for the idempotency check:
+The repo already has `scripts/seed.ts` that creates the demo user via `auth.api.signUpEmail` and checks existence first. Wired to `make db-seed`. Reuse it as-is with two small edits:
 
-```typescript
-import { auth } from "@project/auth";
-import { db } from "@project/db";
+1. **Drop the 5 sample todos block** (`db.todo.createMany({...})`) — per the design decision that the demo user lands in the empty state. Net reduction: ~30 lines deleted from `scripts/seed.ts`.
+2. **Update imports** to use the new named subpath after the barrel-removal commit (see below): `import { auth } from "@project/auth/server"`.
 
-const email = "demo@example.com";
-const password = "demodemo";
+Credentials stay: `SEED_USER` in `e2e/fixtures/credentials.ts` is `demo@example.com` / `TestPassword!123`. The complex password is deliberate (the fixture comment explains: future-proofs against Better-Auth adding complexity rules). The demo README and seed output both reflect this value — **don't substitute `demodemo`**, that would break the e2e invariant that one credential works across seed + test scenarios.
 
-const existing = await db.user.findUnique({ where: { email } });
-if (existing) {
-  console.log(`✓ Demo user already present: ${email} / ${password}`);
-  process.exit(0);
-}
+Migrate sidecar runs:
 
-await auth.api.signUpEmail({
-  body: { email, password, name: "Demo User" },
-});
-console.log(`✓ Demo user created: ${email} / ${password}`);
+```yaml
+command: ["sh", "-c", "pnpm --filter @project/db exec prisma db push --skip-generate && bun /app/scripts/seed.ts"]
 ```
 
-- **Idempotency via DB lookup, not error-string matching.** `db.user.findUnique` short-circuits on rerun. No fragile regex over Better-Auth's human-readable error text (which could change across versions).
-- **In-process `auth.api.signUpEmail`** means password hashing matches whatever algo Better-Auth is configured with — no direct Prisma write, no brittle hash duplication.
-- Runs inside the `migrate` sidecar **after** `prisma db push` completes. Server isn't needed.
-- Prints credentials to the compose log so evaluators see them on first boot.
-- Imports use existing package subpaths — no new exports need to be added to `packages/auth` or `packages/db`.
+`scripts/seed.ts` already disconnects Prisma in a `.finally()` block and exits cleanly — compatible with sidecar `service_completed_successfully` semantics.
+
+### Barrel cleanup on `@project/auth`
+
+Root CLAUDE.md forbids barrels on `@project/auth`: *"`@project/env`, `@project/api`, `@project/auth` expose named subpaths only"*. The current `packages/auth/package.json` exposes `.` → `./src/index.ts` — a barrel in violation of the rule. Three files import through it: `apps/server/src/index.ts:10`, `packages/api/src/context.ts:1`, `scripts/seed.ts:1`.
+
+**Why fix this now:** the spike already touches `scripts/seed.ts` (drop the todos block). Rather than perpetuate the barrel in an edited file, fix it. The package has only two public files (`index.ts` + `constants.ts`), so the cleanup is two `exports` entries — not file-by-file enumeration.
+
+**Change** in `packages/auth/package.json`:
+
+```diff
+ "exports": {
+-  ".": { "default": "./src/index.ts" },
++  "./server": { "default": "./src/index.ts" },
+   "./constants": { "default": "./src/constants.ts" }
+ }
+```
+
+**Callsite updates** (3 files):
+
+```diff
+-import { auth } from "@project/auth";
++import { auth } from "@project/auth/server";
+```
+
+```diff
+-import type { Session } from "@project/auth";
++import type { Session } from "@project/auth/server";
+```
+
+Dropping the `.` entry entirely (no bare `@project/auth` import works) prevents drift: any future stray barrel import fails at resolve time. `make lint` + `make test` + `make test-unit` catch any miss.
 
 ### `.dockerignore`
 
@@ -256,7 +274,7 @@ docker compose up
 Open `http://localhost:3000`. Sign in with:
 
 - **Email:** `demo@example.com`
-- **Password:** `demodemo`
+- **Password:** `TestPassword!123`
 
 First build takes ~2–3 minutes (pnpm install + vite build + bun install). Subsequent `docker compose up` runs start in ~10 seconds.
 
@@ -280,13 +298,26 @@ The branch lands multiple commits so either can be reverted independently:
 - Verify `make setup && make dev` works on a clean checkout with no `.env`
 - Isolated from demo-mode work — if demo-mode hits snags, this zero-conf fix stands on its own
 
-**Commits 3–N — demo mode proper**
+**Commit 3 — `refactor(auth): drop barrel, expose ./server subpath`**
+- `packages/auth/package.json`: replace `.` export with `./server` (keep `./constants`)
+- Update 3 callsites: `apps/server/src/index.ts:10`, `packages/api/src/context.ts:1`, `scripts/seed.ts:1` — all `@project/auth` → `@project/auth/server`
+- Brings the repo into compliance with root CLAUDE.md's barrel rule
+- Touches the same `scripts/seed.ts` that commit 4 edits — ordering avoids merge churn
+- `make lint && make test-unit && make test` verifies no callsites missed
+
+**Commit 4 — `refactor(seed): drop sample todos, keep demo user only`**
+- `scripts/seed.ts`: delete the `db.todo.createMany` block + "Created 5 sample todos" log
+- Keeps: user creation via `auth.api.signUpEmail`, existence check, credentials print
+- Prepares the file to be invoked by the migrate sidecar
+- `make db-seed` on a fresh DB produces just the user now
+
+**Commits 5–N — demo mode proper**
 - `pnpm-workspace.prod.yaml`
 - Root `Dockerfile` (5-stage, pnpm cache mounts, pinned pnpm@10.32.1)
-- `docker-compose.yml` (new, full demo — not the postgres file we just renamed)
+- `docker-compose.yml` (new file, full demo stack — docker-compose.dev.yml was split out in commit 2)
 - `.dockerignore`
-- `scripts/seed-demo.ts`
 - `README.md` quick-start prepend
+- (no new `scripts/seed-demo.ts` — sidecar reuses `scripts/seed.ts` from commit 4)
 
 ## Testing
 
