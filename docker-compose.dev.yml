@@ -1,5 +1,5 @@
-# Dev-mode: postgres only. Used by `make setup`, `make db`, `make clean`.
-# The full-stack demo uses docker-compose.yml (see that file + README).
+# Dev-mode: postgres, redis, mailpit. Used by `make setup`, `make db`, `make clean`.
+# The full-stack demo uses docker-compose.yml.
 name: agentic-web-stack
 
 services:
@@ -21,5 +21,32 @@ services:
       retries: 5
     restart: unless-stopped
 
+  redis:
+    image: redis:7-alpine
+    container_name: agentic-redis
+    ports:
+      - "6379:6379"
+    volumes:
+      - redis_data:/data
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+    restart: unless-stopped
+
+  mailpit:
+    image: axllent/mailpit
+    container_name: agentic-mailpit
+    ports:
+      - "1025:1025"
+      - "8025:8025"
+    environment:
+      MP_MAX_MESSAGES: "500"
+      MP_SMTP_AUTH_ACCEPT_ANY: "1"
+      MP_SMTP_AUTH_ALLOW_INSECURE: "1"
+    restart: unless-stopped
+
 volumes:
   postgres_data:
+  redis_data:
