@@ -27,6 +27,8 @@
     "test": "bun run scripts/test-runner.ts"
   },
   "dependencies": {
+    "@casl/ability": "catalog:",
+    "@casl/prisma": "catalog:",
     "@hono/zod-validator": "^0.7.0",
     "@project/auth": "workspace:*",
     "@project/db": "workspace:*",
