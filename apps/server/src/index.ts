@@ -1,12 +1,12 @@
 import { serve } from "@hono/node-server";
 import { trpcServer } from "@hono/trpc-server";
-import { MAX_UPLOAD_BYTES } from "@project/api/constants/todo";
 import { createContext } from "@project/api/context";
-import { appRouter } from "@project/api/router";
+import { MAX_UPLOAD_BYTES } from "@project/api/domains/todo/constants";
 import {
   exportTodosAsCSV,
   importTodosFromCSV,
-} from "@project/api/services/todo";
+} from "@project/api/domains/todo/service";
+import { appRouter } from "@project/api/router";
 import { auth } from "@project/auth";
 import { db } from "@project/db";
 import { env } from "@project/env/server";

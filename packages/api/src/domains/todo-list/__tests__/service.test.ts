@@ -5,7 +5,7 @@ import {
   deleteTodoList,
   getTodoList,
   listTodoLists,
-} from "../todo-list.js";
+} from "../service.js";
 
 const TEST_USER_ID = "test-user-todolist-service";
 const createdListIds: string[] = [];

@@ -1,7 +1,7 @@
 import { db } from "@project/db";
 import { afterAll, beforeAll, describe, expect, it } from "vitest";
-import { createContext } from "../context.js";
-import { appRouter } from "../router.js";
+import { createContext } from "../../../context.js";
+import { appRouter } from "../../../router.js";
 
 const TEST_USER_ID = "test-user-todolist-router";
 const TEST_USER = {

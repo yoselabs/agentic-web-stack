@@ -1,12 +1,12 @@
 import { z } from "zod";
+import { protectedProcedure, router } from "../../trpc.js";
 import {
   completeTodo,
   createTodo,
   deleteTodo,
   listTodos,
   reorderTodos,
-} from "../services/todo.js";
-import { protectedProcedure, router } from "../trpc.js";
+} from "./service.js";
 
 export const todoRouter = router({
   list: protectedProcedure

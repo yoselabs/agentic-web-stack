@@ -8,7 +8,7 @@ import {
   importTodosFromCSV,
   listTodos,
   reorderTodos,
-} from "../todo.js";
+} from "../service.js";
 
 const TEST_USER_ID = "test-user-todo-service";
 let TEST_LIST_ID: string;

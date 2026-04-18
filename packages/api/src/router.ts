@@ -1,10 +1,14 @@
-import { todoListRouter } from "./routers/todo-list.js";
-import { todoRouter } from "./routers/todo.js";
+import { todoListRouter } from "./domains/todo-list/router.js";
+import { todoRouter } from "./domains/todo/router.js";
 import { router } from "./trpc.js";
 
+// Append-alpha convention: register sub-routers one per line in alphabetical
+// order of their key. New features INSERT at the alpha position, not append
+// to the bottom — so two agents adding features in parallel edit different
+// lines. See packages/api/CLAUDE.md § "Append-Alpha Router Registration".
 export const appRouter = router({
-  todoList: todoListRouter,
   todo: todoRouter,
+  todoList: todoListRouter,
 });
 
 export type AppRouter = typeof appRouter;

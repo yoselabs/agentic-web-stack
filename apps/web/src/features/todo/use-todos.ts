@@ -7,7 +7,7 @@ import {
   useSensors,
 } from "@dnd-kit/core";
 import { arrayMove, sortableKeyboardCoordinates } from "@dnd-kit/sortable";
-import { MAX_UPLOAD_BYTES } from "@project/api/constants/todo";
+import { MAX_UPLOAD_BYTES } from "@project/api/domains/todo/constants";
 import type { AppRouter } from "@project/api/router";
 import { type QueryClient, useMutation, useQuery } from "@tanstack/react-query";
 import type { TRPCOptionsProxy } from "@trpc/tanstack-react-query";
