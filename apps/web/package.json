@@ -20,6 +20,7 @@
     "@project/env": "workspace:*",
     "@project/ui": "workspace:*",
     "@tailwindcss/vite": "^4.1.18",
+    "@tanstack/react-form": "^1.29.0",
     "@tanstack/react-query": "^5.75.0",
     "@tanstack/react-router": "^1.168.0",
     "@tanstack/react-start": "^1.167.0",
@@ -35,7 +36,8 @@
     "react-dom": "^19.2.0",
     "sonner": "^2.0.7",
     "tailwindcss": "^4.1.18",
-    "tailwindcss-animate": "^1.0.7"
+    "tailwindcss-animate": "^1.0.7",
+    "zod": "catalog:"
   },
   "devDependencies": {
     "@types/react": "^19.2.0",

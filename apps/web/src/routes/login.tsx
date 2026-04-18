@@ -9,8 +9,15 @@ import {
 } from "@project/ui/components/card";
 import { Input } from "@project/ui/components/input";
 import { Label } from "@project/ui/components/label";
-import { createFileRoute, redirect, useNavigate } from "@tanstack/react-router";
+import { useForm } from "@tanstack/react-form";
+import {
+  createFileRoute,
+  redirect,
+  useNavigate,
+  useRouter,
+} from "@tanstack/react-router";
 import { useState } from "react";
+import { z } from "zod";
 import { signIn, signUp } from "#/features/auth/auth-client";
 
 export const Route = createFileRoute("/login")({
@@ -20,38 +27,60 @@ export const Route = createFileRoute("/login")({
   component: LoginPage,
 });
 
+const loginSchema = z.object({
+  email: z.string().email(),
+  password: z.string().min(MIN_PASSWORD_LENGTH),
+  // Non-optional to match TanStack Form generics against
+  // defaultValues.name = ""; the submit handler derives a name from
+  // the email when the field is empty, preserving the UX.
+  name: z.string(),
+});
+
+function formatFieldError(err: unknown): string {
+  if (err == null) return "";
+  if (typeof err === "string") return err;
+  if (typeof err === "object" && "message" in err) {
+    const { message } = err as { message?: unknown };
+    if (typeof message === "string") return message;
+  }
+  return String(err);
+}
+
 function LoginPage() {
   const navigate = useNavigate();
+  const router = useRouter();
   const [isSignUp, setIsSignUp] = useState(false);
-  const [email, setEmail] = useState("");
-  const [password, setPassword] = useState("");
-  const [name, setName] = useState("");
-  const [error, setError] = useState("");
+  const [formError, setFormError] = useState<string | null>(null);
 
-  const handleSubmit = async (e: React.FormEvent) => {
-    e.preventDefault();
-    setError("");
-
-    if (isSignUp) {
-      const result = await signUp.email({
-        email,
-        password,
-        name: name || email.split("@")[0],
-      });
-      if (result.error) {
-        setError(result.error.message ?? "Sign up failed");
-        return;
+  const form = useForm({
+    defaultValues: { email: "", password: "", name: "" },
+    validators: { onChange: loginSchema },
+    onSubmit: async ({ value }) => {
+      setFormError(null);
+      if (isSignUp) {
+        const result = await signUp.email({
+          email: value.email,
+          password: value.password,
+          name: value.name || value.email.split("@")[0],
+        });
+        if (result.error) {
+          setFormError(result.error.message ?? "Sign up failed");
+          return;
+        }
+      } else {
+        const result = await signIn.email({
+          email: value.email,
+          password: value.password,
+        });
+        if (result.error) {
+          setFormError(result.error.message ?? "Sign in failed");
+          return;
+        }
       }
-    } else {
-      const result = await signIn.email({ email, password });
-      if (result.error) {
-        setError(result.error.message ?? "Sign in failed");
-        return;
-      }
-    }
-
-    navigate({ to: "/dashboard" });
-  };
+      await router.invalidate();
+      navigate({ to: "/dashboard" });
+    },
+  });
 
   return (
     <main className="flex min-h-screen items-center justify-center px-4">
@@ -67,55 +96,101 @@ function LoginPage() {
           </CardDescription>
         </CardHeader>
         <CardContent>
-          <form onSubmit={handleSubmit} className="space-y-4">
+          <form
+            onSubmit={(e) => {
+              e.preventDefault();
+              form.handleSubmit();
+            }}
+            className="space-y-4"
+          >
             {isSignUp && (
-              <div className="space-y-2">
-                <Label htmlFor="name">Name</Label>
-                <Input
-                  id="name"
-                  type="text"
-                  placeholder="Your name"
-                  value={name}
-                  onChange={(e) => setName(e.target.value)}
-                />
-              </div>
+              <form.Field name="name">
+                {(field) => (
+                  <div className="space-y-2">
+                    <Label htmlFor={field.name}>Name</Label>
+                    <Input
+                      id={field.name}
+                      type="text"
+                      placeholder="Your name"
+                      value={field.state.value}
+                      onBlur={field.handleBlur}
+                      onChange={(e) => field.handleChange(e.target.value)}
+                    />
+                  </div>
+                )}
+              </form.Field>
             )}
-            <div className="space-y-2">
-              <Label htmlFor="email">Email</Label>
-              <Input
-                id="email"
-                type="email"
-                placeholder="you@example.com"
-                value={email}
-                onChange={(e) => setEmail(e.target.value)}
-                required
-              />
-            </div>
-            <div className="space-y-2">
-              <Label htmlFor="password">Password</Label>
-              <Input
-                id="password"
-                type="password"
-                placeholder={`Min ${MIN_PASSWORD_LENGTH} characters`}
-                value={password}
-                onChange={(e) => setPassword(e.target.value)}
-                required
-                minLength={MIN_PASSWORD_LENGTH}
-              />
-            </div>
 
-            {error && <p className="text-sm text-destructive">{error}</p>}
+            <form.Field name="email">
+              {(field) => (
+                <div className="space-y-2">
+                  <Label htmlFor={field.name}>Email</Label>
+                  <Input
+                    id={field.name}
+                    type="email"
+                    placeholder="you@example.com"
+                    value={field.state.value}
+                    onBlur={field.handleBlur}
+                    onChange={(e) => field.handleChange(e.target.value)}
+                    required
+                  />
+                  {field.state.meta.errors.length > 0 && (
+                    <p className="text-sm text-destructive">
+                      {formatFieldError(field.state.meta.errors[0])}
+                    </p>
+                  )}
+                </div>
+              )}
+            </form.Field>
 
-            <Button type="submit" className="w-full">
-              {isSignUp ? "Sign Up" : "Sign In"}
-            </Button>
+            <form.Field name="password">
+              {(field) => (
+                <div className="space-y-2">
+                  <Label htmlFor={field.name}>Password</Label>
+                  <Input
+                    id={field.name}
+                    type="password"
+                    placeholder={`Min ${MIN_PASSWORD_LENGTH} characters`}
+                    value={field.state.value}
+                    onBlur={field.handleBlur}
+                    onChange={(e) => field.handleChange(e.target.value)}
+                    required
+                    minLength={MIN_PASSWORD_LENGTH}
+                  />
+                  {field.state.meta.errors.length > 0 && (
+                    <p className="text-sm text-destructive">
+                      {formatFieldError(field.state.meta.errors[0])}
+                    </p>
+                  )}
+                </div>
+              )}
+            </form.Field>
+
+            {formError && (
+              <p className="text-sm text-destructive">{formError}</p>
+            )}
+
+            <form.Subscribe selector={(s) => s.isSubmitting}>
+              {(isSubmitting) => (
+                <Button
+                  type="submit"
+                  className="w-full"
+                  disabled={isSubmitting}
+                >
+                  {isSignUp ? "Sign Up" : "Sign In"}
+                </Button>
+              )}
+            </form.Subscribe>
           </form>
 
           <p className="mt-4 text-center text-sm text-muted-foreground">
             {isSignUp ? "Already have an account?" : "Don't have an account?"}{" "}
             <button
               type="button"
-              onClick={() => setIsSignUp(!isSignUp)}
+              onClick={() => {
+                setIsSignUp(!isSignUp);
+                setFormError(null);
+              }}
               className="text-foreground underline underline-offset-4 hover:text-primary"
             >
               {isSignUp ? "Sign In" : "Sign Up"}
