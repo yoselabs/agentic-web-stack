@@ -1,5 +1,5 @@
 import { Button } from "@project/ui/components/button";
-import { Link, createFileRoute } from "@tanstack/react-router";
+import { createFileRoute, Link } from "@tanstack/react-router";
 import { useSession } from "#/features/auth/auth-client";
 
 export const Route = createFileRoute("/")({

@@ -2,7 +2,7 @@ import { Badge } from "@project/ui/components/badge";
 import { Button } from "@project/ui/components/button";
 import { Input } from "@project/ui/components/input";
 import { useQueryClient } from "@tanstack/react-query";
-import { Link, createFileRoute } from "@tanstack/react-router";
+import { createFileRoute, Link } from "@tanstack/react-router";
 import { useTodoLists } from "#/features/todo-list/use-todo-lists.js";
 
 export const Route = createFileRoute("/_authenticated/todo-lists/")({

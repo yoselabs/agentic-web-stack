@@ -23,7 +23,7 @@
     "@project/db": "workspace:*"
   },
   "devDependencies": {
-    "@biomejs/biome": "^1.9.0",
+    "@biomejs/biome": "^2.4.12",
     "@tanstack/router-generator": "^1.166.29",
     "typescript": "catalog:"
   },

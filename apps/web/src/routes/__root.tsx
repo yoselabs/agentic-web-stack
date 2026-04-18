@@ -1,19 +1,19 @@
 import type { AppRouter } from "@project/api/router";
 import { Button } from "@project/ui/components/button";
-import { QueryClientProvider } from "@tanstack/react-query";
 import type { QueryClient } from "@tanstack/react-query";
+import { QueryClientProvider } from "@tanstack/react-query";
+import type { ErrorComponentProps } from "@tanstack/react-router";
 import {
+  createRootRouteWithContext,
   HeadContent,
   Link,
   Scripts,
-  createRootRouteWithContext,
   useRouter,
 } from "@tanstack/react-router";
-import type { ErrorComponentProps } from "@tanstack/react-router";
 import type { TRPCOptionsProxy } from "@trpc/tanstack-react-query";
 import { type ReactNode, useEffect } from "react";
 import { Toaster } from "sonner";
-import { type SessionData, getSession } from "#/shared/session";
+import { getSession, type SessionData } from "#/shared/session";
 
 import appCss from "../styles.css?url";
 

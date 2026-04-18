@@ -8,7 +8,7 @@
 // a When within one scenario. That's the common case (set up a user, then
 // act as them).
 
-import { readFileSync, readdirSync } from "node:fs";
+import { readdirSync, readFileSync } from "node:fs";
 import path from "node:path";
 
 const FEATURES_DIR = path.resolve(import.meta.dirname, "../features");

@@ -1,5 +1,5 @@
-import { todoListRouter } from "./domains/todo-list/router.js";
 import { todoRouter } from "./domains/todo/router.js";
+import { todoListRouter } from "./domains/todo-list/router.js";
 import { router } from "./trpc.js";
 
 // Append-alpha convention: register sub-routers one per line in alphabetical

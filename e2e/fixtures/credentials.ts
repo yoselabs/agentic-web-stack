@@ -3,7 +3,7 @@
 // (which excludes e2e/) can resolve the same constants.
 
 export {
-  SHARED_PASSWORD,
   SEED_USER,
+  SHARED_PASSWORD,
   TEST_USER,
 } from "../../scripts/seed-credentials.ts";

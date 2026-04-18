@@ -62,4 +62,4 @@ function SheetContent({
   );
 }
 
-export { Sheet, SheetTrigger, SheetClose, SheetContent };
+export { Sheet, SheetClose, SheetContent, SheetTrigger };

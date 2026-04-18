@@ -285,9 +285,13 @@ Defense-in-depth against server code leaking into the web bundle. Both should sh
 
 ### Gate 2: Bundle analyzer (diagnostic) — `scripts/check-bundle-hygiene.ts`
 
-**Goal:** catch leaks the lint rule can't see — transitive leaks through a package that re-exports server modules, dynamic `import()` with computed paths, or a missing `type` keyword deep in a helper file that slipped past code review.
+**Goal:** catch escapes the lint rule can't see. Examples:
 
-**Why the grep-on-built-JS approach from Task 5 is insufficient:** identifier minification + string-literal matching + Nitro's multiple output paths (`.output/` vs `apps/web/dist/`) make grep fragile and high-false-positive (`better-auth/react` matches the forbidden `better-auth` regex too).
+- A package re-exports something server-only transitively (e.g., `hono` in a future minor version starts re-exporting a Node built-in).
+- A dynamic `import()` with a computed path bypasses the static lint rule.
+- A helper file accidentally pulls a server module via a deep import chain the reviewer missed.
+
+**What it is:** `rollup-plugin-visualizer` (most common) emits a JSON stats file + HTML treemap of the final bundle's module graph. Unlike the grep preflight from Task 5, it reads the **pre-minification** module graph, so `@project/auth` vs `better-auth/react` is unambiguous. Identifier minification + string-literal matching + Nitro's multiple output paths (`.output/` vs `apps/web/dist/`) make grep fragile and high-false-positive (`better-auth/react` matches the forbidden `better-auth` regex too).
 
 **Spec:**
 

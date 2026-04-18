@@ -4,13 +4,21 @@
   "private": true,
   "type": "module",
   "exports": {
-    "./router": { "default": "./src/router.ts" },
-    "./context": { "default": "./src/context.ts" },
-    "./domains/todo/service": { "default": "./src/domains/todo/service.ts" },
+    "./router": {
+      "default": "./src/router.ts"
+    },
+    "./context": {
+      "default": "./src/context.ts"
+    },
+    "./domains/todo/service": {
+      "default": "./src/domains/todo/service.ts"
+    },
     "./domains/todo/constants": {
       "default": "./src/domains/todo/constants.ts"
     },
-    "./domains/todo/http": { "default": "./src/domains/todo/http.ts" },
+    "./domains/todo/http": {
+      "default": "./src/domains/todo/http.ts"
+    },
     "./domains/todo-list/service": {
       "default": "./src/domains/todo-list/service.ts"
     }
