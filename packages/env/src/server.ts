@@ -14,6 +14,9 @@ export const env = createEnv({
       .string()
       .url()
       .default("postgresql://postgres:postgres@localhost:5432/app"),
+    REDIS_URL: z.string().url().default("redis://localhost:6379"),
+    SMTP_URL: z.string().url().default("smtp://localhost:1025"),
+    MAILPIT_API_URL: z.string().url().default("http://localhost:8025"),
     CORS_ORIGIN: z.string().url().default("http://localhost:3000"),
     BETTER_AUTH_SECRET: z
       .string()

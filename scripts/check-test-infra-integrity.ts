@@ -22,7 +22,7 @@ if (existsSync(testComposeFile)) {
   // TEST_PORT / TEST_CONTAINER are required by the compose file's var
   // substitution. Supply dummies so `config --services` doesn't error.
   const services = execSync(
-    "TEST_PORT=9999 TEST_CONTAINER=audit-dummy docker compose -f docker-compose.test.yml config --services",
+    "TEST_PORT=9999 TEST_CONTAINER=audit-dummy TEST_REDIS_PORT=9998 TEST_REDIS_CONTAINER=audit-dummy-redis TEST_MAILPIT_SMTP_PORT=9997 TEST_MAILPIT_HTTP_PORT=9996 TEST_MAILPIT_CONTAINER=audit-dummy-mailpit docker compose -f docker-compose.test.yml config --services",
     { cwd: PROJECT_ROOT, encoding: "utf-8" },
   )
     .trim()
