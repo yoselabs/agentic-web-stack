@@ -98,9 +98,12 @@ The same ability resolves both Hono middleware (for `/admin/*`) and tRPC middlew
 
 Guard against CASL's `subject()` wrapping footgun: a shared `asSubject()` helper in `authz/subject.ts`, plus a unit test that fails when a rule receives an unwrapped plain object (silent class-level fallback leads to over-granting).
 
-### 3. Admin role via Better-Auth `additionalFields`, not the `admin` plugin
+### 3. Admin role and username via Better-Auth `additionalFields`
 
-Better-Auth's user gets a `role: string` field (default `"user"`). The pitch's rejected alternative — Better-Auth's `admin` plugin — introduces ban / impersonation / permission statements we don't need, and creates a second RBAC paradigm alongside CASL. Single-paradigm authz: every access question, including admin, resolves through the same ability.
+Better-Auth's user gets two new fields via `additionalFields`:
+
+- `role: string` (default `"user"`) — authz classification. The pitch's rejected alternative — Better-Auth's `admin` plugin — introduces ban / impersonation / permission statements we don't need, and creates a second RBAC paradigm alongside CASL.
+- `username: string` (unique, required at signup) — used for collaborator invites. Lookup-only — no login-by-username flow in this spike. Using `additionalFields` rather than the Better-Auth `username` plugin keeps a consistent pattern (one mechanism for custom user fields). If login-by-username becomes a need later, swap to the plugin as a follow-up.
 
 Seed script: `scripts/seed-admin.ts` sets `role = "admin"` for a given email. Used by test setup and manual provisioning.
 
@@ -117,13 +120,15 @@ Two queues:
 
 | Queue | Job | Trigger | Demonstrates |
 |---|---|---|---|
-| `email` | `invite-collaborator` | `todoListService.addCollaborator()` | Plain enqueue, retry policy, dead-letter (acceptance test #7) |
+| `email` | `invite-collaborator` | `todoListService.inviteCollaborator(listId, username)` | Plain enqueue, retry policy, dead-letter (acceptance test #7) |
 | `email` | `password-reset` | Better-Auth `sendResetPassword` hook | Reinforces enqueue pattern in a second domain |
 | `maintenance` | `expire-invites` | Nightly cron | Repeatable jobs (`{ repeat: { pattern } }`) + cleanup pattern |
 
 **Cut from pitch:** `welcome` email (pattern proven twice already), `list-reminder` (contrived demo feature), invented `expire-invite` delayed job (would be redundant with read-time `expiresAt` check), `prune-sessions` (one repeatable cron is enough). Delayed jobs are not demoed by any job; `packages/jobs/README.md` carries a 3-line note pointing at the BullMQ `{ delay: ms }` option with a link to upstream docs.
 
-**Invite lifecycle pattern (clean):** `TodoListInvite` rows carry `expiresAt`. Every query filters `where: { expiresAt: { gt: now() } }` for correctness. The nightly `expire-invites` cron deletes rows ≥30 days past `expiresAt` for hygiene. No delayed-job redundancy.
+**Invite lifecycle pattern (clean):** `TodoListInvite` rows carry `invitedUserId` (FK to existing User, resolved from the username entered in the share dialog), `token`, `expiresAt`, `listId`. Every pending-invite query filters `where: { expiresAt: { gt: now() } }` for correctness. The invite email contains an accept link carrying the token; clicking accept creates the `TodoListMembership` row. The nightly `expire-invites` cron deletes rows ≥30 days past `expiresAt` for hygiene. No delayed-job redundancy.
+
+Username lookup failure (no user exists with that username) fails the mutation with a clear error before any job is enqueued — no "invite sent to nobody" edge case.
 
 ### 6. Todo domain: no rename
 
@@ -253,8 +258,9 @@ packages/test-infra/src/
 packages/env/src/server.ts         + REDIS_URL, SMTP_URL, MAILPIT_API_URL Zod schema
 
 prisma/schema.prisma               + TodoListMembership (userId, listId, role)
-                                   + TodoListInvite (token, email, expiresAt, listId)
+                                   + TodoListInvite (token, invitedUserId, listId, expiresAt)
                                    + User.role: String @default("user")
+                                   + User.username: String @unique
 
 scripts/
   seed-admin.ts                    NEW — set user.role = "admin" by email
@@ -272,7 +278,7 @@ pnpm-workspace.yaml                + catalog entries for new dependencies
 
 Every test has a corresponding Playwright e2e scenario or Vitest integration test. No "verified manually" shortcuts. All run against per-suite Postgres + Redis + Mailpit with dynamic ports.
 
-1. **Email invite notification.** Alice invites Bob by email. Mailpit (via API at `MAILPIT_API_URL`) receives the invite-collaborator template. Bob follows the link, signs up, list appears in his sidebar.
+1. **Email invite notification.** Alice opens the share dialog, enters Bob's username, and submits. Mailpit (via API at `MAILPIT_API_URL`) receives the invite-collaborator template addressed to Bob's registered email. Bob (already signed in) clicks the accept link; list appears in his sidebar. Submitting an unknown username returns a validation error and enqueues no job.
 2. **Real-time sync.** Bob toggles a todo. Alice's browser (list open in another tab) reflects the change within 500 ms with no reload.
 3. **Multi-tab leader election.** Bob opens the list in two tabs. Exactly one tab has an open WS in DevTools → Network → WS. Both tabs reflect updates. Closing the leader tab promotes the peer within 2 s.
 4. **Authorization cascade.** Alice removes Bob. Bob's tab shows "You no longer have access to this list" within 500 ms; the subscription closes. Bob refreshes: list is no longer in sidebar, direct URL is 403.
