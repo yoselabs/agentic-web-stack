@@ -27,6 +27,11 @@ export const env = createEnv({
     LOG_LEVEL: z
       .enum(["fatal", "error", "warn", "info", "debug", "trace"])
       .optional(),
+    ENABLE_CHAT: z
+      .string()
+      .optional()
+      .default("false")
+      .transform((v) => v === "true"),
   },
   runtimeEnv: process.env,
   emptyStringAsUndefined: true,
