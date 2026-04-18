@@ -267,10 +267,13 @@ Expected: exit code 0 (package.json change alone shouldn't break types).
 
 - [ ] **Step 2.3: Write the failing unit tests for `todoHttpRouter`**
 
+Match the testing philosophy of the existing `packages/api/src/domains/todo/__tests__/router.test.ts`: do **not** push a cookie through `auth.api.getSession`. The router tests inject a fake session via `createContext({ session: fakeSession })` — they never exercise the cookie path. `todoHttpRouter` calls `auth.api.getSession` directly on the request headers, so the equivalent move here is to **mock** `auth.api.getSession` per-test using Bun's `spyOn`. This avoids (a) guessing Better-Auth's cookie name, (b) depending on Better-Auth's internal token hashing (raw DB inserts may not produce a token the API accepts), and (c) tying unit tests to Better-Auth version changes.
+
 Create `packages/api/src/domains/todo/__tests__/http.test.ts`:
 
 ```ts
-import { afterAll, beforeAll, describe, expect, it } from "bun:test";
+import { afterAll, afterEach, beforeAll, describe, expect, it, spyOn } from "bun:test";
+import { auth } from "@project/auth";
 import { db } from "@project/db";
 import { todoHttpRouter } from "../http.js";
 
@@ -285,8 +288,21 @@ const TEST_USER = {
   updatedAt: new Date(),
 };
 
+const FAKE_SESSION = {
+  user: TEST_USER,
+  session: {
+    id: "test-session-http",
+    token: "test-token-http",
+    userId: TEST_USER_ID,
+    expiresAt: new Date(Date.now() + 1000 * 60 * 60),
+    ipAddress: null,
+    userAgent: null,
+    createdAt: new Date(),
+    updatedAt: new Date(),
+  },
+};
+
 let TEST_LIST_ID: string;
-let TEST_SESSION_TOKEN: string;
 
 beforeAll(async () => {
   await db.todo.deleteMany({ where: { userId: TEST_USER_ID } });
@@ -297,18 +313,6 @@ beforeAll(async () => {
 
   await db.user.create({ data: TEST_USER });
 
-  const session = await db.session.create({
-    data: {
-      id: "test-session-todo-http",
-      token: "test-token-todo-http",
-      userId: TEST_USER_ID,
-      expiresAt: new Date(Date.now() + 1000 * 60 * 60),
-      ipAddress: null,
-      userAgent: null,
-    },
-  });
-  TEST_SESSION_TOKEN = session.token;
-
   const list = await db.todoList.create({
     data: { userId: TEST_USER_ID, name: "HTTP test list", position: 0 },
   });
@@ -318,29 +322,29 @@ beforeAll(async () => {
 afterAll(async () => {
   await db.todo.deleteMany({ where: { userId: TEST_USER_ID } });
   await db.todoList.deleteMany({ where: { userId: TEST_USER_ID } });
-  await db.session.deleteMany({ where: { userId: TEST_USER_ID } });
-  await db.account.deleteMany({ where: { userId: TEST_USER_ID } });
   await db.user.deleteMany({ where: { id: TEST_USER_ID } });
 });
 
-function authCookie(): string {
-  // Better-Auth cookie name convention: `better-auth.session_token`
-  return `better-auth.session_token=${TEST_SESSION_TOKEN}`;
+afterEach(() => {
+  // Restore any spyOn installed by a test.
+  (auth.api.getSession as unknown as { mockRestore?: () => void }).mockRestore?.();
+});
+
+function mockAuthed() {
+  spyOn(auth.api, "getSession").mockResolvedValue(FAKE_SESSION as never);
 }
 
-function buildImportRequest(csv: string, todoListId: string): Request {
-  const form = new FormData();
-  form.set("file", new File([csv], "todos.csv", { type: "text/csv" }));
-  form.set("todoListId", todoListId);
-  return new Request("http://test/import", {
-    method: "POST",
-    body: form,
-    headers: { cookie: authCookie() },
-  });
+function mockUnauthed() {
+  spyOn(auth.api, "getSession").mockResolvedValue(null as never);
 }
+
+// All todoHttpRouter.request() calls below use the string-URL + init overload
+// for consistency; Hono's request() accepts both (string, init) and (Request)
+// shapes, but mixing them in one file obscures the test's intent.
 
 describe("todoHttpRouter POST /import", () => {
   it("rejects unauthenticated requests with 401", async () => {
+    mockUnauthed();
     const form = new FormData();
     form.set("file", new File(["title\nfoo"], "t.csv", { type: "text/csv" }));
     form.set("todoListId", TEST_LIST_ID);
@@ -354,24 +358,24 @@ describe("todoHttpRouter POST /import", () => {
   });
 
   it("rejects missing todoListId with 400", async () => {
+    mockAuthed();
     const form = new FormData();
     form.set("file", new File(["title\nfoo"], "t.csv", { type: "text/csv" }));
     const res = await todoHttpRouter.request("/import", {
       method: "POST",
       body: form,
-      headers: { cookie: authCookie() },
     });
     expect(res.status).toBe(400);
   });
 
   it("rejects non-CSV files with 400", async () => {
+    mockAuthed();
     const form = new FormData();
     form.set("file", new File(["<html>"], "t.html", { type: "text/html" }));
     form.set("todoListId", TEST_LIST_ID);
     const res = await todoHttpRouter.request("/import", {
       method: "POST",
       body: form,
-      headers: { cookie: authCookie() },
     });
     expect(res.status).toBe(400);
     const body = (await res.json()) as { error: string };
@@ -379,6 +383,7 @@ describe("todoHttpRouter POST /import", () => {
   });
 
   it("accepts .CSV extension case-insensitively", async () => {
+    mockAuthed();
     const form = new FormData();
     form.set(
       "file",
@@ -388,15 +393,23 @@ describe("todoHttpRouter POST /import", () => {
     const res = await todoHttpRouter.request("/import", {
       method: "POST",
       body: form,
-      headers: { cookie: authCookie() },
     });
     expect(res.status).toBe(201);
   });
 
   it("imports valid CSV and returns count", async () => {
+    mockAuthed();
     await db.todo.deleteMany({ where: { userId: TEST_USER_ID } });
-    const csv = "title\nalpha\nbeta\n";
-    const res = await todoHttpRouter.request(buildImportRequest(csv, TEST_LIST_ID));
+    const form = new FormData();
+    form.set(
+      "file",
+      new File(["title\nalpha\nbeta\n"], "todos.csv", { type: "text/csv" }),
+    );
+    form.set("todoListId", TEST_LIST_ID);
+    const res = await todoHttpRouter.request("/import", {
+      method: "POST",
+      body: form,
+    });
     expect(res.status).toBe(201);
     const body = (await res.json()) as { count: number };
     expect(body.count).toBe(2);
@@ -405,6 +418,7 @@ describe("todoHttpRouter POST /import", () => {
 
 describe("todoHttpRouter GET /export", () => {
   it("rejects unauthenticated requests with 401", async () => {
+    mockUnauthed();
     const res = await todoHttpRouter.request(
       `/export?todoListId=${TEST_LIST_ID}`,
     );
@@ -412,16 +426,15 @@ describe("todoHttpRouter GET /export", () => {
   });
 
   it("rejects missing todoListId with 400", async () => {
-    const res = await todoHttpRouter.request("/export", {
-      headers: { cookie: authCookie() },
-    });
+    mockAuthed();
+    const res = await todoHttpRouter.request("/export");
     expect(res.status).toBe(400);
   });
 
   it("returns CSV with attachment disposition", async () => {
+    mockAuthed();
     const res = await todoHttpRouter.request(
       `/export?todoListId=${TEST_LIST_ID}`,
-      { headers: { cookie: authCookie() } },
     );
     expect(res.status).toBe(200);
     expect(res.headers.get("content-type")).toBe("text/csv");
@@ -522,45 +535,109 @@ Preserve alphabetical order inside the domain block; insert between `./domains/t
 - [ ] **Step 2.6: Run the unit tests**
 
 ```bash
-make test-unit ARGS="todo/http"
-```
-
-Or if that filter isn't honored:
-```bash
 pnpm --filter @project/api test http
 ```
 
-Expected: all 8 tests pass. If the `better-auth.session_token` cookie name is wrong (Step 2.3 uses a guess), the 401 and 201 tests fail together; inspect:
+Or via the repo-level runner (filter syntax is runner-specific — see `packages/api/scripts/test-runner.ts` for supported ARGS forms before reaching for this):
 ```bash
-grep -rn "session_token\|cookieName" node_modules/better-auth/dist/*.d.ts 2>/dev/null | head
+make test-unit
 ```
 
-and update `authCookie()` in the test + re-run.
+Expected: all 8 tests pass. Common failures and their cause:
+
+- **All `mockAuthed()` tests return 401:** `spyOn(auth.api, "getSession")` isn't replacing the import seen by `http.ts`. Verify `http.ts` imports `auth` from the top-level `@project/auth` (not a subpath that returns a different instance). If the import graph produces two `auth` identities, factor `getSession` into a thin injectable param or use `mock.module("@project/auth", ...)` instead of `spyOn`.
+- **201-case fails with a DB error:** the test setup didn't create `TEST_LIST_ID`. Inspect the `beforeAll` output.
+- **`instanceof File` false-negative for uploaded file:** the Node runtime's global `File` differs from undici's. The handler code already accounts for this by checking `instanceof File` on the value returned by Hono's `parseBody()`, which uses undici. If the check fails, log `typeof body.file` + `body.file?.constructor?.name` to identify the actual constructor.
 
 - [ ] **Step 2.7: Mount the sub-app in `apps/server/src/index.ts`**
 
-Remove lines 94-148 (the two `app.post("/api/todos/import", ...)` and `app.get("/api/todos/export", ...)` handlers) and replace with a single mount. Also drop the now-unused imports.
+Two edits in this file: (a) replace three imports with one; (b) replace the two handler blocks (lines 93-148) with a single one-line mount.
 
-Edit imports at the top of `apps/server/src/index.ts`:
+**Import block** (currently lines 1-17 of `apps/server/src/index.ts`). Apply this diff:
 
-```ts
-// Remove these:
-//   import { MAX_UPLOAD_BYTES } from "@project/api/domains/todo/constants";
-//   import {
-//     exportTodosAsCSV,
-//     importTodosFromCSV,
-//   } from "@project/api/domains/todo/service";
-
-// Add:
-import { todoHttpRouter } from "@project/api/domains/todo/http";
+```diff
+ import { serve } from "@hono/node-server";
+ import { trpcServer } from "@hono/trpc-server";
+ import { createContext } from "@project/api/context";
+-import { MAX_UPLOAD_BYTES } from "@project/api/domains/todo/constants";
+-import {
+-  exportTodosAsCSV,
+-  importTodosFromCSV,
+-} from "@project/api/domains/todo/service";
++import { todoHttpRouter } from "@project/api/domains/todo/http";
+ import { appRouter } from "@project/api/router";
+ import { auth } from "@project/auth";
+ import { db } from "@project/db";
+ import { env } from "@project/env/server";
+ import { Hono } from "hono";
+ import { cors } from "hono/cors";
+ import { secureHeaders } from "hono/secure-headers";
 ```
 
-Where the old handlers lived (between the Better-Auth handler block and the tRPC handler block), put:
+**Handler block** (currently lines 93-148 — the comment `// Todo import — multipart CSV` through the end of the `/api/todos/export` handler). Apply this diff:
 
-```ts
-// Todo file I/O — domain-owned Hono sub-app.
-app.route("/api/todos", todoHttpRouter);
+```diff
+-// Todo import — multipart CSV
+-app.post("/api/todos/import", async (c) => {
+-  const session = await auth.api.getSession({ headers: c.req.raw.headers });
+-  if (!session) return c.json({ error: "Unauthorized" }, 401);
+-
+-  const formData = await c.req.formData();
+-  const file = formData.get("file");
+-  if (!(file instanceof File))
+-    return c.json({ error: "No file provided" }, 400);
+-
+-  if (file.size > MAX_UPLOAD_BYTES) {
+-    return c.json({ error: "File too large (max 10 MB)" }, 413);
+-  }
+-
+-  const isCSV =
+-    file.type === "text/csv" ||
+-    file.type === "application/vnd.ms-excel" ||
+-    file.name.endsWith(".csv");
+-  if (!isCSV) {
+-    return c.json({ error: "Only CSV files are accepted" }, 400);
+-  }
+-
+-  const todoListId = formData.get("todoListId");
+-  if (typeof todoListId !== "string")
+-    return c.json({ error: "todoListId is required" }, 400);
+-
+-  const buffer = Buffer.from(await file.arrayBuffer());
+-
+-  try {
+-    const result = await db.$transaction((tx) =>
+-      importTodosFromCSV(tx, session.user.id, buffer, todoListId),
+-    );
+-    return c.json(result, 201);
+-  } catch (err) {
+-    const message = err instanceof Error ? err.message : "Import failed";
+-    return c.json({ error: message }, 400);
+-  }
+-});
+-
+-// Todo export — CSV download
+-app.get("/api/todos/export", async (c) => {
+-  const session = await auth.api.getSession({ headers: c.req.raw.headers });
+-  if (!session) return c.json({ error: "Unauthorized" }, 401);
+-
+-  const todoListId = c.req.query("todoListId");
+-  if (!todoListId) return c.json({ error: "todoListId is required" }, 400);
+-
+-  const csv = await exportTodosAsCSV(db, session.user.id, todoListId);
+-
+-  return new Response(csv, {
+-    headers: {
+-      "Content-Type": "text/csv",
+-      "Content-Disposition": 'attachment; filename="todos.csv"',
+-    },
+-  });
+-});
++// Todo file I/O — domain-owned Hono sub-app.
++app.route("/api/todos", todoHttpRouter);
 ```
+
+Verify `db` is still imported (it remains in use by the `/health` endpoint's `db.$queryRaw` check). `auth` is also still used by the `/api/auth/**` mount. Do **not** remove either.
 
 - [ ] **Step 2.8: Verify the server typechecks and boots**
 
@@ -912,7 +989,7 @@ Expected on the reload (the initial-SSR case the spec pins):
 - Zero browser requests to `/api/auth/get-session` during the first paint.
 - The server logs in the `make dev` output show exactly one `GET /api/auth/get-session` (from the web Nitro to the Hono server) for the reload.
 
-If the browser **does** issue a `/api/auth/get-session` request during first paint, the fallback is to gate the server-fn call on `typeof window === "undefined"` inside `session.ts` and manage the cache in `router.tsx` instead. Document the observed behavior in the commit message either way.
+If the browser **does** issue a `/api/auth/get-session` request during first paint, the spec's exact fallback applies: move the session load out of `session.ts` + root `beforeLoad` and into `router.tsx`'s `getRouter()` — guard the `apiClient.fetch` call with `typeof window === "undefined"` so it only fires server-side, pass the resolved `SessionData` into `createTanStackRouter({ context: { trpc, queryClient, session } })`, and drop the root-route `beforeLoad` entirely. The `_authenticated.tsx` and `login.tsx` route `beforeLoad`s keep reading `context.session` — the source just changes. Document the observed behavior and chosen path in the commit body.
 
 Also measure client-nav behavior (spec calls this out as a "characterize, don't constrain" item):
 - From `/dashboard`, click a link to `/todo-lists`. Watch the Network tab.
@@ -1202,14 +1279,42 @@ Notes on the rewrite:
 - The submit button disables via `form.Subscribe` during submission — replaces the previous always-clickable button.
 - The `beforeLoad` redirect from Task 3 Step 3.5 stays exactly as-is.
 
-If Step 4.2 chose the adapter path, add:
+**Adapter-path variant (if Step 4.2 chose the adapter path):** also install `@tanstack/zod-form-adapter` in Step 4.2. Then in the file above:
+
+Add the import:
 ```tsx
 import { zodValidator } from "@tanstack/zod-form-adapter";
-// ... inside useForm:
-validatorAdapter: zodValidator(),
 ```
 
-If Step 4.3 preferred `setErrorMap`, replace `setFormError(msg)` with whatever API the installed version exposes (and delete the `useState<formError>` + its render).
+Extend the `useForm` options (nothing else changes; `validators: { onChange: loginSchema }` stays):
+```tsx
+  const form = useForm({
+    defaultValues: { email: "", password: "", name: "" },
+    validatorAdapter: zodValidator(),
+    validators: { onChange: loginSchema },
+    onSubmit: async ({ value }) => { /* unchanged */ },
+  });
+```
+
+**Form-error API variants** (if Step 4.3 showed a clean API, swap the `useState<string | null>` fallback for the matching snippet below):
+
+*Variant B — `setErrorMap` path.* Remove `const [formError, setFormError] = useState<string | null>(null);` and the `{formError && ...}` render block. Inside the submit handler, replace each `setFormError(msg)` call with:
+```tsx
+      form.setErrorMap({ onSubmit: result.error.message ?? "Sign in failed" });
+      return;
+```
+Surface the form-level error in JSX via a `form.Subscribe` on `state.errorMap.onSubmit`:
+```tsx
+<form.Subscribe selector={(s) => s.errorMap.onSubmit}>
+  {(err) =>
+    err ? <p className="text-sm text-destructive">{String(err)}</p> : null
+  }
+</form.Subscribe>
+```
+
+*Variant C — return-from-onSubmit path.* Remove the `useState<string | null>` + render block as in Variant B. Inside the submit handler, `return { error: result.error.message ?? "Sign in failed" }` on auth failure (exact return shape depends on the installed version — inspect the `FormState.errorMap` type). Then the same `form.Subscribe` from Variant B surfaces the error. This variant is the cleanest when the installed version supports it; fall back to Variant B or the `useState` fallback if the return-shape types don't line up.
+
+**Render-prop API stability.** `form.Field` with `children: (field) => ReactNode` has been the documented TanStack Form pattern since v0.x. If Step 4.5's typecheck complains that `Field` doesn't exist, it's almost always a version mismatch between `@tanstack/react-form` and peer deps (React 19, TanStack Router). Pin `react-form` to a version published within the same month as your installed `@tanstack/react-router` minor — the parallel-release discipline holds across the TanStack ecosystem.
 
 - [ ] **Step 4.5: Typecheck**
 
