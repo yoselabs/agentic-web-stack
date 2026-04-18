@@ -37,13 +37,6 @@ jobs:
           node-version: 22
           cache: pnpm
       - run: pnpm install --frozen-lockfile
-      - name: Compute dynamic test ports
-        run: |
-          bun scripts/print-test-env.ts e2e >> "$GITHUB_ENV"
-      - name: Promote CORS / auth URLs to workflow env
-        run: |
-          echo "CORS_ORIGIN=http://localhost:${TEST_WEB_PORT}" >> "$GITHUB_ENV"
-          echo "BETTER_AUTH_URL=http://localhost:${TEST_API_PORT}" >> "$GITHUB_ENV"
       - run: pnpm --filter @project/api test
       - run: pnpm exec playwright install chromium --with-deps
       - run: cd e2e && pnpm exec bddgen && pnpm exec playwright test
