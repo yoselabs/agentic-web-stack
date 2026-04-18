@@ -137,6 +137,48 @@ Items marked **[recipe]** should be documented as patterns — added per-project
 
 ---
 
+## `spike/demo-mode` — process lessons
+
+Reflection from the demo-mode spike. Patterns observed across the two review rounds + the Task 9 fixup — captured here so the next spike avoids the same traps.
+
+### Pattern: Confidently wrong about paths (the big one)
+Asserted filesystem paths from memory or from a sibling project without grepping. Instances:
+- `@project/auth/server` import (didn't exist — was supposed to be `@project/auth`)
+- `/app/node_modules/.bin/prisma` (doesn't exist in pnpm-hoisted layout; correct is `./node_modules/.bin/prisma` after `cd /app/packages/db`)
+- `scripts/` missing from runtime COPY list
+- `@project/auth` + `@project/db` not resolvable under `--prod` for the root-level seed script
+- **Fix**: add a "path audit" step to spec review. Every filesystem path or import path mentioned in a spec gets a one-liner verification (`git grep`, `ls`, `jq '.exports' package.json`). Cost: ~30s per path.
+
+### Pattern: Reference drift between similar projects
+Mixed up details between `agentic-web-stack` and the sibling `a2sdlc-demo3`. Instances:
+- Claimed `${DEV_DB_*}` interpolation existed in our `docker-compose.yml` (it was in a2sdlc-demo3, not here — our file already had literals)
+- Alpine vs Debian user-creation syntax (`addgroup --system` works on a2sdlc-demo3's Alpine base; our `oven/bun:1-slim` is Debian and needs `groupadd`/`useradd`)
+- **Fix**: when citing "pattern borrowed from X," quote the exact lines from X in the spec, don't paraphrase from memory.
+
+### Pattern: Runtime-flag assumptions
+Assumed CLI flags port across runtimes without verifying. Instances:
+- `bun --env-file-if-exists=<path>` — tsx has it, bun does not (silently accepts unknown flags, `.env` never loaded)
+- **Fix**: for any CLI swap (tsx→bun, node→bun, etc.), run the exact command with a trivial proof (`echo FOO=bar > /tmp/t && bun --env-file=/tmp/t -e 'console.log(process.env.FOO)'`) before trusting flag parity.
+
+### Pattern: Cross-spec coherence
+Missed the `@project/auth` barrel-rule carve-out in `2026-04-18-zero-conf-architecture-handover.md` and proposed reversing it in the demo-mode spec. The reviewer caught it.
+- **Fix**: `ls docs/superpowers/specs/` + `grep -l <topic>` before writing new specs that touch shared rules. Read related docs first.
+
+### Pattern: Sloppy strings
+`BETTER_AUTH_SECRET` labeled "32-chars" was actually 36. Caught in final code review, amended.
+- **Fix**: when a string encodes a length/hash/count in its own value, sanity-check it (`echo -n "..." | wc -c`). Cheap, embarrassing to miss.
+
+### Pattern: Stale cross-references
+`TODO.md` still had the "Demo mode: docker compose up runs the whole app" section as pending after we shipped it. Caught in the final full-branch review.
+- **Fix**: before merge, `grep -l "<spec-filename-or-topic>" TODO.md docs/ README.md` and update anything still pointing to the old state.
+
+### Concrete follow-ups (files + cadence)
+- [ ] **[recipe]** `make lint-docker` target — runs `docker buildx build --target prod-deps` + `--target runtime` in a throwaway container + `ls /app/packages/*/src`. Adds ~2 min to `make lint` when Dockerfile/compose/workspace files change. Catches Alpine-vs-Debian, COPY omissions, workspace-file mismatches at lint time rather than at integration time. Only run when those files changed (conditional on `git diff --name-only` against base).
+- [ ] **[habit]** Spec-review checklist addition: "Path audit — every filesystem/import path mentioned in this spec has been verified to exist in the current repo." One-line reviewer prompt.
+- [ ] **[habit]** Cross-spec search before writing new specs — `ls docs/superpowers/specs/` and read any related handover docs. Add to brainstorming skill prompt.
+
+---
+
 ## `spike/bun-test-migration` — deferred ideas
 
 Surfaced during the bun-test + build-for-test + e2e-hardening spike (branch `spike/bun-test-migration`). Each item: what it is, why we didn't do it, what would make it worth picking up.

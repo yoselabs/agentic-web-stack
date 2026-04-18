@@ -73,9 +73,14 @@ RUN pnpm --filter @project/db generate \
 FROM oven/bun:1-slim AS runtime
 WORKDIR /app
 
-# HEALTHCHECK NONE: this image is shared by multiple compose services; each
-# service defines its own healthcheck at the orchestration layer.
-HEALTHCHECK NONE
+# Universal healthcheck: every service in this image exposes /health.
+# - apps/server: Hono route (apps/server/src/index.ts)
+# - apps/web:    TanStack Start server-only route (apps/web/src/routes/health.ts)
+# - migrate (one-shot sidecar): overrides via `healthcheck: { disable: true }`
+#
+# Compose services set PORT only; shell-form CMD expands it at container runtime.
+HEALTHCHECK --interval=10s --timeout=5s --retries=3 --start-period=30s \
+    CMD bun /app/scripts/healthcheck.ts "http://127.0.0.1:${PORT}/health"
 
 # Start from the prod-only workspace (correct symlink tree, minimal deps).
 COPY --from=prod-deps /app ./
