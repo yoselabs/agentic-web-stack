@@ -11,9 +11,13 @@ name: agentic-web-stack-demo
 # Shared env across migrate, server, web. YAML anchor so one edit propagates.
 x-app-env: &app-env
   DATABASE_URL: "postgresql://postgres:postgres@db:5432/app"
+  REDIS_URL: "redis://redis:6379"
   BETTER_AUTH_SECRET: "demo-secret-do-not-use-in-prod!!"
   BETTER_AUTH_URL: "http://localhost:3001"
   CORS_ORIGIN: "http://localhost:3000"
+  # Web container's SSR runtime reaches the API via compose DNS, not
+  # host-mapped localhost (which isn't routable inside the container).
+  SSR_API_URL: "http://server:3001"
   NODE_ENV: "production"
 
 services:
@@ -27,6 +31,14 @@ services:
       - postgres-demo-data:/var/lib/postgresql/data
     healthcheck:
       test: ["CMD-SHELL", "pg_isready -U postgres -d app"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  redis:
+    image: redis:7-alpine
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
       interval: 10s
       timeout: 5s
       retries: 5
@@ -50,6 +62,8 @@ services:
       disable: true
     depends_on:
       db:
+        condition: service_healthy
+      redis:
         condition: service_healthy
 
   # server + web inherit the image-level HEALTHCHECK defined in Dockerfile.

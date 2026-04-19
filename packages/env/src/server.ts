@@ -23,6 +23,12 @@ export const env = createEnv({
       .min(32)
       .default("change-me-to-a-random-32-char-secret-key"),
     BETTER_AUTH_URL: z.string().url().default("http://localhost:3001"),
+    // Container-internal URL of the API server, used by the web app's
+    // SSR / server-fn runtime to reach the API. In single-host dev this
+    // matches VITE_API_URL. In docker demo / prod, set it to the
+    // compose service DNS (e.g., http://server:3001) because the web
+    // container cannot route to its own "localhost:3001".
+    SSR_API_URL: z.string().url().default("http://localhost:3001"),
     // Optional: leading dot = cross-subdomain cookie scope (e.g. ".example.com"
     // lets app.example.com and api.example.com share the session cookie).
     // Leave unset for the default host-only cookie — correct when frontend

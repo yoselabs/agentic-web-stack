@@ -1,6 +1,11 @@
+// Server-only file: the body runs exclusively inside createServerFn
+// handlers, which TanStack Start tree-shakes out of the client bundle.
+// This is the one place in apps/web/ that reads from @project/env/server
+// — the SSR runtime needs a container-internal API URL that differs from
+// the browser-facing VITE_API_URL (see SSR_API_URL in @project/env/server).
+import { env } from "@project/env/server";
 import { createServerFn } from "@tanstack/react-start";
-import { getCookie } from "@tanstack/react-start/server";
-import { apiClient } from "./api-client";
+import { deleteCookie, getCookie } from "@tanstack/react-start/server";
 
 // Narrow shape: only fields the UI reads. The Better-Auth
 // /api/auth/get-session response carries more (emailVerified, image,
@@ -22,13 +27,30 @@ export const getSession = createServerFn({ method: "GET" }).handler(
     // during SSR and over RPC during client-side nav.
     const token = getCookie(SESSION_COOKIE_NAME);
     if (!token) return null;
-    const res = await apiClient.fetch("/api/auth/get-session", {
-      headers: { cookie: `${SESSION_COOKIE_NAME}=${token}` },
-    });
-    if (!res.ok) return null;
-    const data = (await res.json()) as {
-      user?: { id: string; email: string; name: string | null };
-    } | null;
-    return data?.user ? { user: data.user } : null;
+
+    // Fail-soft: a broken auth call (network error, server down, DB reset
+    // leaving the cookie pointing at a nonexistent session) must not
+    // bubble to SSR and produce a 500. Clear the stale cookie and render
+    // as signed-out; the _authenticated guard takes the user to /login.
+    try {
+      const res = await fetch(`${env.SSR_API_URL}/api/auth/get-session`, {
+        headers: { cookie: `${SESSION_COOKIE_NAME}=${token}` },
+      });
+      if (!res.ok) {
+        deleteCookie(SESSION_COOKIE_NAME);
+        return null;
+      }
+      const data = (await res.json()) as {
+        user?: { id: string; email: string; name: string | null };
+      } | null;
+      if (!data?.user) {
+        deleteCookie(SESSION_COOKIE_NAME);
+        return null;
+      }
+      return { user: data.user };
+    } catch {
+      deleteCookie(SESSION_COOKIE_NAME);
+      return null;
+    }
   },
 );

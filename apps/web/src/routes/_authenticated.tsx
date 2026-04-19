@@ -1,4 +1,6 @@
 import { createFileRoute, Outlet, redirect } from "@tanstack/react-router";
+import { useSession } from "#/features/auth/auth-client";
+import { useUserInbox } from "#/features/user/use-user-inbox";
 
 export const Route = createFileRoute("/_authenticated")({
   beforeLoad: ({ context }) => {
@@ -8,6 +10,13 @@ export const Route = createFileRoute("/_authenticated")({
 });
 
 function AuthenticatedLayout() {
+  const { trpc } = Route.useRouteContext();
+  const { data: session } = useSession();
+  // Session-scoped inbox subscription. Mounted at the authenticated layout
+  // so every protected route has live counter/invite/access updates —
+  // not just the dashboard. See ADR-001 §D1.
+  useUserInbox(trpc, session?.user.id ?? null);
+
   return (
     <div className="min-h-screen">
       <Outlet />

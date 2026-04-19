@@ -197,6 +197,80 @@ Off-the-shelf library-managed rooms + presence.
 
 ---
 
+## Future optimization — `tracked()` event replay
+
+tRPC v11's `tracked(id, data)` helper tags each yielded event with a monotonic ID. When paired with `httpSubscriptionLink` (SSE), the client's `EventSource` auto-sends `Last-Event-ID` on reconnect, and your server generator can replay events published during the disconnect window.
+
+### Default: avoid
+
+**For the first version of any domain, do NOT adopt `tracked()` replay.** The Live+Snapshot pattern in §D3 already handles reconnect correctly via `onStarted` invalidation + cursor-aware refetch. Building `tracked()` adds an event-log store (in-memory ring buffer, Redis Stream, or Postgres table) plus a retention policy — infrastructure that pays off only for specific domain shapes.
+
+### Revisit when ALL of the following hold
+
+1. **Reconnect refetch is measurably expensive.** The query that backs the UI surface performs heavy joins, ranking, or spans many aggregates (e.g., "last page of messages across 20 chat rooms," ranked social feed). A `COUNT`/list refetch does not qualify.
+2. **Event rate is high relative to refetch cost.** Missing events during a 30s blip yields a small delta (cheap to replay) but the authoritative refetch is large (expensive). The inequality `replay_cost × avg_events_per_disconnect ≪ refetch_cost` must be true under realistic load.
+3. **Most disconnects are short.** If users routinely disconnect for hours, they exceed retention and fall back to refetch anyway (see "Retention bound" below) — replay buys nothing.
+4. **Duplicate/out-of-order tolerance matters.** Unordered payload-shape events (e.g., `presence-updated`) benefit from `tracked()`'s per-event idempotency keys even without replay, because the client can dedupe by ID.
+
+If fewer than all four hold, keep §D3's refetch pattern.
+
+### Challenge prompts before adopting
+
+- What is the P50 and P95 disconnect duration for real users on this domain? (If you don't know, measure first.)
+- What does the `onStarted` refetch currently cost in ms and bytes? Is it actually a problem?
+- What retention window does the replay store need to cover 95% of disconnects? Does that fit in memory / Redis / Postgres within your ops budget?
+- Who owns the retention-expiry job and its alerting? (If the answer is "nobody," you will ship a silent data-loss bug.)
+- Does the domain already need a durable event log for audit / compliance? If yes, `tracked()` is nearly free on top. If no, you are standing up stateful infra solely for reconnect optimization.
+
+### Retention bound — honesty clause
+
+Whatever store you pick is bounded. When a client reconnects with a `lastEventId` that has aged out of retention:
+
+- The server detects "ID not in store" and falls back to yielding from live only
+- The client's `onStarted` invalidation still runs (same path as today)
+- Result: long disconnects converge via refetch, identical to the no-`tracked()` baseline
+
+`tracked()` is therefore an **optimization for short-to-medium disconnects**, never a replacement for cursor-aware refetch. The fallback path must remain implemented and tested.
+
+### Implementation sketch (Redis Streams)
+
+Preferred backing store for this template: Redis Streams. Reuses the Redis instance already required by `@project/realtime`, provides server-side monotonic IDs, and supports `MAXLEN ~ N` capped retention natively.
+
+```ts
+// Durable variant alongside the existing Channel abstraction
+export interface DurableChannel<T> extends Channel<T> {
+  // XRANGE from exclusive-id to "+"
+  replay(sinceEventId: string | undefined): AsyncIterable<[string, T]>;
+}
+
+// Subscription generator
+onInboxEvent: protectedProcedure
+  .input(z.object({ lastEventId: z.string().optional() }))
+  .subscription(async function* ({ ctx, input }) {
+    const ch = ctx.channels.durable<InboxEvent>(key(ctx.session.userId));
+
+    // Replay phase — only events the client missed
+    for await (const [id, ev] of ch.replay(input.lastEventId)) {
+      yield tracked(id, ev);
+    }
+
+    // Live phase — XREAD BLOCK
+    for await (const [id, ev] of ch.subscribe()) {
+      yield tracked(id, ev);
+    }
+  });
+```
+
+Publishers additionally `XADD` to the stream with `MAXLEN ~ <cap>` to trim. Cap is per-user-per-domain; size it so `cap / avg_events_per_minute` exceeds P95 disconnect duration.
+
+Client migrates from `wsLink` to `httpSubscriptionLink` to get automatic `Last-Event-ID` handshake. See `apps/web/src/router.tsx` and the `TODO.md` recipe note.
+
+### Verdict
+
+Documented as an available optimization. **Not adopted for any current domain** in this template. If a future domain's reconnect refetch becomes a measured bottleneck, revisit — do not adopt speculatively.
+
+---
+
 ## Implementation
 
 File structure aligned with the template's FSD/DDD cross-layer naming:
