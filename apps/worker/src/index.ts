@@ -1,8 +1,10 @@
 import { closeTransport } from "@project/email/handler";
 import { startEmailWorker } from "./handlers/email.js";
 import { startMaintenanceWorker } from "./handlers/maintenance.js";
+import { registerSchedules } from "./schedule.js";
 
 const workers = [startEmailWorker(), startMaintenanceWorker()];
+await registerSchedules();
 
 console.log("[worker] started email + maintenance workers");
 

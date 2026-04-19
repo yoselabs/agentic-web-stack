@@ -245,6 +245,9 @@ importers:
 
   apps/worker:
     dependencies:
+      '@project/api':
+        specifier: workspace:*
+        version: link:../../packages/api
       '@project/db':
         specifier: workspace:*
         version: link:../../packages/db
