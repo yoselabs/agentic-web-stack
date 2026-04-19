@@ -2,13 +2,41 @@
 // Consumed by: the tRPC subscription on the server (fan-out to WS clients),
 // the service's own unit tests (via MemoryChannel assertion).
 
+import type { Todo, TodoList } from "@project/db";
 import type { Channel } from "@project/realtime/types";
 
+// Matches the `todo.list` query shape (todo-service.ts: include: { todoList: true }).
+// Payloads MUST match this shape exactly — the client cache stores rows of this
+// shape, and patching with a narrower shape would corrupt downstream consumers
+// that read `t.todoList.name` etc.
+export type TodoWithList = Todo & { todoList: TodoList };
+
+export const TODO_LIST_EVENT_KINDS = [
+  "todo-list-updated",
+  "todo-list-collaborator-added",
+  "todo-list-collaborator-removed",
+  "todo-created",
+  "todo-updated",
+  "todo-deleted",
+  "todos-reordered",
+  "todos-imported",
+] as const;
+
+export type TodoListEventKind = (typeof TODO_LIST_EVENT_KINDS)[number];
+
 export type TodoListEvent =
-  | { kind: "list-updated"; listId: string }
-  | { kind: "todo-updated"; listId: string; todoId: string }
-  | { kind: "collaborator-added"; listId: string; userId: string }
-  | { kind: "collaborator-removed"; listId: string; userId: string };
+  | { kind: "todo-list-updated"; listId: string }
+  | { kind: "todo-list-collaborator-added"; listId: string; userId: string }
+  | { kind: "todo-list-collaborator-removed"; listId: string; userId: string }
+  | { kind: "todo-created"; listId: string; todo: TodoWithList }
+  | { kind: "todo-updated"; listId: string; todo: TodoWithList }
+  | { kind: "todo-deleted"; listId: string; todoId: string }
+  | {
+      kind: "todos-reordered";
+      listId: string;
+      positions: Array<{ id: string; position: number }>;
+    }
+  | { kind: "todos-imported"; listId: string; todos: TodoWithList[] };
 
 export function listChannelKey(listId: string): string {
   return `todo-list:${listId}`;
@@ -20,7 +48,7 @@ export function listChannelKey(listId: string): string {
 //
 // The generator:
 //   - yields every event received on the channel
-//   - auto-closes when a `collaborator-removed` event names the viewer
+//   - auto-closes when a `todo-list-collaborator-removed` event names the viewer
 //     (authz cascade — subscription MUST NOT outlive viewer access)
 //   - honors AbortSignal for client-initiated cancellation
 //   - always unsubscribes on exit via the try/finally
@@ -48,7 +76,7 @@ export async function* subscribeToListEvents(
         // Owner never receives this about themselves (they're not in
         // the membership table), so the check is safe for both roles.
         if (
-          event.kind === "collaborator-removed" &&
+          event.kind === "todo-list-collaborator-removed" &&
           event.userId === viewerId
         ) {
           return;

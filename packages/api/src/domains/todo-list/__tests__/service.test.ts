@@ -212,7 +212,7 @@ describe("collaborator lifecycle", () => {
     expect(remaining).toBeNull();
 
     expect(received).toEqual({
-      kind: "collaborator-added",
+      kind: "todo-list-collaborator-added",
       listId,
       userId: INVITEE_ID,
     });
@@ -262,7 +262,7 @@ describe("collaborator lifecycle", () => {
     });
     expect(membership).toBeNull();
     expect(received).toEqual({
-      kind: "collaborator-removed",
+      kind: "todo-list-collaborator-removed",
       listId,
       userId: INVITEE_ID,
     });

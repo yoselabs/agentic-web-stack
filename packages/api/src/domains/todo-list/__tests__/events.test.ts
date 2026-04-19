@@ -8,6 +8,7 @@ import {
   listChannelKey,
   subscribeToListEvents,
   type TodoListEvent,
+  type TodoWithList,
 } from "../events.js";
 
 // Helper: let the event loop run enough iterations for the generator's
@@ -17,6 +18,25 @@ import {
 function tick(): Promise<void> {
   return new Promise((r) => setTimeout(r, 0));
 }
+
+const stubTodo: TodoWithList = {
+  id: "T1",
+  title: "x",
+  completed: false,
+  position: 0,
+  userId: "u1",
+  todoListId: "L",
+  createdAt: new Date(0),
+  updatedAt: new Date(0),
+  todoList: {
+    id: "L",
+    name: "list",
+    color: "#6366f1",
+    userId: "u1",
+    createdAt: new Date(0),
+    updatedAt: new Date(0),
+  },
+};
 
 describe("subscribeToListEvents", () => {
   it("yields published events in order", async () => {
@@ -31,19 +51,19 @@ describe("subscribeToListEvents", () => {
     const firstPromise = gen.next();
     await tick();
 
-    await ch.publish({ kind: "list-updated", listId: "L" });
+    await ch.publish({ kind: "todo-list-updated", listId: "L" });
     const first = await firstPromise;
     expect(first.done).toBe(false);
-    expect(first.value).toEqual({ kind: "list-updated", listId: "L" });
+    expect(first.value).toEqual({ kind: "todo-list-updated", listId: "L" });
 
     const secondPromise = gen.next();
     await tick();
-    await ch.publish({ kind: "todo-updated", listId: "L", todoId: "T1" });
+    await ch.publish({ kind: "todo-updated", listId: "L", todo: stubTodo });
     const second = await secondPromise;
     expect(second.value).toEqual({
       kind: "todo-updated",
       listId: "L",
-      todoId: "T1",
+      todo: stubTodo,
     });
 
     await gen.return(undefined);
@@ -61,14 +81,14 @@ describe("subscribeToListEvents", () => {
     const firstPromise = gen.next();
     await tick();
     await ch.publish({
-      kind: "collaborator-removed",
+      kind: "todo-list-collaborator-removed",
       listId: "L",
       userId: "someone-else",
     });
     const first = await firstPromise;
     expect(first.done).toBe(false);
     expect(first.value).toEqual({
-      kind: "collaborator-removed",
+      kind: "todo-list-collaborator-removed",
       listId: "L",
       userId: "someone-else",
     });
@@ -77,14 +97,14 @@ describe("subscribeToListEvents", () => {
     const secondPromise = gen.next();
     await tick();
     await ch.publish({
-      kind: "collaborator-removed",
+      kind: "todo-list-collaborator-removed",
       listId: "L",
       userId: "viewer-2",
     });
     const second = await secondPromise;
     expect(second.done).toBe(false);
     expect(second.value).toEqual({
-      kind: "collaborator-removed",
+      kind: "todo-list-collaborator-removed",
       listId: "L",
       userId: "viewer-2",
     });

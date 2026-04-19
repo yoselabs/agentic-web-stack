@@ -204,7 +204,7 @@ export async function acceptInvite(
   await tx.todoListInvite.delete({ where: { id: invite.id } });
 
   await provider(listChannelKey(invite.todoListId)).publish({
-    kind: "collaborator-added",
+    kind: "todo-list-collaborator-added",
     listId: invite.todoListId,
     userId,
   });
@@ -248,7 +248,7 @@ export async function removeCollaborator(
   });
 
   await provider(listChannelKey(listId)).publish({
-    kind: "collaborator-removed",
+    kind: "todo-list-collaborator-removed",
     listId,
     userId: targetUserId,
   });

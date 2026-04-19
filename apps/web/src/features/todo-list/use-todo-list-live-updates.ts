@@ -4,7 +4,10 @@
 // Uses @trpc/tanstack-react-query's subscriptionOptions API. Caller
 // passes the trpc proxy from Route.useRouteContext().
 
-import type { TodoListEvent } from "@project/api/domains/todo-list/events";
+import {
+  TODO_LIST_EVENT_KINDS,
+  type TodoListEvent,
+} from "@project/api/domains/todo-list/events";
 import type { AppRouter } from "@project/api/router";
 import { type QueryClient, useQueryClient } from "@tanstack/react-query";
 import type { TRPCOptionsProxy } from "@trpc/tanstack-react-query";
@@ -26,7 +29,13 @@ export function useTodoListLiveUpdates(
       { listId: listId ?? "" },
       {
         enabled: isLeader && listId !== null,
-        onData: (event: TodoListEvent) => {
+        onData: (data) => {
+          // tRPC serialization turns Date fields into string over the wire;
+          // cast back to the logical TodoListEvent shape. applyEvent only
+          // reads listId (a string), so the Date-vs-string drift is inert.
+          // Task 1.7 will replace this with per-kind handlers that read
+          // serialized payloads through superjson, removing the cast.
+          const event = data as unknown as TodoListEvent;
           broadcast({ __relay: true, event });
           applyEvent(trpc, queryClient, event);
         },
@@ -43,13 +52,6 @@ export function useTodoListLiveUpdates(
     });
   }, [trpc, queryClient, onMessage]);
 }
-
-const TODO_LIST_EVENT_KINDS = [
-  "list-updated",
-  "todo-updated",
-  "collaborator-added",
-  "collaborator-removed",
-] as const;
 
 function isTodoListRelay(
   d: unknown,

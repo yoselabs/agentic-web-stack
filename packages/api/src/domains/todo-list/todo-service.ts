@@ -102,27 +102,32 @@ export async function completeTodo(
       message: "You do not have access to this list.",
     });
   }
-  let updated: Awaited<ReturnType<typeof tx.todo.update>>;
   if (!completed) {
     await lockActiveTodos(tx, todo.todoListId);
     await shiftActivePositions(tx, todo.todoListId);
-    updated = await tx.todo.update({
+    await tx.todo.update({
       where: { id },
       data: { completed: false, position: 0 },
     });
   } else {
-    updated = await tx.todo.update({
+    await tx.todo.update({
       where: { id },
       data: { completed },
     });
   }
+  // Re-read with the todoList relation so the payload matches TodoWithList
+  // (matches the shape consumed by client cache — see events.ts).
+  const updatedWithList = await tx.todo.findUniqueOrThrow({
+    where: { id },
+    include: { todoList: true },
+  });
   // Fan out to collaborators so they see the completion state flip in realtime.
   await provider(listChannelKey(todo.todoListId)).publish({
     kind: "todo-updated",
     listId: todo.todoListId,
-    todoId: id,
+    todo: updatedWithList,
   });
-  return updated;
+  return updatedWithList;
 }
 
 export async function reorderTodos(

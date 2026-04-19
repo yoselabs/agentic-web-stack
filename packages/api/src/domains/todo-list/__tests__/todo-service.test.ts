@@ -474,9 +474,13 @@ describe("todo CRUD by collaborators", () => {
     );
     unsub();
     await factory.closeAll();
-    expect(published).toEqual([
-      { kind: "todo-updated", listId: sharedListId, todoId: ownerTodo.id },
-    ]);
+    expect(published.length).toBe(1);
+    const ev = published[0];
+    if (ev?.kind !== "todo-updated") throw new Error("wrong kind");
+    expect(ev.listId).toBe(sharedListId);
+    expect(ev.todo.id).toBe(ownerTodo.id);
+    expect(ev.todo.completed).toBe(true);
+    expect(ev.todo.todoList?.id).toBe(sharedListId);
   });
 
   it("outsider listTodos throws FORBIDDEN", async () => {
