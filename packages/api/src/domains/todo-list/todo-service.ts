@@ -71,7 +71,9 @@ export async function createTodo(
   creatorId: string,
   title: string,
   todoListId: string,
+  options: { channel?: ChannelProvider } = {},
 ) {
+  const provider = options.channel ?? defaultProvider;
   const allowed = await canReadList(tx, creatorId, todoListId);
   if (!allowed) {
     throw new TRPCError({
@@ -81,9 +83,16 @@ export async function createTodo(
   }
   await lockActiveTodos(tx, todoListId);
   await shiftActivePositions(tx, todoListId);
-  return tx.todo.create({
+  const created = await tx.todo.create({
     data: { title, userId: creatorId, todoListId, position: 0 },
+    include: { todoList: true },
   });
+  await provider(listChannelKey(todoListId)).publish({
+    kind: "todo-created",
+    listId: todoListId,
+    todo: created,
+  });
+  return created;
 }
 
 export async function completeTodo(
@@ -135,7 +144,9 @@ export async function reorderTodos(
   viewerId: string,
   todoListId: string,
   ids: string[],
+  options: { channel?: ChannelProvider } = {},
 ) {
+  const provider = options.channel ?? defaultProvider;
   const allowed = await canReadList(tx, viewerId, todoListId);
   if (!allowed) {
     throw new TRPCError({
@@ -150,13 +161,20 @@ export async function reorderTodos(
     FROM (VALUES ${Prisma.join(pairs, ",")}) AS d(id, new_position)
     WHERE t.id = d.id
   `;
+  await provider(listChannelKey(todoListId)).publish({
+    kind: "todos-reordered",
+    listId: todoListId,
+    positions: ids.map((id, i) => ({ id, position: i })),
+  });
 }
 
 export async function deleteTodo(
   tx: Prisma.TransactionClient,
   viewerId: string,
   id: string,
+  options: { channel?: ChannelProvider } = {},
 ) {
+  const provider = options.channel ?? defaultProvider;
   const todo = await tx.todo.findUniqueOrThrow({ where: { id } });
   const allowed = await canReadList(tx, viewerId, todo.todoListId);
   if (!allowed) {
@@ -165,7 +183,13 @@ export async function deleteTodo(
       message: "You do not have access to this list.",
     });
   }
-  return tx.todo.delete({ where: { id } });
+  const deleted = await tx.todo.delete({ where: { id } });
+  await provider(listChannelKey(todo.todoListId)).publish({
+    kind: "todo-deleted",
+    listId: todo.todoListId,
+    todoId: id,
+  });
+  return deleted;
 }
 
 // Narrowed to Prisma.TransactionClient: calls lockActiveTodos.
@@ -174,7 +198,9 @@ export async function importTodosFromCSV(
   creatorId: string,
   csvData: Buffer,
   todoListId: string,
+  options: { channel?: ChannelProvider } = {},
 ): Promise<{ count: number }> {
+  const provider = options.channel ?? defaultProvider;
   const allowed = await canReadList(tx, creatorId, todoListId);
   if (!allowed) {
     throw new TRPCError({
@@ -202,13 +228,19 @@ export async function importTodosFromCSV(
     where: { completed: false, todoListId },
     data: { position: { increment: titles.length } },
   });
-  await tx.todo.createMany({
+  const createdRows = await tx.todo.createManyAndReturn({
     data: titles.map((title, i) => ({
       title,
       userId: creatorId,
       todoListId,
       position: i,
     })),
+    include: { todoList: true },
+  });
+  await provider(listChannelKey(todoListId)).publish({
+    kind: "todos-imported",
+    listId: todoListId,
+    todos: createdRows,
   });
 
   return { count: titles.length };
