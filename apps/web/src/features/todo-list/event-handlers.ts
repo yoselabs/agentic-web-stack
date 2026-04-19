@@ -99,5 +99,12 @@ export const eventHandlers: { [K in TodoListEventKind]: Handler<K> } = {
       trpc.todoList.collaborators.queryFilter({ listId: ev.listId }),
     );
     qc.invalidateQueries(trpc.todoList.listAccessible.queryFilter());
+    // Also invalidate the list-detail + todo-list queries: when the
+    // revoked viewer's tab refetches todoList.get, the server's
+    // canReadList gate throws FORBIDDEN, surfacing the access-lost
+    // UI state. Without this, a revoked user keeps seeing stale
+    // list content until their next navigation.
+    qc.invalidateQueries(trpc.todoList.get.queryFilter({ id: ev.listId }));
+    qc.invalidateQueries(trpc.todo.list.queryFilter({ todoListId: ev.listId }));
   },
 };
