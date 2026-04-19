@@ -11,15 +11,20 @@ import { useRef } from "react";
 import { CompletedTodoItem } from "#/features/todo/completed-todo-item.js";
 import { SortableTodoItem } from "#/features/todo/sortable-todo-item.js";
 import { useTodos } from "#/features/todo/use-todos.js";
+import { CollaboratorList } from "#/features/todo-list/collaborator-list.js";
+import { ShareListDialog } from "#/features/todo-list/share-list-dialog.js";
+import { useTodoListLiveUpdates } from "#/features/todo-list/use-todo-list-live-updates.js";
 
 export const Route = createFileRoute("/_authenticated/todo-lists/$listId")({
   component: TodoListDetailPage,
 });
 
 function TodoListDetailPage() {
-  const { trpc } = Route.useRouteContext();
+  const { trpc, session } = Route.useRouteContext();
   const { listId } = Route.useParams();
   const queryClient = useQueryClient();
+
+  useTodoListLiveUpdates(trpc, listId, session?.user.id ?? null);
 
   const listQuery = useQuery(trpc.todoList.get.queryOptions({ id: listId }));
   const {
@@ -49,10 +54,27 @@ function TodoListDetailPage() {
         >
           {"<-"} Back to lists
         </Link>
-        <h1 className="text-3xl font-bold mt-2">
-          {listQuery.data?.name ?? "Loading..."}
-        </h1>
+        <div className="flex items-center justify-between mt-2 gap-4">
+          <h1 className="text-3xl font-bold">
+            {listQuery.data?.name ?? "Loading..."}
+          </h1>
+          <ShareListDialog listId={listId} trpc={trpc} />
+        </div>
       </div>
+
+      {listQuery.data && session && (
+        <section className="mb-6">
+          <h2 className="text-sm font-semibold text-muted-foreground mb-2">
+            Collaborators
+          </h2>
+          <CollaboratorList
+            listId={listId}
+            ownerId={listQuery.data.userId}
+            currentUserId={session.user.id}
+            trpc={trpc}
+          />
+        </section>
+      )}
 
       <div className="flex gap-2 mb-4">
         <input
