@@ -37,16 +37,29 @@ export function useTodoListLiveUpdates(
   // Peer path: listen for relayed events.
   useEffect(() => {
     return onMessage((data) => {
-      if (
-        data &&
-        typeof data === "object" &&
-        "__relay" in data &&
-        "event" in data
-      ) {
-        applyEvent(trpc, queryClient, (data as { event: TodoListEvent }).event);
+      if (isTodoListRelay(data)) {
+        applyEvent(trpc, queryClient, data.event);
       }
     });
   }, [trpc, queryClient, onMessage]);
+}
+
+const TODO_LIST_EVENT_KINDS = [
+  "list-updated",
+  "todo-updated",
+  "collaborator-added",
+  "collaborator-removed",
+] as const;
+
+function isTodoListRelay(
+  d: unknown,
+): d is { __relay: true; event: TodoListEvent } {
+  if (!d || typeof d !== "object") return false;
+  const rec = d as Record<string, unknown>;
+  if (rec.__relay !== true) return false;
+  const ev = rec.event as { kind?: unknown } | undefined;
+  if (!ev || typeof ev.kind !== "string") return false;
+  return (TODO_LIST_EVENT_KINDS as readonly string[]).includes(ev.kind);
 }
 
 function applyEvent(

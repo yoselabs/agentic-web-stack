@@ -42,7 +42,10 @@ const wsUrl =
     ? "ws://localhost:3001/trpc-ws"
     : `${window.location.protocol === "https:" ? "wss" : "ws"}://${window.location.hostname}:3001/trpc-ws`;
 
-const wsClient = createWSClient({ url: wsUrl });
+const wsClient = createWSClient({
+  url: wsUrl,
+  lazy: { enabled: true, closeMs: 0 },
+});
 
 const trpcClient = createTRPCClient<AppRouter>({
   links: [
