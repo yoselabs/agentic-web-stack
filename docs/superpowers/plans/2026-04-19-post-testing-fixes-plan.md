@@ -462,9 +462,10 @@ EOF
 - Create: `packages/api/src/domains/user/user-service.ts` (service stub — search added in Task 7)
 - Create: `packages/api/src/domains/user/subscribe-to-user-inbox.ts`
 - Create: `packages/api/src/domains/user/user-router.ts`
-- Create: `packages/api/src/domains/user/__tests__/user-router.test.ts`
+- Create: `packages/api/src/domains/user/__tests__/subscribe-to-user-inbox.test.ts`
 - Modify: `packages/api/package.json` (add three subpaths)
 - Modify: `packages/api/src/router.ts` (append-alpha insert)
+- Modify: `scripts/check-domain-names.ts` (allowlist entry for `user`)
 
 - [ ] **Step 1: Register subpaths in `packages/api/package.json`.**
 
@@ -619,30 +620,28 @@ export const appRouter = router({
 export type AppRouter = typeof appRouter;
 ```
 
-- [ ] **Step 7: Write a router integration test for the subscription.**
+- [ ] **Step 7: Rename the test file and write a MemoryChannel-driven generator test.**
 
-Create `packages/api/src/domains/user/__tests__/user-router.test.ts`:
+The file tests the `subscribeToUserInbox` generator directly, not the tRPC router. Router-level coverage comes from e2e. Name the file accordingly so future readers don't expect `createCaller` coverage here.
+
+Create `packages/api/src/domains/user/__tests__/subscribe-to-user-inbox.test.ts`:
 
 ```ts
-import { afterAll, beforeAll, describe, expect, it } from "bun:test";
-import { channel as defaultChannel } from "@project/realtime/channel";
-import { db } from "@project/db";
+import { describe, expect, it } from "bun:test";
+import { MemoryChannelFactory } from "@project/realtime/memory";
+import { subscribeToUserInbox } from "../subscribe-to-user-inbox.js";
 import {
   type UserInboxEvent,
   userInboxChannelKey,
 } from "../user-events.js";
-import { subscribeToUserInbox } from "../subscribe-to-user-inbox.js";
 
 describe("subscribeToUserInbox", () => {
   it("yields events published on the user channel", async () => {
-    const userId = "test-subscribe-inbox-user";
-    const key = userInboxChannelKey(userId);
-    const ch = defaultChannel<UserInboxEvent>(key);
-
+    const factory = new MemoryChannelFactory();
+    const ch = factory.channel<UserInboxEvent>(userInboxChannelKey("alice"));
     const controller = new AbortController();
     const gen = subscribeToUserInbox(ch, controller.signal);
 
-    // publish after subscribe is set up
     queueMicrotask(() => {
       void ch.publish({ kind: "todo-list-counters-changed", listId: "L1" });
     });
@@ -655,26 +654,34 @@ describe("subscribeToUserInbox", () => {
     });
 
     controller.abort();
-    // Drain to completion
     await gen.return(undefined);
+    await factory.closeAll();
   });
 
-  afterAll(async () => {
-    await db.$disconnect();
+  it("honors AbortSignal — generator returns when aborted", async () => {
+    const factory = new MemoryChannelFactory();
+    const ch = factory.channel<UserInboxEvent>(userInboxChannelKey("bob"));
+    const controller = new AbortController();
+    const gen = subscribeToUserInbox(ch, controller.signal);
+
+    const nextP = gen.next();
+    controller.abort();
+    const result = await nextP;
+    expect(result.done).toBe(true);
+
+    await factory.closeAll();
   });
 });
 ```
 
-Note: this test uses the process-default RedisChannel (the real one). The default RedisChannel requires Redis; `@project/realtime/channel` resolves to `redis-channel.ts`. If the test environment already runs against a real Redis (via `make test-unit` infra), this is fine. If not, swap to MemoryChannelFactory directly — but the existing todo-list tests use the default channel when testing subscription shape, so follow the majority pattern. Verify with `make test-unit` against one of these tests before committing.
-
-If the default RedisChannel path isn't available in unit tests, rewrite this test to construct a MemoryChannel directly and call `subscribeToUserInbox` on it, mirroring what `todo-list/__tests__/events.test.ts` does.
+This mirrors the MemoryChannel pattern in `packages/api/src/domains/todo-list/__tests__/events.test.ts`. No Redis dependency. Router-level coverage of `onInboxEvent` is provided by the e2e realtime scenarios in Task 17.
 
 - [ ] **Step 8: Run the new test.**
 
 ```bash
 make test-unit
 ```
-Expected: test passes. If it errors on Redis connection, switch to Memory-based subscription as noted.
+Expected: both tests PASS.
 
 - [ ] **Step 9: Add `user` to `scripts/check-domain-names.ts` allowlist.**
 
@@ -713,8 +720,9 @@ feat(api): user domain scaffolding + onInboxEvent subscription
 Adds packages/api/src/domains/user/ with the USER_INBOX_EVENT_KINDS
 SSOT tuple, UserInboxEvent union, subscribeToUserInbox generator, and
 the user.onInboxEvent tRPC subscription. Viewer-scoped: channel key
-derived from ctx.session.user.id. Append-alpha registered in
-appRouter between todoList and next. See ADR-001.
+derived from ctx.session.user.id. Append-alpha registered in appRouter
+after todoList. `user` added to check-domain-names allowlist
+(e2e coverage via todo-list scenarios). See ADR-001.
 
 Co-Authored-By: Claude Opus 4.7 (1M context) <noreply@anthropic.com>
 EOF
@@ -730,6 +738,8 @@ EOF
 **Files:**
 - Modify: `packages/api/src/domains/todo-list/todo-service.ts`
 - Modify: `packages/api/src/domains/todo-list/service.ts`
+- Create: `packages/api/src/domains/todo-list/user-inbox-publishers.ts`
+- Modify: `packages/api/package.json` (add `./domains/todo-list/user-inbox-publishers` subpath)
 - Create: `packages/api/src/domains/user/__tests__/user-inbox-publishes.test.ts`
 
 Publisher coverage per spec §1.4. Each mutation emits both its existing list-channel event(s) AND a user-inbox event to the resolved recipients:
@@ -863,6 +873,7 @@ describe("user-inbox publish assertions", () => {
 
     await db.$transaction((tx) =>
       createTodo(tx, OWNER_ID, "One", sharedListId, {
+        channel: (k) => factory.channel(k),
         userInboxChannel: (k) => factory.channel(k),
       }),
     );
@@ -884,6 +895,8 @@ describe("user-inbox publish assertions", () => {
     const other = subscribe(factory, OTHER_ID);
     const unsubs = await Promise.all([owner.unsubP, other.unsubP]);
 
+    // inviteCollaborator does not publish to the list channel; only
+    // userInboxChannel override is required here.
     await db.$transaction((tx) =>
       inviteCollaborator(tx, OWNER_ID, sharedListId, "other-inbox", {
         userInboxChannel: (k) => factory.channel(k),
@@ -906,6 +919,7 @@ describe("user-inbox publish assertions", () => {
 
     await db.$transaction((tx) =>
       removeCollaborator(tx, OWNER_ID, sharedListId, COLLAB_ID, {
+        channel: (k) => factory.channel(k),
         userInboxChannel: (k) => factory.channel(k),
       }),
     );
@@ -952,6 +966,7 @@ describe("user-inbox publish assertions", () => {
 
     await db.$transaction((tx) =>
       acceptInvite(tx, OTHER_ID, invite.invite.token, {
+        channel: (k) => factory.channel(k),
         userInboxChannel: (k) => factory.channel(k),
       }),
     );
@@ -992,82 +1007,11 @@ make test-unit
 ```
 Expected: FAIL (`userInboxChannel` option not recognized).
 
-- [ ] **Step 3: Add user-inbox publishers to `todo-service.ts`.**
+**Ordering note on Steps 3–6.** Steps 3 and 4 are executed together: we extract the shared publisher helpers into one module first (Step 3), then wire them into `service.ts` (Step 4) and `todo-service.ts` (Step 5). The test file from Step 1 only goes green after BOTH services are wired. Do NOT attempt to inline the helpers inside each service — they are used from 5 call sites across 2 files.
 
-Edit `packages/api/src/domains/todo-list/todo-service.ts`. At the top, add imports:
+**Spec scope (§1.4):** publishers are added to `createTodo`, `deleteTodo`, `completeTodo`, `inviteCollaborator`, `acceptInvite`, `removeCollaborator`, `deleteTodoList`. Not added to `reorderTodos` or `importTodosFromCSV` — if a follow-up reveals CSV-import counter staleness, add in a separate change. `completeTodo` handles both complete AND un-complete; emit `counters-changed` on every call regardless of direction.
 
-```ts
-import type { UserInboxEvent } from "@project/api/domains/user/user-events";
-import { fanOutToMembers } from "@project/realtime/user-inbox";
-import type { ChannelFactory } from "@project/realtime/types";
-import { MemoryChannelFactory } from "@project/realtime/memory";
-```
-
-Wait — `fanOutToMembers` expects a `ChannelFactory`, but the existing `ChannelProvider` type is `(key: string) => Channel<TodoListEvent>`. We need a different shape. The cleanest approach is to accept a `userInboxChannel?: (key: string) => Channel<UserInboxEvent>` in options and build an ad-hoc factory wrapper inline. Better: keep the provider pattern consistent — use `(key: string) => Channel<UserInboxEvent>` directly.
-
-Revised approach — stay provider-based (matching the existing `channel?: ChannelProvider` convention):
-
-```ts
-import type { UserInboxEvent } from "@project/api/domains/user/user-events";
-import { userInboxChannelKey } from "@project/api/domains/user/user-events";
-import { channel as defaultChannel } from "@project/realtime/channel";
-import type { Channel } from "@project/realtime/types";
-
-type UserInboxChannelProvider = (key: string) => Channel<UserInboxEvent>;
-const defaultUserInboxProvider: UserInboxChannelProvider = (k) =>
-  defaultChannel<UserInboxEvent>(k);
-
-async function publishCountersChanged(
-  provider: UserInboxChannelProvider,
-  recipientIds: readonly string[],
-  listId: string,
-): Promise<void> {
-  if (recipientIds.length === 0) return;
-  const unique = Array.from(new Set(recipientIds));
-  await Promise.all(
-    unique.map((id) =>
-      provider(userInboxChannelKey(id)).publish({
-        kind: "todo-list-counters-changed",
-        listId,
-      }),
-    ),
-  );
-}
-
-async function listMemberIdsForList(
-  tx: Prisma.TransactionClient,
-  todoListId: string,
-): Promise<string[]> {
-  const list = await tx.todoList.findUniqueOrThrow({
-    where: { id: todoListId },
-    select: {
-      userId: true,
-      memberships: { select: { userId: true } },
-    },
-  });
-  return [list.userId, ...list.memberships.map((m) => m.userId)];
-}
-```
-
-Now add the `userInboxChannel?` option to each of `createTodo`, `completeTodo`, `deleteTodo`. For each, after the existing list-channel publish, add:
-
-```ts
-const userInboxProvider = options.userInboxChannel ?? defaultUserInboxProvider;
-const recipientIds = await listMemberIdsForList(tx, todoListId);
-await publishCountersChanged(userInboxProvider, recipientIds, todoListId);
-```
-
-(For `completeTodo` and `deleteTodo`, `todoListId` must be derived from the `todo.todoListId` already fetched — use that variable.)
-
-Do not apply to `reorderTodos` or `importTodosFromCSV` (reorder doesn't change counters; imports DO change the count but deferred since they weren't in §1.4 — leave for a future change).
-
-Wait — `importTodosFromCSV` changes counters. Per spec §1.4, only `createTodo`/`deleteTodo`/`completeTodo`/`uncompleteTodo` are listed. The spec does not list `importTodosFromCSV`. Follow the spec strictly — no extra publishers. If the user notices a CSV-import counter stagger later, we add it in a follow-up.
-
-Also: `completeTodo` handles both complete AND un-complete (via `completed: boolean` param). The spec lists them as separate rows but they're one function. Emit `counters-changed` on every call regardless of direction.
-
-- [ ] **Step 4: Add user-inbox publishers to `service.ts`.**
-
-Edit `packages/api/src/domains/todo-list/service.ts`. Add the same imports + helpers at module scope (DRY by duplicating — or extract to `todo-list/user-inbox-publishers.ts` if the duplication is ≥3 sites; here it's 5 sites, so extract).
+- [ ] **Step 3: Create the shared publisher module.**
 
 Create `packages/api/src/domains/todo-list/user-inbox-publishers.ts`:
 
@@ -1165,6 +1109,8 @@ export async function publishInvitesChanged(
 Register this file in `packages/api/package.json` exports under `./domains/todo-list/user-inbox-publishers` (alphabetically between `./domains/todo-list/todo-service` and `./domains/user/user-events`).
 
 - [ ] **Step 5: Wire publishers into `service.ts`.**
+
+**Options-bag expansion reference.** Every mutation below gets its existing `options: { … } = {}` parameter widened with `userInboxChannel?: UserInboxChannelProvider`. For mutations that already had `channel?: ChannelProvider`, the final shape is `options: { channel?: ChannelProvider; userInboxChannel?: UserInboxChannelProvider } = {}`. For mutations that had no options before (`deleteTodoList`), the final shape is `options: { userInboxChannel?: UserInboxChannelProvider } = {}`. Keep defaults in place so routers continue to call without passing options.
 
 Edit `packages/api/src/domains/todo-list/service.ts`. Add to imports:
 
@@ -1313,6 +1259,8 @@ EOF
 ## Task 6: declineInvite + revokeInvite mutations + pending-invites queries
 
 **Spec sections:** §2.3.2 (UI contract), §3.2 (API surface).
+
+**Requires:** Task 5 complete. The new functions reference `defaultUserInboxProvider`, `publishInvitesChanged`, and `UserInboxChannelProvider` from `./user-inbox-publishers.js` — the import statement was added in Task 5 Step 5.
 
 **Files:**
 - Modify: `packages/api/src/domains/todo-list/service.ts`
@@ -2658,7 +2606,17 @@ const form = useForm({
 });
 ```
 
-`useForm`'s `validators` object needs to be updated when `isSignUp` flips. `useForm` reads its validators fresh on each interaction, but if this causes stale behavior, the explicit workaround is to call `form.reset()` when toggling mode (already done on the toggle button's `onClick` — verify).
+**Reset on mode toggle.** The existing toggle button's `onClick` calls `setIsSignUp(!isSignUp)` + `setFormError(null)` only — it does NOT call `form.reset()`. Extend it so field-level error state from the previous mode does not persist when the active schema changes:
+
+```tsx
+onClick={() => {
+  setIsSignUp(!isSignUp);
+  setFormError(null);
+  form.reset();
+}}
+```
+
+Without this, toggling from signup (with an 8-char error on password) back to signin leaves the stale error visible even though signin's schema is lenient.
 
 Also update the password placeholder/minLength:
 
