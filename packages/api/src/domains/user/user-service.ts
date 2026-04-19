@@ -9,16 +9,20 @@ export async function searchUsersByUsername(
   callerId: string,
   prefix: string,
 ): Promise<Array<{ id: string; username: string; name: string }>> {
-  const trimmed = prefix.trim();
-  if (trimmed.length === 0) return [];
+  // Accept both "alice" and "@alice" (the autocomplete UI renders
+  // usernames as "@alice" after selection, and that value feeds back
+  // into the search on next keystroke). Normalize at the boundary —
+  // one fix covers the UI re-edit path AND users who type "@" by hand.
+  const normalized = prefix.trim().replace(/^@+/, "");
+  if (normalized.length === 0) return [];
   return db.user.findMany({
     where: {
       AND: [
         { id: { not: callerId } },
         {
           OR: [
-            { username: { startsWith: trimmed, mode: "insensitive" } },
-            { name: { startsWith: trimmed, mode: "insensitive" } },
+            { username: { startsWith: normalized, mode: "insensitive" } },
+            { name: { startsWith: normalized, mode: "insensitive" } },
           ],
         },
       ],
