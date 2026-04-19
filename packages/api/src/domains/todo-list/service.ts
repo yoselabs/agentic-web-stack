@@ -22,9 +22,14 @@ export async function listTodoLists(db: DbClient, userId: string) {
 }
 
 export async function getTodoList(db: DbClient, userId: string, id: string) {
-  return db.todoList.findFirstOrThrow({
-    where: { id, userId },
-  });
+  const allowed = await canReadList(db, userId, id);
+  if (!allowed) {
+    throw new TRPCError({
+      code: "FORBIDDEN",
+      message: "You do not have access to this list.",
+    });
+  }
+  return db.todoList.findUniqueOrThrow({ where: { id } });
 }
 
 export async function createTodoList(

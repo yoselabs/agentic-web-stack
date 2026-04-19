@@ -9,6 +9,7 @@ import {
 } from "bun:test";
 import { db } from "@project/db";
 import { MemoryChannelFactory } from "@project/realtime/memory";
+import { TRPCError } from "@trpc/server";
 import { listChannelKey } from "../events.js";
 import {
   acceptInvite,
@@ -282,6 +283,50 @@ describe("collaborator lifecycle", () => {
 
     const inviteeLists = await listAccessibleTodoLists(db, INVITEE_ID);
     expect(inviteeLists.find((l) => l.id === listId)).toBeTruthy();
+  });
+
+  it("collaborator with accepted membership can getTodoList", async () => {
+    await db.todoListMembership.create({
+      data: {
+        userId: INVITEE_ID,
+        todoListId: listId,
+        role: "collaborator",
+      },
+    });
+
+    const found = await getTodoList(db, INVITEE_ID, listId);
+    expect(found.id).toBe(listId);
+    expect(found.name).toBe("Shared");
+  });
+
+  it("unrelated user calling getTodoList throws FORBIDDEN", async () => {
+    const UNRELATED_ID = "test-unrelated-collab";
+    await db.user.deleteMany({ where: { id: UNRELATED_ID } });
+    await db.user.create({
+      data: {
+        id: UNRELATED_ID,
+        name: "Unrelated",
+        email: "unrelated-collab@example.com",
+        username: "unrelated-collab",
+        emailVerified: true,
+      },
+    });
+
+    try {
+      await expect(getTodoList(db, UNRELATED_ID, listId)).rejects.toThrow(
+        TRPCError,
+      );
+      let caught: unknown;
+      try {
+        await getTodoList(db, UNRELATED_ID, listId);
+      } catch (err) {
+        caught = err;
+      }
+      expect(caught).toBeInstanceOf(TRPCError);
+      expect((caught as TRPCError).code).toBe("FORBIDDEN");
+    } finally {
+      await db.user.delete({ where: { id: UNRELATED_ID } }).catch(() => {});
+    }
   });
 
   it("deleteExpiredInvites removes rows past retention window", async () => {

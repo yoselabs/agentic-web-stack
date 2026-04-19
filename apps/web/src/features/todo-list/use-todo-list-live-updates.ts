@@ -70,6 +70,9 @@ function applyEvent(
   // Use procedure-specific queryFilter — precise, no false positives.
   queryClient.invalidateQueries(trpc.todoList.listAccessible.queryFilter());
   queryClient.invalidateQueries(
+    trpc.todoList.get.queryFilter({ id: event.listId }),
+  );
+  queryClient.invalidateQueries(
     trpc.todoList.collaborators.queryFilter({ listId: event.listId }),
   );
   queryClient.invalidateQueries(
