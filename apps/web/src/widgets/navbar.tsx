@@ -16,7 +16,11 @@ export function Navbar() {
   const isAuthed = !!session;
   const isAdmin =
     isAuthed && (session.user as { role?: string }).role === "admin";
-  const jobsAdminHref = `${env.VITE_API_URL}/admin/queues/`;
+  // No trailing slash — Hono mounts Bull Board's entry route at exactly
+  // `/admin/queues`. With a trailing slash the entry handler doesn't match
+  // and the request falls through to a 404 (the API subroutes still work
+  // because they don't depend on the bare slash).
+  const jobsAdminHref = `${env.VITE_API_URL}/admin/queues`;
 
   return (
     <nav className="border-b px-6 py-3 flex items-center justify-between">
