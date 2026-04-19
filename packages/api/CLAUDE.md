@@ -1,5 +1,7 @@
 # packages/api — tRPC Router + Context
 
+> **Cross-layer naming:** each domain's folder name mirrors `apps/web/src/features/<same-name>/` and `e2e/features/<same-name>/`. See root `CLAUDE.md` § "Cross-Layer Naming".
+
 ## Architecture: Router → Service → Prisma
 
 ```
@@ -136,9 +138,11 @@ await db.$executeRaw`
   UPDATE "Todo" AS t
   SET "position" = d.new_position
   FROM (VALUES ${Prisma.join(pairs, ",")}) AS d(id, new_position)
-  WHERE t.id = d.id AND t."userId" = ${userId}
+  WHERE t.id = d.id
 `;
 ```
+
+Authorization is enforced by a gate check (e.g., `canReadList`) at the top of the service function — per the Transaction Rules above — not by scoping the SQL `WHERE`. Mixing authz into the bulk-write predicate silently drops rows instead of rejecting the request.
 
 ## Frontend Type Contracts
 

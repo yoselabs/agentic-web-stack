@@ -52,6 +52,7 @@ lint: db-generate ## Run agent-harness + tsc + email-uniqueness + test-infra int
 	@bun e2e/scripts/check-feature-emails.ts
 	@bun scripts/check-test-infra-integrity.ts
 	@bun scripts/check-trpc-patterns.ts
+	@bun scripts/check-domain-names.ts
 fix: db-generate ## Auto-fix lint issues + typecheck
 	@agent-harness fix
 	pnpm -w run typecheck

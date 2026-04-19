@@ -1,12 +1,14 @@
 # e2e — BDD Testing with playwright-bdd
 
+> **Cross-layer naming:** each domain subfolder mirrors `apps/web/src/features/<same-name>/` and `packages/api/src/domains/<same-name>/`. See root `CLAUDE.md` § "Cross-Layer Naming".
+
 ## BDD-First Workflow
 
-1. **Write the Gherkin spec** in `features/<name>.feature` (Phase 0 — before any code)
+1. **Write the Gherkin spec** in `features/<domain>/<name>.feature` (Phase 0 — before any code)
 2. **Add Prisma schema** if needed — `make db-push` (Phase 1)
 3. **Implement backend** — services + routers + Vitest (Phase 2)
 4. **Implement frontend** — hooks + components + routes (Phase 3)
-5. **Write step definitions** in `steps/<name>.ts` against real HTML (Phase 3)
+5. **Write step definitions** in `steps/<domain>/<name>.ts` against real HTML (Phase 3)
 6. **Generate tests:** `pnpm exec bddgen` (generates `.features-gen/`)
 7. **Run:** `make test`
 8. **Verify:** `make check && make test`
@@ -165,25 +167,51 @@ Don't use Scenario Outlines when all rows exercise the same code path — one sc
 
 ## Feature File Organization
 
-Feature files map to **domain areas**, not individual capabilities:
-- `auth.feature` — all authentication scenarios
-- `todos.feature` — all todo scenarios (CRUD, reorder, completion)
-- `mobile-nav.feature` — navigation-specific scenarios
+Feature files live in subfolders named after the domain. The subfolder name matches `apps/web/src/features/<name>/` and `packages/api/src/domains/<name>/`.
 
-Split into sub-files only when a feature exceeds ~15-20 scenarios. Step definition files mirror feature files.
+```
+e2e/
+  features/
+    auth/
+      auth.feature         # sign up / sign in / sign out / protected route
+    todo-list/
+      lists.feature        # list CRUD + privacy
+      todos.feature        # todo CRUD + reorder + completion + CSV
+      collaborators.feature # invite, real-time sync, multi-tab, revocation
+    email/
+      queue-retry.feature  # BullMQ retry + dead-letter via Bull Board
+    admin/
+      gate.feature         # /admin/queues authz
+    mobile-nav/
+      mobile-nav.feature   # mobile-specific navigation
+  steps/
+    auth/auth.ts
+    todo-list/lists.ts
+    todo-list/todos.ts
+    todo-list/collaborators.ts
+    email/queue-retry.ts
+    admin/gate.ts
+    mobile-nav/mobile-nav.ts
+```
+
+Split into multiple files within a domain when a single feature file exceeds ~15-20 scenarios. Step-file names mirror feature-file names.
 
 ## Writing Step Definitions
 
 ### Organization
 
-Steps are organized by domain. Shared steps (auth, navigation, assertions) live in `auth.ts`. Domain steps live in their own file.
+Steps are organized by domain in subfolders matching `features/<domain>/`. Shared steps (auth, navigation, assertions) live in `steps/auth/auth.ts`. Domain-specific steps live in their own file inside the matching subfolder.
 
 ```
 steps/
-  auth.ts        # sign in/out, navigation, generic assertions (I should see, I click)
-  todo-lists.ts  # todo-list-specific steps (create, navigate into, delete list)
-  todos.ts       # todo-specific steps
-  mobile-nav.ts  # mobile-specific steps
+  auth/
+    auth.ts            # sign in/out, navigation, generic assertions (I should see, I click)
+  todo-list/
+    lists.ts           # list CRUD steps
+    todos.ts           # todo CRUD, reorder, completion steps
+    collaborators.ts   # invite + multi-actor steps
+  mobile-nav/
+    mobile-nav.ts      # mobile-specific steps
 ```
 
 ### Reuse Rules

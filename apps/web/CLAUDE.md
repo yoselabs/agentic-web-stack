@@ -1,5 +1,7 @@
 # apps/web — TanStack Start Frontend
 
+> **Cross-layer naming:** each feature's folder name mirrors `packages/api/src/domains/<same-name>/` and `e2e/features/<same-name>/`. See root `CLAUDE.md` § "Cross-Layer Naming".
+
 ## FSD (Feature-Sliced Design)
 
 Frontend is organized by FSD layers. Routes stay file-based (TanStack Router requirement), everything else follows FSD:

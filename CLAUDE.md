@@ -57,6 +57,21 @@ For testing approach — unit vs BDD, the multi-user browser-context pattern for
 
 All workspace packages use `@project/*` prefix (e.g., `@project/api`, `@project/db`).
 
+## Cross-Layer Naming
+
+A domain's name is reused across every layer it touches. The layer terminology differs — web calls them *features* (FSD), API calls them *domains* (DDD) — but the name is the same.
+
+| Layer | Path template |
+|---|---|
+| Web | `apps/web/src/features/<name>/` |
+| API | `packages/api/src/domains/<name>/` |
+| E2E features | `e2e/features/<name>/` |
+| E2E step defs | `e2e/steps/<name>/` |
+
+A new capability lands under the same `<name>` in every layer it touches.
+
+**Enforced by** `scripts/check-domain-names.ts` (runs via `make lint`). Asymmetric-by-design domains (backend-only `auth`, frontend-only `mobile-nav`) are hard-coded in the script's allowlist. If you add a new asymmetric domain, extend the allowlist rather than silencing the check.
+
 ## Critical Rules
 
 - **Single source of truth (SSOT) — where it matters.** Values that genuinely change (domain rules, Zod schemas, Prisma types) live in exactly one place and are imported everywhere. Values that are constants-forever (dev ports, local DB creds) are literals duplicated across the 3-4 infra files that need them — SSOT prevents drift, which requires change, and these values don't change.
