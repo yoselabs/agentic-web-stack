@@ -3,6 +3,7 @@ import { Button } from "@project/ui/components/button";
 import { Input } from "@project/ui/components/input";
 import { useQueryClient } from "@tanstack/react-query";
 import { createFileRoute, Link } from "@tanstack/react-router";
+import { PendingInvitesDashboard } from "#/features/todo-list/pending-invites-dashboard";
 import { useTodoLists } from "#/features/todo-list/use-todo-lists.js";
 
 export const Route = createFileRoute("/_authenticated/todo-lists/")({
@@ -26,6 +27,8 @@ function TodoListsPage() {
       data-testid="todo-lists-index"
       className="max-w-2xl mx-auto px-4 sm:px-6 py-8 sm:py-10"
     >
+      <PendingInvitesDashboard trpc={trpc} />
+
       <h1 className="text-3xl font-bold mb-6">Todo Lists</h1>
 
       <form onSubmit={handleSubmit} className="flex gap-2 mb-6">
