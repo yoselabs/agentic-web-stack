@@ -22,7 +22,10 @@ function TodoListsPage() {
   } = useTodoLists(trpc, queryClient);
 
   return (
-    <main className="max-w-2xl mx-auto px-4 sm:px-6 py-8 sm:py-10">
+    <main
+      data-testid="todo-lists-index"
+      className="max-w-2xl mx-auto px-4 sm:px-6 py-8 sm:py-10"
+    >
       <h1 className="text-3xl font-bold mb-6">Todo Lists</h1>
 
       <form onSubmit={handleSubmit} className="flex gap-2 mb-6">

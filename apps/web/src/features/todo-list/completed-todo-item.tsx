@@ -11,7 +11,10 @@ export function CompletedTodoItem({
   onDelete: () => void;
 }) {
   return (
-    <li className="flex items-center gap-3 p-3 rounded-lg border opacity-60">
+    <li
+      data-testid="todo-row"
+      className="flex items-center gap-3 p-3 rounded-lg border opacity-60"
+    >
       <input
         type="checkbox"
         checked={todo.completed}
