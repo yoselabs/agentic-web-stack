@@ -1,19 +1,14 @@
 repos:
   - repo: local
     hooks:
-      - id: harness-fix
-        name: auto-fix
-        entry: agent-harness fix
-        language: system
-        pass_filenames: false
-        always_run: true
-
+      # Pre-commit — read-only checks only. Fail fast, never rewrite.
       - id: harness-lint
         name: agent-harness lint
         entry: agent-harness lint
         language: system
         pass_filenames: false
         always_run: true
+        stages: [pre-commit]
 
       - id: typecheck
         name: typecheck
@@ -21,3 +16,45 @@ repos:
         language: system
         pass_filenames: false
         always_run: true
+        stages: [pre-commit]
+
+      # Pre-push — belt-and-braces. Run fix, then re-lint, and fail
+      # if fix produced any diff (someone pushed without formatting).
+      - id: harness-fix-prepush
+        name: agent-harness fix (pre-push)
+        entry: agent-harness fix
+        language: system
+        pass_filenames: false
+        always_run: true
+        stages: [pre-push]
+
+      - id: harness-lint-prepush
+        name: agent-harness lint (pre-push)
+        entry: agent-harness lint
+        language: system
+        pass_filenames: false
+        always_run: true
+        stages: [pre-push]
+
+      - id: typecheck-prepush
+        name: typecheck (pre-push)
+        entry: pnpm -w run typecheck
+        language: system
+        pass_filenames: false
+        always_run: true
+        stages: [pre-push]
+
+      - id: no-format-drift
+        name: no format drift (pre-push)
+        entry: |
+          bash -c 'git diff --exit-code || {
+            echo;
+            echo "⚠ Format drift detected — agent-harness fix made changes that were not committed.";
+            echo "  Remediation:";
+            echo "    make fix && git add -u && git commit -m style-format-fixes && git push";
+            exit 1;
+          }'
+        language: system
+        pass_filenames: false
+        always_run: true
+        stages: [pre-push]
