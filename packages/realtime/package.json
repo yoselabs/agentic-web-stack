@@ -1,0 +1,25 @@
+{
+  "name": "@project/realtime",
+  "version": "0.0.0",
+  "private": true,
+  "type": "module",
+  "exports": {
+    "./channel": {
+      "default": "./src/channel.ts"
+    },
+    "./memory": {
+      "default": "./src/memory-channel.ts"
+    },
+    "./types": {
+      "default": "./src/types.ts"
+    }
+  },
+  "dependencies": {
+    "@project/env": "workspace:*",
+    "ioredis": "catalog:"
+  },
+  "devDependencies": {
+    "@types/node": "catalog:",
+    "typescript": "catalog:"
+  }
+}
