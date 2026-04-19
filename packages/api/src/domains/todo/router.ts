@@ -29,10 +29,15 @@ export const todoRouter = router({
       );
     }),
   reorder: protectedProcedure
-    .input(z.object({ ids: z.array(z.string()).min(1) }))
+    .input(
+      z.object({
+        todoListId: z.string().min(1),
+        ids: z.array(z.string()).min(1),
+      }),
+    )
     .mutation(({ ctx, input }) => {
       return ctx.db.$transaction((tx) =>
-        reorderTodos(tx, ctx.session.user.id, input.ids),
+        reorderTodos(tx, ctx.session.user.id, input.todoListId, input.ids),
       );
     }),
   delete: protectedProcedure

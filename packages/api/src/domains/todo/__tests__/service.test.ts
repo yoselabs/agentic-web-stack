@@ -124,7 +124,7 @@ describe("todo service", () => {
 
     // Current order: C(0), B(1), A(2). Reorder to A, C, B.
     await db.$transaction((tx) =>
-      reorderTodos(tx, TEST_USER_ID, [a.id, c.id, b.id]),
+      reorderTodos(tx, TEST_USER_ID, TEST_LIST_ID, [a.id, c.id, b.id]),
     );
 
     const todos = await listTodos(db, TEST_USER_ID, TEST_LIST_ID);

@@ -117,7 +117,7 @@ export function useTodos(
       );
     });
 
-    reorderTodos.mutate({ ids: reordered.map((t) => t.id) });
+    reorderTodos.mutate({ todoListId, ids: reordered.map((t) => t.id) });
   };
 
   const importTodos = useMutation({

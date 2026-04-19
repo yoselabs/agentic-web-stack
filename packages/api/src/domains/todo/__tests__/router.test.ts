@@ -81,7 +81,9 @@ describe("todo router (integration)", () => {
 
   it("rejects empty reorder array", async () => {
     const caller = await createCaller();
-    await expect(caller.todo.reorder({ ids: [] })).rejects.toThrow();
+    await expect(
+      caller.todo.reorder({ todoListId: TEST_LIST_ID, ids: [] }),
+    ).rejects.toThrow();
   });
 
   it("round-trips a todo through create and list", async () => {
