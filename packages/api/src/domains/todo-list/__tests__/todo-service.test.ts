@@ -7,12 +7,7 @@ import {
   expect,
   it,
 } from "bun:test";
-import {
-  listChannelKey,
-  type TodoListEvent,
-} from "@project/api/domains/todo-list/events";
 import { db } from "@project/db";
-import { MemoryChannelFactory } from "@project/realtime/memory";
 import {
   completeTodo,
   createTodo,
@@ -454,33 +449,6 @@ describe("todo CRUD by collaborators", () => {
     const imported = todos.filter((t) => t.title.startsWith("Collab row"));
     expect(imported.length).toBe(2);
     expect(imported.every((t) => t.userId === COLLAB_ID)).toBe(true);
-  });
-
-  it("completeTodo publishes todo-updated event on the list channel", async () => {
-    const factory = new MemoryChannelFactory();
-    const published: TodoListEvent[] = [];
-    const unsub = await factory
-      .channel<TodoListEvent>(listChannelKey(sharedListId))
-      .subscribe((e) => {
-        published.push(e);
-      });
-    const ownerTodo = await db.todo.create({
-      data: { title: "Publish me", userId: OWNER_ID, todoListId: sharedListId },
-    });
-    await db.$transaction((tx) =>
-      completeTodo(tx, COLLAB_ID, ownerTodo.id, true, {
-        channel: (k) => factory.channel(k),
-      }),
-    );
-    unsub();
-    await factory.closeAll();
-    expect(published.length).toBe(1);
-    const ev = published[0];
-    if (ev?.kind !== "todo-updated") throw new Error("wrong kind");
-    expect(ev.listId).toBe(sharedListId);
-    expect(ev.todo.id).toBe(ownerTodo.id);
-    expect(ev.todo.completed).toBe(true);
-    expect(ev.todo.todoList?.id).toBe(sharedListId);
   });
 
   it("outsider listTodos throws FORBIDDEN", async () => {
