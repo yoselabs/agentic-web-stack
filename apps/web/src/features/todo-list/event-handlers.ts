@@ -35,7 +35,18 @@ export const eventHandlers: { [K in TodoListEventKind]: Handler<K> } = {
   "todo-created": (trpc, qc, ev) => {
     qc.setQueryData<TodoWithList[]>(
       trpc.todo.list.queryFilter({ todoListId: ev.listId }).queryKey,
-      (old) => (old ? sortTodos([...old, ev.todo]) : old),
+      (old) => {
+        if (!old) return old;
+        // Mirror server shiftActivePositions: every active row bumps
+        // by 1 before inserting the new row at position 0. Without
+        // this, the new row shares position 0 with an existing row
+        // and the sort is undefined between them — visually the new
+        // item appears "second from top" on the remote side.
+        const shifted = old.map((t) =>
+          t.completed ? t : { ...t, position: t.position + 1 },
+        );
+        return sortTodos([...shifted, ev.todo]);
+      },
     );
   },
   "todo-updated": (trpc, qc, ev) => {

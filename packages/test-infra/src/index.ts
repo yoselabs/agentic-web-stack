@@ -133,6 +133,7 @@ export function envForSubprocess(
     // across each other.
     BETTER_AUTH_SECRET: `test-secret-key-for-${suite}-tests-only-32chars`,
     CORS_ORIGIN: webUrl,
+    WEB_URL: webUrl,
   };
   for (const [svc, cfg] of Object.entries(CONTAINER_SERVICES)) {
     const base = profile[svc];

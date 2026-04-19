@@ -8,11 +8,14 @@ import {
   DialogTitle,
   DialogTrigger,
 } from "@project/ui/components/dialog";
-import { Input } from "@project/ui/components/input";
 import { useMutation } from "@tanstack/react-query";
 import type { TRPCOptionsProxy } from "@trpc/tanstack-react-query";
 import { useState } from "react";
 import { toast } from "sonner";
+import { InviteAutocomplete } from "./invite-autocomplete";
+import { PendingInvitesOwner } from "./pending-invites-owner";
+
+type Candidate = { id: string; username: string; name: string };
 
 export function ShareListDialog({
   listId,
@@ -22,18 +25,18 @@ export function ShareListDialog({
   trpc: TRPCOptionsProxy<AppRouter>;
 }) {
   const [open, setOpen] = useState(false);
-  const [username, setUsername] = useState("");
+  const [selected, setSelected] = useState<Candidate | null>(null);
 
   const invite = useMutation(
     trpc.todoList.inviteCollaborator.mutationOptions({
       onSuccess: () => {
-        toast.success(`Invite sent to ${username}`);
-        setUsername("");
+        toast.success(
+          selected ? `Invite sent to @${selected.username}` : "Invite sent",
+        );
+        setSelected(null);
         setOpen(false);
       },
-      onError: (err) => {
-        toast.error(err.message);
-      },
+      onError: (err) => toast.error(err.message),
     }),
   );
 
@@ -46,30 +49,27 @@ export function ShareListDialog({
         <DialogHeader>
           <DialogTitle>Invite a collaborator</DialogTitle>
           <DialogDescription>
-            Invite someone by their @username. They'll receive an email to
-            accept.
+            Search by username. They'll receive an email to accept.
           </DialogDescription>
         </DialogHeader>
         <form
-          className="flex gap-2"
+          className="flex flex-col gap-2"
           onSubmit={(e) => {
             e.preventDefault();
-            const trimmed = username.trim();
-            if (!trimmed) return;
-            invite.mutate({ listId, username: trimmed });
+            if (!selected) return;
+            invite.mutate({ listId, username: selected.username });
           }}
         >
-          <Input
-            placeholder="Username"
-            value={username}
-            onChange={(e) => setUsername(e.target.value)}
+          <InviteAutocomplete
+            trpc={trpc}
+            onSelect={setSelected}
             disabled={invite.isPending}
-            autoFocus
           />
-          <Button type="submit" disabled={invite.isPending}>
+          <Button type="submit" disabled={!selected || invite.isPending}>
             Invite
           </Button>
         </form>
+        <PendingInvitesOwner listId={listId} trpc={trpc} />
       </DialogContent>
     </Dialog>
   );

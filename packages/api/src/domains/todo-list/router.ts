@@ -1,4 +1,5 @@
 import { sendEmail } from "@project/email/service";
+import { env } from "@project/env/server";
 import { channel as defaultChannel } from "@project/realtime/channel";
 import { TRPCError } from "@trpc/server";
 import { z } from "zod";
@@ -12,13 +13,17 @@ import {
   acceptInvite as acceptInviteFn,
   canReadList,
   createTodoList,
+  declineInvite as declineInviteFn,
   deleteTodoList,
   getTodoList,
   inviteCollaborator as inviteCollaboratorFn,
   listAccessibleTodoLists,
   listCollaborators,
+  listMyPendingInvites,
+  listPendingInvitesForList,
   listTodoLists,
   removeCollaborator as removeCollaboratorFn,
+  revokeInvite as revokeInviteFn,
 } from "./service.js";
 
 export const todoListRouter = router({
@@ -66,7 +71,7 @@ export const todoListRouter = router({
         vars: {
           inviterName: result.inviterName,
           listName: result.listName,
-          acceptUrl: `/invites/${result.invite.token}`,
+          acceptUrl: `${env.WEB_URL}/invites/${result.invite.token}`,
         },
       });
       return result.invite;
@@ -101,6 +106,28 @@ export const todoListRouter = router({
       if (!allowed) throw new TRPCError({ code: "FORBIDDEN" });
       return listCollaborators(ctx.db, input.listId);
     }),
+  declineInvite: protectedProcedure
+    .input(z.object({ token: z.string().min(1) }))
+    .mutation(({ ctx, input }) =>
+      ctx.db.$transaction((tx) =>
+        declineInviteFn(tx, ctx.session.user.id, input.token),
+      ),
+    ),
+  myPendingInvites: protectedProcedure.query(({ ctx }) =>
+    listMyPendingInvites(ctx.db, ctx.session.user.id),
+  ),
+  pendingInvites: protectedProcedure
+    .input(z.object({ listId: z.string().min(1) }))
+    .query(({ ctx, input }) =>
+      listPendingInvitesForList(ctx.db, ctx.session.user.id, input.listId),
+    ),
+  revokeInvite: protectedProcedure
+    .input(z.object({ inviteId: z.string().min(1) }))
+    .mutation(({ ctx, input }) =>
+      ctx.db.$transaction((tx) =>
+        revokeInviteFn(tx, ctx.session.user.id, input.inviteId),
+      ),
+    ),
   // Native async generator (via the subscribeToListEvents helper in
   // events.ts). Auto-closes when the viewer's own membership is revoked.
   onListEvent: protectedProcedure

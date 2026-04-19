@@ -7,7 +7,7 @@ import { Button } from "@project/ui/components/button";
 import { Input } from "@project/ui/components/input";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { createFileRoute, Link } from "@tanstack/react-router";
-import { useRef } from "react";
+import { useEffect, useRef } from "react";
 import { AccessLostEmptyState } from "#/features/todo-list/access-lost-empty-state.js";
 import { CollaboratorList } from "#/features/todo-list/collaborator-list.js";
 import { CompletedTodoItem } from "#/features/todo-list/completed-todo-item.js";
@@ -26,6 +26,19 @@ function TodoListDetailPage() {
   const queryClient = useQueryClient();
 
   useTodoListLiveUpdates(trpc, listId, session?.user.id ?? null);
+
+  // Navigating dashboard → detail could render stale todos if a
+  // collaborator mutated while the page was unmounted and the live
+  // subscription was inactive. Force-refetch both the list and todo
+  // queries on mount; the subscription handles updates from here on.
+  useEffect(() => {
+    queryClient.invalidateQueries(
+      trpc.todoList.get.queryFilter({ id: listId }),
+    );
+    queryClient.invalidateQueries(
+      trpc.todo.list.queryFilter({ todoListId: listId }),
+    );
+  }, [queryClient, trpc, listId]);
 
   const listQuery = useQuery(trpc.todoList.get.queryOptions({ id: listId }));
   const {

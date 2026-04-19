@@ -10,7 +10,7 @@ function HomePage() {
   const { data: session, isPending } = useSession();
 
   return (
-    <main className="flex min-h-screen items-center justify-center">
+    <main className="flex min-h-[calc(100vh-57px)] items-center justify-center">
       <div className="text-center">
         <h1 className="text-4xl font-bold mb-4">Agentic Web Stack</h1>
         <p className="text-lg text-muted-foreground mb-6">
@@ -22,11 +22,7 @@ function HomePage() {
           <Button asChild>
             <Link to="/dashboard">Go to Dashboard</Link>
           </Button>
-        ) : (
-          <Button asChild>
-            <Link to="/login">Sign In</Link>
-          </Button>
-        )}
+        ) : null}
       </div>
     </main>
   );

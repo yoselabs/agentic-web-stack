@@ -28,12 +28,23 @@ export const Route = createFileRoute("/login")({
   component: LoginPage,
 });
 
-const loginSchema = z.object({
+// Signin accepts any non-empty password — the server is authoritative on
+// policy. Showing "min N characters" on signin is misleading because the
+// account's existing password may have been set under different rules.
+const signinSchema = z.object({
   email: z.string().email(),
-  password: z.string().min(MIN_PASSWORD_LENGTH),
-  // Non-optional to match TanStack Form generics against
-  // defaultValues.name = ""; the submit handler derives a name from
-  // the email when the field is empty, preserving the UX.
+  password: z.string().min(1, "Password is required"),
+  // Kept to match defaultValues shape; not surfaced in signin UI.
+  name: z.string(),
+  username: z.string(),
+});
+
+const signupSchema = z.object({
+  email: z.string().email(),
+  password: z
+    .string()
+    .min(MIN_PASSWORD_LENGTH, `Min ${MIN_PASSWORD_LENGTH} characters`),
+  // Empty allowed — submit handler derives name/username from email.
   name: z.string(),
   username: z.string(),
 });
@@ -54,9 +65,10 @@ function LoginPage() {
   const [isSignUp, setIsSignUp] = useState(false);
   const [formError, setFormError] = useState<string | null>(null);
 
+  const activeSchema = isSignUp ? signupSchema : signinSchema;
   const form = useForm({
     defaultValues: { email: "", password: "", name: "", username: "" },
-    validators: { onChange: loginSchema },
+    validators: { onBlur: activeSchema, onSubmit: activeSchema },
     onSubmit: async ({ value }) => {
       setFormError(null);
       if (isSignUp) {
@@ -171,12 +183,16 @@ function LoginPage() {
                   <Input
                     id={field.name}
                     type="password"
-                    placeholder={`Min ${MIN_PASSWORD_LENGTH} characters`}
+                    placeholder={
+                      isSignUp
+                        ? `Min ${MIN_PASSWORD_LENGTH} characters`
+                        : "Your password"
+                    }
                     value={field.state.value}
                     onBlur={field.handleBlur}
                     onChange={(e) => field.handleChange(e.target.value)}
                     required
-                    minLength={MIN_PASSWORD_LENGTH}
+                    {...(isSignUp ? { minLength: MIN_PASSWORD_LENGTH } : {})}
                   />
                   {field.state.meta.errors.length > 0 && (
                     <p className="text-sm text-destructive">
@@ -222,6 +238,7 @@ function LoginPage() {
               onClick={() => {
                 setIsSignUp(!isSignUp);
                 setFormError(null);
+                form.reset();
               }}
               className="text-foreground underline underline-offset-4 hover:text-primary"
             >

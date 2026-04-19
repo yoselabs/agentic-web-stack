@@ -20,6 +20,7 @@ model TodoListMembership {
   todoListId String
   role       String   @default("collaborator") // "collaborator" | "owner"
   createdAt  DateTime @default(now())
+  updatedAt  DateTime @default(now()) @updatedAt
 
   user     User     @relation(fields: [userId], references: [id], onDelete: Cascade)
   todoList TodoList @relation(fields: [todoListId], references: [id], onDelete: Cascade)
@@ -34,6 +35,7 @@ model TodoListInvite {
   todoListId    String
   expiresAt     DateTime
   createdAt     DateTime @default(now())
+  updatedAt     DateTime @default(now()) @updatedAt
 
   invitedUser User     @relation(fields: [invitedUserId], references: [id], onDelete: Cascade)
   todoList    TodoList @relation(fields: [todoListId], references: [id], onDelete: Cascade)

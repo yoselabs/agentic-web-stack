@@ -178,8 +178,6 @@ e2e/
       lists.feature        # list CRUD + privacy
       todos.feature        # todo CRUD + reorder + completion + CSV
       collaborators.feature # invite, real-time sync, multi-tab, revocation
-    email/
-      queue-retry.feature  # BullMQ retry + dead-letter via Bull Board
     admin/
       gate.feature         # /admin/queues authz
     mobile-nav/
@@ -189,7 +187,6 @@ e2e/
     todo-list/lists.ts
     todo-list/todos.ts
     todo-list/collaborators.ts
-    email/queue-retry.ts
     admin/gate.ts
     mobile-nav/mobile-nav.ts
 ```

@@ -14,6 +14,7 @@ import type { TRPCOptionsProxy } from "@trpc/tanstack-react-query";
 import { type ReactNode, useEffect } from "react";
 import { Toaster } from "sonner";
 import { getSession, type SessionData } from "#/shared/session";
+import { Navbar } from "#/widgets/navbar";
 
 import appCss from "../styles.css?url";
 
@@ -59,6 +60,7 @@ function RootDocument({ children }: Readonly<{ children: ReactNode }>) {
       </head>
       <body className="font-sans antialiased">
         <QueryClientProvider client={queryClient}>
+          <Navbar />
           {children}
         </QueryClientProvider>
         <Toaster richColors closeButton />

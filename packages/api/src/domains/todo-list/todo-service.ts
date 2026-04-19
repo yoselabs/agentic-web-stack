@@ -5,6 +5,12 @@ import { TRPCError } from "@trpc/server";
 import Papa from "papaparse";
 import { listChannelKey, type TodoListEvent } from "./events.js";
 import { canReadList } from "./service.js";
+import {
+  defaultUserInboxProvider,
+  listMemberIdsForList,
+  publishCountersChanged,
+  type UserInboxChannelProvider,
+} from "./user-inbox-publishers.js";
 
 type DbClient = PrismaClient | Prisma.TransactionClient;
 type ChannelProvider = (key: string) => Channel<TodoListEvent>;
@@ -71,7 +77,10 @@ export async function createTodo(
   creatorId: string,
   title: string,
   todoListId: string,
-  options: { channel?: ChannelProvider } = {},
+  options: {
+    channel?: ChannelProvider;
+    userInboxChannel?: UserInboxChannelProvider;
+  } = {},
 ) {
   const provider = options.channel ?? defaultProvider;
   const allowed = await canReadList(tx, creatorId, todoListId);
@@ -92,6 +101,9 @@ export async function createTodo(
     listId: todoListId,
     todo: created,
   });
+  const inboxProvider = options.userInboxChannel ?? defaultUserInboxProvider;
+  const recipients = await listMemberIdsForList(tx, todoListId);
+  await publishCountersChanged(inboxProvider, recipients, todoListId);
   return created;
 }
 
@@ -100,7 +112,10 @@ export async function completeTodo(
   viewerId: string,
   id: string,
   completed: boolean,
-  options: { channel?: ChannelProvider } = {},
+  options: {
+    channel?: ChannelProvider;
+    userInboxChannel?: UserInboxChannelProvider;
+  } = {},
 ) {
   const provider = options.channel ?? defaultProvider;
   const todo = await tx.todo.findUniqueOrThrow({ where: { id } });
@@ -136,6 +151,9 @@ export async function completeTodo(
     listId: todo.todoListId,
     todo: updatedWithList,
   });
+  const inboxProvider = options.userInboxChannel ?? defaultUserInboxProvider;
+  const recipients = await listMemberIdsForList(tx, todo.todoListId);
+  await publishCountersChanged(inboxProvider, recipients, todo.todoListId);
   return updatedWithList;
 }
 
@@ -172,7 +190,10 @@ export async function deleteTodo(
   tx: Prisma.TransactionClient,
   viewerId: string,
   id: string,
-  options: { channel?: ChannelProvider } = {},
+  options: {
+    channel?: ChannelProvider;
+    userInboxChannel?: UserInboxChannelProvider;
+  } = {},
 ) {
   const provider = options.channel ?? defaultProvider;
   const todo = await tx.todo.findUniqueOrThrow({ where: { id } });
@@ -189,6 +210,9 @@ export async function deleteTodo(
     listId: todo.todoListId,
     todoId: id,
   });
+  const inboxProvider = options.userInboxChannel ?? defaultUserInboxProvider;
+  const recipients = await listMemberIdsForList(tx, todo.todoListId);
+  await publishCountersChanged(inboxProvider, recipients, todo.todoListId);
   return deleted;
 }
 

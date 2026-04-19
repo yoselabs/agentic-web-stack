@@ -1,7 +1,5 @@
-// Step definitions for multi-user todo-list collaboration scenarios.
-// Each named actor ("alice", "bob") runs in a fresh Playwright
-// BrowserContext (incognito profile) so cookie jars stay isolated.
-// Module-level Maps scope state per scenario (cleared in Before/After).
+// Multi-user todo-list step defs. Each actor runs in its own Playwright
+// BrowserContext. Module-level Maps scope state per scenario.
 
 import type { BrowserContext, Page } from "@playwright/test";
 import { expect } from "@playwright/test";
@@ -24,13 +22,11 @@ export type Actor = {
 
 export const actors = new Map<string, Actor>();
 
-// Track list IDs by display name so steps that need to navigate directly
-// to a list can resolve the ID without going through the UI listing
-// (which, for the collaborator, may not show the list before accept).
+// Track list IDs by display name so steps can deep-link pre-accept.
 export const listIdByName = new Map<string, string>();
 
-// Mailpit is shared across workers but waitForMailTo filters by recipient,
-// so we don't delete-all per scenario (would race with sibling pollers).
+// Mailpit shared across workers; waitForMailTo filters by recipient, so
+// no delete-all per scenario (would race with sibling pollers).
 Before(async () => {
   actors.clear();
   listIdByName.clear();
@@ -54,8 +50,8 @@ export function getActor(name: string): Actor {
   return actor;
 }
 
-// Better-Auth sign-up with an EXPLICIT username — decoupled from email
-// prefix so invite tests can target a stable username.
+// Sign-up with an EXPLICIT username (decoupled from email prefix) so
+// invite tests can target a stable username.
 async function signUpWithUsername(
   page: Page,
   email: string,
@@ -112,8 +108,7 @@ export async function spawnActor(
   return actor;
 }
 
-// Reads the Better-Auth user id via /api/auth/get-session on the
-// actor's cookie-jar'd page. Throws if the session lacks a user.
+// Read the Better-Auth user id from /api/auth/get-session.
 export async function fetchUserId(page: Page): Promise<string> {
   const res = await page.request.get(`${TEST_API_URL}/api/auth/get-session`);
   if (!res.ok()) {
@@ -129,7 +124,7 @@ export async function fetchUserId(page: Page): Promise<string> {
   return id;
 }
 
-// Counts held Web Locks matching `leader-tab:<userId>`. Origin-scoped.
+// Count held Web Locks for leader-tab:<userId> (origin-scoped).
 export async function heldLeaderLocksOn(
   page: Page,
   userId: string,
@@ -184,8 +179,7 @@ Given(
   },
 );
 
-// Short-circuits invite/accept via tRPC HTTP on actors' cookie-jar'd
-// pages — ~10× faster than the full UI round-trip.
+// Short-circuits invite/accept via tRPC HTTP — ~10× faster than UI.
 Given(
   "{string} is a collaborator on {string}",
   // biome-ignore lint/correctness/noEmptyPattern: playwright-bdd requires object destructuring as first arg
@@ -289,8 +283,14 @@ When(
     await waitForHydration(inviter.page);
     await inviter.page.getByRole("button", { name: "Share" }).click();
     const dialog = inviter.page.getByRole("dialog");
-    await dialog.getByPlaceholder("Username").fill(invitee.username);
-    await dialog.getByRole("button", { name: "Invite" }).click();
+    // Autocomplete flow: type prefix → click the suggestion → Invite enabled.
+    const input = dialog.getByPlaceholder("Search by username or name");
+    await input.fill(invitee.username);
+    const suggestion = dialog
+      .getByRole("button", { name: new RegExp(`@${invitee.username}`) })
+      .first();
+    await suggestion.click();
+    await dialog.getByRole("button", { name: "Invite", exact: true }).click();
     // Dialog closes on success (share-list-dialog.tsx onSuccess).
     await expect(dialog).not.toBeVisible({ timeout: 10_000 });
   },
@@ -418,8 +418,7 @@ Then(
   },
 );
 
-// Realtime-dependent: WS → invalidate → refetch + react-query retry
-// backoff (~7s for a 403 with default 3× retry). Budget ≥10s.
+// Realtime WS → invalidate → refetch path (budget ≥10s for retry backoff).
 Then(
   "{string} sees {string} within {int} second(s)",
   // biome-ignore lint/correctness/noEmptyPattern: playwright-bdd requires object destructuring as first arg

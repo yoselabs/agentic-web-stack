@@ -15,6 +15,9 @@
     },
     "./types": {
       "default": "./src/types.ts"
+    },
+    "./user-inbox": {
+      "default": "./src/user-inbox.ts"
     }
   },
   "scripts": {

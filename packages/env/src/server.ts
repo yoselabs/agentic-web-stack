@@ -31,6 +31,13 @@ export const env = createEnv({
       .string()
       .startsWith(".", "must start with . for cross-subdomain cookies")
       .optional(),
+    // Public origin of the web UI. Used by server-side code that needs
+    // to construct user-facing links for external channels (email body,
+    // push notifications, SMS). Distinct from BETTER_AUTH_URL (the API
+    // origin where Better-Auth handlers live) and CORS_ORIGIN (the
+    // allowed cross-origin policy) — even when they coincide in dev,
+    // separating them keeps the intent explicit.
+    WEB_URL: z.string().url().default("http://localhost:3000"),
     NODE_ENV: z
       .enum(["development", "production", "test"])
       .default("development"),

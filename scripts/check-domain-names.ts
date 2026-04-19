@@ -24,14 +24,15 @@
 //                No backend domain either — purely a frontend/UI concern.
 //                e2e coverage exists in its own subfolder.
 //                → allowed-missing: frontend, backend
-//   - email      email delivery lives in packages/email (a standalone
-//                package), not in apps/web or @project/api; no frontend
-//                surface for the email infra itself
-//                → allowed-missing: frontend, backend
 //   - todo       after Task 3's migration, todos merged into the
 //                todo-list e2e subfolder (single domain from the BDD
 //                perspective); frontend + backend still have their own
 //                todo subfolder
+//                → allowed-missing: e2e-feat, e2e-steps
+//   - user       cross-cutting realtime aggregator (user-inbox channel,
+//                username search); its behavior is exercised via
+//                todo-list e2e scenarios, not a dedicated user/ e2e
+//                folder
 //                → allowed-missing: e2e-feat, e2e-steps
 //
 // Rule:
@@ -67,7 +68,7 @@ const ALLOWLIST: Record<string, Set<Layer>> = {
   auth: new Set(["backend"]),
   admin: new Set(["frontend", "backend"]),
   "mobile-nav": new Set(["frontend", "backend"]),
-  email: new Set(["frontend", "backend"]),
+  user: new Set(["e2e-feat", "e2e-steps"]),
 };
 
 const layerPath: Record<Layer, string> = {

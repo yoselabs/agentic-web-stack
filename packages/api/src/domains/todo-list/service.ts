@@ -5,6 +5,14 @@ import type { Channel } from "@project/realtime/types";
 import { TRPCError } from "@trpc/server";
 import { INVITE_EXPIRY_DAYS, INVITE_RETENTION_DAYS } from "./constants.js";
 import { listChannelKey, type TodoListEvent } from "./events.js";
+import {
+  defaultUserInboxProvider,
+  listMemberIdsForList,
+  publishAccessGranted,
+  publishAccessRevoked,
+  publishInvitesChanged,
+  type UserInboxChannelProvider,
+} from "./user-inbox-publishers.js";
 
 type DbClient = PrismaClient | Prisma.TransactionClient;
 type ChannelProvider = (key: string) => Channel<TodoListEvent>;
@@ -47,11 +55,20 @@ export async function deleteTodoList(
   tx: Prisma.TransactionClient,
   userId: string,
   id: string,
+  options: { userInboxChannel?: UserInboxChannelProvider } = {},
 ) {
   const list = await tx.todoList.findFirstOrThrow({
     where: { id, userId },
   });
-  return tx.todoList.delete({ where: { id: list.id } });
+  const memberIds = await listMemberIdsForList(tx, list.id);
+  const deleted = await tx.todoList.delete({ where: { id: list.id } });
+
+  const inboxProvider = options.userInboxChannel ?? defaultUserInboxProvider;
+  // Everyone except the deleter (the owner) sees their sidebar entry disappear.
+  const recipients = memberIds.filter((mid) => mid !== userId);
+  await publishAccessRevoked(inboxProvider, recipients, list.id);
+
+  return deleted;
 }
 
 export async function canReadList(
@@ -102,7 +119,10 @@ export async function inviteCollaborator(
   ownerId: string,
   listId: string,
   username: string,
-  options: { nowMs?: number } = {},
+  options: {
+    nowMs?: number;
+    userInboxChannel?: UserInboxChannelProvider;
+  } = {},
 ): Promise<InviteCollaboratorResult> {
   const list = await tx.todoList.findFirstOrThrow({
     where: { id: listId, userId: ownerId },
@@ -151,6 +171,9 @@ export async function inviteCollaborator(
     where: { id: ownerId },
   });
 
+  const inboxProvider = options.userInboxChannel ?? defaultUserInboxProvider;
+  await publishInvitesChanged(inboxProvider, [invitee.id], listId);
+
   return {
     invite,
     inviteeEmail: invitee.email,
@@ -163,7 +186,11 @@ export async function acceptInvite(
   tx: Prisma.TransactionClient,
   userId: string,
   token: string,
-  options: { channel?: ChannelProvider; nowMs?: number } = {},
+  options: {
+    channel?: ChannelProvider;
+    nowMs?: number;
+    userInboxChannel?: UserInboxChannelProvider;
+  } = {},
 ) {
   const provider = options.channel ?? defaultProvider;
   const now = new Date(options.nowMs ?? Date.now());
@@ -209,6 +236,17 @@ export async function acceptInvite(
     userId,
   });
 
+  const inboxProvider = options.userInboxChannel ?? defaultUserInboxProvider;
+  const memberIds = await listMemberIdsForList(tx, invite.todoListId);
+  // memberIds now includes the newly-added accepter (membership was created above)
+  await publishAccessGranted(inboxProvider, memberIds, invite.todoListId);
+  // Owner's pending-invites view changed (invite was deleted)
+  const list = await tx.todoList.findUniqueOrThrow({
+    where: { id: invite.todoListId },
+    select: { userId: true },
+  });
+  await publishInvitesChanged(inboxProvider, [list.userId], invite.todoListId);
+
   return membership;
 }
 
@@ -217,7 +255,10 @@ export async function removeCollaborator(
   ownerId: string,
   listId: string,
   targetUserId: string,
-  options: { channel?: ChannelProvider } = {},
+  options: {
+    channel?: ChannelProvider;
+    userInboxChannel?: UserInboxChannelProvider;
+  } = {},
 ) {
   const provider = options.channel ?? defaultProvider;
 
@@ -252,15 +293,32 @@ export async function removeCollaborator(
     listId,
     userId: targetUserId,
   });
+
+  const inboxProvider = options.userInboxChannel ?? defaultUserInboxProvider;
+  await publishAccessRevoked(inboxProvider, [targetUserId], listId);
 }
 
+// Returns { owner, collaborators } — the router gates read access before
+// calling this, so the query itself is authz-less. The owner row is
+// synthetic (derived from the TodoList row); collaborators are membership
+// rows.
 export async function listCollaborators(db: DbClient, listId: string) {
-  return db.todoListMembership.findMany({
+  const list = await db.todoList.findUniqueOrThrow({
+    where: { id: listId },
+    select: {
+      user: { select: { id: true, username: true, name: true } },
+    },
+  });
+  const memberships = await db.todoListMembership.findMany({
     where: { todoListId: listId },
     include: {
       user: { select: { id: true, username: true, name: true } },
     },
   });
+  return {
+    owner: list.user,
+    collaborators: memberships,
+  };
 }
 
 export async function deleteExpiredInvites(
@@ -273,4 +331,115 @@ export async function deleteExpiredInvites(
     where: { expiresAt: { lt: cutoff } },
   });
   return result.count;
+}
+
+export async function listMyPendingInvites(
+  db: DbClient,
+  viewerId: string,
+  options: { nowMs?: number } = {},
+) {
+  const now = new Date(options.nowMs ?? Date.now());
+  return db.todoListInvite.findMany({
+    where: {
+      invitedUserId: viewerId,
+      expiresAt: { gt: now },
+    },
+    orderBy: { createdAt: "desc" },
+    include: {
+      todoList: {
+        select: {
+          id: true,
+          name: true,
+          color: true,
+          user: { select: { id: true, name: true, username: true } },
+        },
+      },
+    },
+  });
+}
+
+export async function listPendingInvitesForList(
+  db: DbClient,
+  ownerId: string,
+  listId: string,
+  options: { nowMs?: number } = {},
+) {
+  const now = new Date(options.nowMs ?? Date.now());
+  const list = await db.todoList.findFirst({
+    where: { id: listId, userId: ownerId },
+    select: { id: true },
+  });
+  if (!list) {
+    throw new TRPCError({
+      code: "FORBIDDEN",
+      message: "Only the list owner can view pending invites.",
+    });
+  }
+  return db.todoListInvite.findMany({
+    where: {
+      todoListId: listId,
+      expiresAt: { gt: now },
+    },
+    orderBy: { createdAt: "desc" },
+    include: {
+      invitedUser: { select: { id: true, username: true, name: true } },
+    },
+  });
+}
+
+export async function declineInvite(
+  tx: Prisma.TransactionClient,
+  viewerId: string,
+  token: string,
+  options: { userInboxChannel?: UserInboxChannelProvider } = {},
+) {
+  const invite = await tx.todoListInvite.findFirst({
+    where: { token, invitedUserId: viewerId },
+    select: { id: true, todoListId: true },
+  });
+  if (!invite) {
+    throw new TRPCError({
+      code: "NOT_FOUND",
+      message: "Invite not found or not addressed to you",
+    });
+  }
+  await tx.todoListInvite.delete({ where: { id: invite.id } });
+
+  const inboxProvider = options.userInboxChannel ?? defaultUserInboxProvider;
+  const list = await tx.todoList.findUniqueOrThrow({
+    where: { id: invite.todoListId },
+    select: { userId: true },
+  });
+  await publishInvitesChanged(inboxProvider, [list.userId], invite.todoListId);
+}
+
+export async function revokeInvite(
+  tx: Prisma.TransactionClient,
+  viewerId: string,
+  inviteId: string,
+  options: { userInboxChannel?: UserInboxChannelProvider } = {},
+) {
+  const invite = await tx.todoListInvite.findUnique({
+    where: { id: inviteId },
+    select: {
+      id: true,
+      invitedUserId: true,
+      todoListId: true,
+      todoList: { select: { userId: true } },
+    },
+  });
+  if (!invite || invite.todoList.userId !== viewerId) {
+    throw new TRPCError({
+      code: "NOT_FOUND",
+      message: "Invite not found or not owned by caller",
+    });
+  }
+  await tx.todoListInvite.delete({ where: { id: invite.id } });
+
+  const inboxProvider = options.userInboxChannel ?? defaultUserInboxProvider;
+  await publishInvitesChanged(
+    inboxProvider,
+    [invite.invitedUserId],
+    invite.todoListId,
+  );
 }

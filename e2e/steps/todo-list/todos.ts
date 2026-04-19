@@ -47,7 +47,8 @@ when("I sign out and sign in as {string}", async ({ page }, email: string) => {
   await page.goto("/login");
   await waitForHydration(page);
   await page.getByRole("button", { name: "Sign Up" }).click();
-  await page.getByLabel("Name").fill(email.split("@")[0]);
+  await page.getByLabel("Name", { exact: true }).fill(email.split("@")[0]);
+  await page.getByLabel("Username").fill(email.split("@")[0]);
   await page.getByLabel("Email").fill(email);
   await page.getByLabel("Password").fill(SHARED_PASSWORD);
   await page.locator('button[type="submit"]').click();
@@ -87,7 +88,11 @@ when(
 then(
   "{string} should appear before {string}",
   async ({ page }, first: string, second: string) => {
-    const items = page.locator("ul").first().locator("li");
+    // Scope to the todo rows — the list-detail page renders a
+    // CollaboratorList <ul> before the todos <ul>, so `ul.first()` would
+    // pick up collaborators instead of todos. `data-testid="todo-row"` is
+    // set by SortableTodoItem on each active todo.
+    const items = page.locator('[data-testid="todo-row"]');
     const texts: string[] = [];
     for (let i = 0; i < (await items.count()); i++) {
       const text = await items.nth(i).innerText();
@@ -104,7 +109,7 @@ then(
 );
 
 when("I import todos from {string}", async ({ page }, filename: string) => {
-  const filePath = resolve(stepsDir, `../fixtures/${filename}`);
+  const filePath = resolve(stepsDir, `../../fixtures/${filename}`);
   const input = page.locator('input[type="file"]');
   await input.setInputFiles(filePath);
   await page.waitForLoadState("networkidle");

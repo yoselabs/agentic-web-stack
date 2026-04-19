@@ -7,6 +7,8 @@ import {
 } from "@project/ui/components/card";
 import { createFileRoute } from "@tanstack/react-router";
 import { useSession } from "#/features/auth/auth-client";
+import { PendingInvitesDashboard } from "#/features/todo-list/pending-invites-dashboard";
+import { useUserInbox } from "#/features/user/use-user-inbox";
 
 export const Route = createFileRoute("/_authenticated/dashboard")({
   component: DashboardPage,
@@ -14,10 +16,13 @@ export const Route = createFileRoute("/_authenticated/dashboard")({
 
 function DashboardPage() {
   const { data: session } = useSession();
+  const { trpc } = Route.useRouteContext();
+  useUserInbox(trpc, session?.user.id ?? null);
 
   return (
     <main className="max-w-2xl mx-auto px-4 sm:px-6 py-8 sm:py-10">
       <h1 className="text-3xl font-bold mb-6">Dashboard</h1>
+      <PendingInvitesDashboard trpc={trpc} />
       <Card>
         <CardHeader>
           <CardTitle>
