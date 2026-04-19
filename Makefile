@@ -19,7 +19,7 @@ setup: ## Zero-conf: deps + Postgres + schema + hooks (runs prereq checks)
 	@until docker compose -f docker-compose.dev.yml exec -T postgres pg_isready -U postgres > /dev/null 2>&1; do sleep 1; done
 	pnpm -w run db:push
 	$(MAKE) routes
-	prek install
+	prek install --hook-type pre-commit --hook-type pre-push
 	@echo "✓ Ready. Run 'make dev' to start."
 
 # Regenerate route tree (no dev server needed)
