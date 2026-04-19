@@ -83,7 +83,14 @@ app.get("/health", async (c) => {
 // NOTE: "/api/auth" is inlined by design — Better-Auth's client hardcodes
 // this path internally, so a shared constant would be a false SSOT. See
 // docs/superpowers/specs/2026-04-18-zero-conf-architecture-design.md §D3.
-app.on(["POST", "GET"], "/api/auth/**", (c) => {
+//
+// NOTE: `app.use` (not `app.on`) is required here. `app.on(["POST","GET"], "/api/auth/**")`
+// breaks Hono's TrieRouter when `@bull-board/hono` is mounted via `app.route()` —
+// the `**` wildcard and `*` wildcard from Bull Board's serveStatic route conflict
+// in the TrieRouter, silently returning 0 matches for all auth endpoints. `app.use`
+// registers with method=ALL and its wildcard semantics are handled separately,
+// avoiding the conflict. See the bug analysis in the admin-gate e2e test PR.
+app.use("/api/auth/*", (c) => {
   return auth.handler(c.req.raw);
 });
 
