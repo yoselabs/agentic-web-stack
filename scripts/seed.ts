@@ -15,11 +15,13 @@ export const SHARED_PASSWORD = "TestPassword!123";
 export const SEED_USER = {
   email: "demo@example.com",
   password: SHARED_PASSWORD,
+  username: "demo",
 } as const;
 
 export const TEST_USER = {
   email: "test@example.com",
   password: SHARED_PASSWORD,
+  username: "test",
 } as const;
 
 async function main() {
@@ -41,6 +43,7 @@ async function main() {
       email: SEED_USER.email,
       password: SEED_USER.password,
       name: "Demo User",
+      username: SEED_USER.username,
     },
   });
 
