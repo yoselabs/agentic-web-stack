@@ -1,6 +1,7 @@
-// Todo rules — the baseline. Expanded in Plan C with membership rules
-// when TodoListMembership lands. For now: a user can manage their own
-// todos/lists (owner-only model).
+// Owner OR collaborator can read/update. Only owner can delete.
+// Membership check is done at service level (service fetches the
+// membership row before issuing the authz check) — CASL conditions
+// over collection relations aren't expressive enough for this shape.
 
 import type { AbilityBuilder } from "@casl/ability";
 import type { AppAbility, SessionUser } from "../types.js";
