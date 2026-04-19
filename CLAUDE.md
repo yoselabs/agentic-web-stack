@@ -15,6 +15,15 @@ Monorepo: TanStack Start (frontend) + Hono (API server) + tRPC + Prisma + Postgr
 
 Each directory with a CLAUDE.md has area-specific guidance. Read it before working there.
 
+## Conventions
+
+Canonical cross-cutting conventions live in `docs/conventions.md`. Read
+the relevant section before writing code that touches the area.
+
+- **Realtime event naming** — domain-prefixed event kinds. See [docs/conventions.md#realtime-event-naming](docs/conventions.md#realtime-event-naming).
+- **Event shape — payload vs notification** — pick one shape per kind; don't mix. See [docs/conventions.md#event-shape--payload-vs-notification](docs/conventions.md#event-shape--payload-vs-notification).
+- **Event kinds SSOT** — const tuple → derived type, never the reverse. See [docs/conventions.md#event-kinds-ssot](docs/conventions.md#event-kinds-ssot).
+
 ## Commands
 
 - `make setup` — zero-conf: installs deps, starts Postgres, pushes schema, installs pre-commit hooks

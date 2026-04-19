@@ -28,6 +28,14 @@ domains/todo/
 6. Create `src/domains/<name>/__tests__/router.test.ts` for router-level tests (auth, validation)
 7. If the web app needs constants or schemas, add the subpath to `@project/api` exports and import via `@project/api/domains/<name>/constants`
 8. Run `make check` — types propagate to apps/web automatically
+- **Realtime fan-out.** If the mutation should fan out to collaborators
+  in real time, follow the payload-event pattern in
+  `packages/api/src/domains/todo-list/todo-service.ts` (see `createTodo`,
+  `completeTodo`). Each event kind goes into the `TODO_LIST_EVENT_KINDS`
+  tuple in `events.ts` (convention:
+  [`docs/conventions.md#event-kinds-ssot`](../../docs/conventions.md#event-kinds-ssot)).
+  Backend unit tests inject `MemoryChannelFactory` and assert publish
+  (see `todo-service-publishes.test.ts`).
 
 ### Example: Add a posts feature
 
