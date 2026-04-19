@@ -139,4 +139,19 @@ describe("invite service", () => {
       db.$transaction((tx) => revokeInvite(tx, INVITEE_ID, inv.invite.id)),
     ).rejects.toThrow(TRPCError);
   });
+
+  it("accepts '@username' as invite input and normalizes it", async () => {
+    const inv = await db.$transaction((tx) =>
+      inviteCollaborator(tx, OWNER_ID, listId, "@invitee-inv"),
+    );
+    expect(inv.invite.invitedUserId).toBe(INVITEE_ID);
+  });
+
+  it("error message for missing user echoes the normalized username", async () => {
+    await expect(
+      db.$transaction((tx) =>
+        inviteCollaborator(tx, OWNER_ID, listId, "@nobody-xyz"),
+      ),
+    ).rejects.toThrow('No user with username "nobody-xyz"');
+  });
 });
