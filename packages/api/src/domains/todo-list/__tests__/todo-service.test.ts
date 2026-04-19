@@ -7,12 +7,12 @@ import {
   expect,
   it,
 } from "bun:test";
-import { db } from "@project/db";
-import { MemoryChannelFactory } from "@project/realtime/memory";
 import {
   listChannelKey,
   type TodoListEvent,
 } from "@project/api/domains/todo-list/events";
+import { db } from "@project/db";
+import { MemoryChannelFactory } from "@project/realtime/memory";
 import {
   completeTodo,
   createTodo,
@@ -21,7 +21,7 @@ import {
   importTodosFromCSV,
   listTodos,
   reorderTodos,
-} from "../service.js";
+} from "../todo-service.js";
 
 const TEST_USER_ID = "test-user-todo-service";
 let TEST_LIST_ID: string;

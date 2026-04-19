@@ -1,4 +1,4 @@
-import type { TodoHttpRouter } from "@project/api/domains/todo/http";
+import type { TodoHttpRouter } from "@project/api/domains/todo-list/todo-http";
 import { hc } from "hono/client";
 import { apiClient } from "./api-client";
 

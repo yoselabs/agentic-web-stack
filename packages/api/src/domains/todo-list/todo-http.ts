@@ -3,8 +3,8 @@ import { auth } from "@project/auth";
 import { db } from "@project/db";
 import { Hono } from "hono";
 import { z } from "zod";
-import { CSV_MIME_TYPES, MAX_UPLOAD_BYTES } from "./constants.js";
-import { exportTodosAsCSV, importTodosFromCSV } from "./service.js";
+import { CSV_MIME_TYPES, MAX_UPLOAD_BYTES } from "./todo-constants.js";
+import { exportTodosAsCSV, importTodosFromCSV } from "./todo-service.js";
 
 // Scalar-only schema: todoListId is validated by zValidator so hc propagates
 // its input type to the client. The file itself is checked manually in the

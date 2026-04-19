@@ -1,7 +1,7 @@
 import { defaultAnimateLayoutChanges, useSortable } from "@dnd-kit/sortable";
 import { CSS } from "@dnd-kit/utilities";
 import { Button } from "@project/ui/components/button";
-import type { Todo } from "./types";
+import type { Todo } from "./todo-types";
 
 export function SortableTodoItem({
   todo,

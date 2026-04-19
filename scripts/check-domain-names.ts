@@ -68,7 +68,6 @@ const ALLOWLIST: Record<string, Set<Layer>> = {
   admin: new Set(["frontend", "backend"]),
   "mobile-nav": new Set(["frontend", "backend"]),
   email: new Set(["frontend", "backend"]),
-  todo: new Set(["e2e-feat", "e2e-steps"]),
 };
 
 const layerPath: Record<Layer, string> = {

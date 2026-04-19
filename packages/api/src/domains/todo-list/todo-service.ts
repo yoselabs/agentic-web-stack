@@ -3,8 +3,8 @@ import { channel as defaultChannel } from "@project/realtime/channel";
 import type { Channel } from "@project/realtime/types";
 import { TRPCError } from "@trpc/server";
 import Papa from "papaparse";
-import { listChannelKey, type TodoListEvent } from "../todo-list/events.js";
-import { canReadList } from "../todo-list/service.js";
+import { listChannelKey, type TodoListEvent } from "./events.js";
+import { canReadList } from "./service.js";
 
 type DbClient = PrismaClient | Prisma.TransactionClient;
 type ChannelProvider = (key: string) => Channel<TodoListEvent>;

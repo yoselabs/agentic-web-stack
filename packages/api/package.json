@@ -10,14 +10,14 @@
     "./context": {
       "default": "./src/context.ts"
     },
-    "./domains/todo/service": {
-      "default": "./src/domains/todo/service.ts"
+    "./domains/todo-list/todo-service": {
+      "default": "./src/domains/todo-list/todo-service.ts"
     },
-    "./domains/todo/constants": {
-      "default": "./src/domains/todo/constants.ts"
+    "./domains/todo-list/todo-constants": {
+      "default": "./src/domains/todo-list/todo-constants.ts"
     },
-    "./domains/todo/http": {
-      "default": "./src/domains/todo/http.ts"
+    "./domains/todo-list/todo-http": {
+      "default": "./src/domains/todo-list/todo-http.ts"
     },
     "./domains/todo-list/service": {
       "default": "./src/domains/todo-list/service.ts"

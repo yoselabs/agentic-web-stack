@@ -6,7 +6,7 @@ import {
   deleteTodo,
   listTodos,
   reorderTodos,
-} from "./service.js";
+} from "./todo-service.js";
 
 export const todoRouter = router({
   list: protectedProcedure

@@ -8,13 +8,13 @@ import { Input } from "@project/ui/components/input";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { createFileRoute, Link } from "@tanstack/react-router";
 import { useRef } from "react";
-import { CompletedTodoItem } from "#/features/todo/completed-todo-item.js";
-import { SortableTodoItem } from "#/features/todo/sortable-todo-item.js";
-import { useTodos } from "#/features/todo/use-todos.js";
 import { AccessLostEmptyState } from "#/features/todo-list/access-lost-empty-state.js";
 import { CollaboratorList } from "#/features/todo-list/collaborator-list.js";
+import { CompletedTodoItem } from "#/features/todo-list/completed-todo-item.js";
 import { ShareListDialog } from "#/features/todo-list/share-list-dialog.js";
+import { SortableTodoItem } from "#/features/todo-list/sortable-todo-item.js";
 import { useTodoListLiveUpdates } from "#/features/todo-list/use-todo-list-live-updates.js";
+import { useTodos } from "#/features/todo-list/use-todos.js";
 
 export const Route = createFileRoute("/_authenticated/todo-lists/$listId")({
   component: TodoListDetailPage,

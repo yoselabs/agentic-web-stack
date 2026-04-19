@@ -9,7 +9,7 @@ import {
 } from "bun:test";
 import { auth } from "@project/auth";
 import { db } from "@project/db";
-import { todoHttpRouter } from "../http.js";
+import { todoHttpRouter } from "../todo-http.js";
 
 const TEST_USER_ID = "test-user-todo-http";
 const TEST_USER = {

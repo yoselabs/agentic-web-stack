@@ -98,7 +98,7 @@ function MyComponent() {
 When a route has 2+ mutations or the return object would have 5+ properties, extract orchestration into a `features/*/use-*.ts` hook. The route becomes a thin shell.
 
 ```tsx
-// features/todo/use-todos.ts — orchestration hook (scoped to a list)
+// features/todo-list/use-todos.ts — orchestration hook (scoped to a list)
 export function useTodos(
   trpc: TRPCOptionsProxy<AppRouter>,
   queryClient: QueryClient,
@@ -130,7 +130,7 @@ The hook receives `trpc` and `queryClient` as parameters because `Route.useRoute
 
 ### Optimistic Updates
 
-For instant UI feedback before the server confirms, see the drag-and-drop reorder handler in `src/features/todo/use-todos.ts` (`handleDragEnd`) — it uses `queryClient.setQueryData` to update the cache immediately, with `onError` invalidation as fallback.
+For instant UI feedback before the server confirms, see the drag-and-drop reorder handler in `src/features/todo-list/use-todos.ts` (`handleDragEnd`) — it uses `queryClient.setQueryData` to update the cache immediately, with `onError` invalidation as fallback.
 
 When using `onMutate` callbacks with tRPC, define explicit types for the data shape — tRPC's type inference breaks on the callback parameter:
 
