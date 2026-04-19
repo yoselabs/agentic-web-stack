@@ -92,9 +92,28 @@ packages/realtime/src/
 
 packages/api/src/domains/user/
   user-events.ts         # SSOT tuple USER_INBOX_EVENT_KINDS, type UserInboxEvent
-  user-router.ts         # onInboxEvent subscription (viewer-scoped)
+  user-service.ts        # searchUsersByUsername (§2.3.1)
+  user-router.ts         # onInboxEvent subscription + searchByUsername query
   subscribe-to-user-inbox.ts  # async-gen matching subscribeToListEvents shape
 ```
+
+**Package-json subpaths** (named exports only — no barrels, per root
+`CLAUDE.md`):
+
+- `packages/realtime/package.json` — add `"./user-inbox": { "default": "./src/user-inbox.ts" }`.
+- `packages/api/package.json` — add `"./domains/user/user-events"`,
+  `"./domains/user/user-service"`, `"./domains/user/user-router"` with the
+  existing pattern used by todo-list subpaths.
+
+**Helper signature discipline.** `publishToUserInbox` and
+`fanOutToMembers` are **pure fan-out** — they accept an already-resolved
+`userId` (or `userIds: string[]`), a `ChannelFactory`, and the event, and
+call `channel.publish(...)`. They do NOT touch Prisma, do NOT know about
+memberships, and do NOT import from `@project/db` or `@project/api`.
+Services resolve recipients themselves (via the membership query they
+already run for authz) and pass the resulting array. This keeps
+`@project/realtime` free of domain knowledge and preserves the stated
+dependency direction.
 
 **Dependency direction.** Domains that publish to user channels
 (`todo-list` today; `chat` tomorrow) import the event-kind type from
@@ -129,6 +148,14 @@ transition — created, accepted, declined, revoked. The handler
 invalidates the recipient's relevant queries; details of "what changed"
 come from the refetch, not the event payload (notification-shape).
 
+**Pluralization rationale.** `docs/conventions.md`'s existing
+pluralization rule governs *payload-shape* events (singular = one-entity
+payload; plural = array payload). Notification-shape events carry no
+entity, so the rule doesn't bind them directly. This spec pluralizes
+when the event describes change to an aggregate (`counters`, `invites`);
+the convention update in §1.8 codifies this extension so the rule stays
+strict and predictable.
+
 ### 1.4 Publisher wiring (server side)
 
 Publishers are added to the following todo-list-service mutations, in
@@ -140,10 +167,11 @@ addition to the existing `todo-list:<id>` channel publishes they already do:
 | `deleteTodo`              | all members                                                           | `todo-list-counters-changed`    |
 | `completeTodo`            | all members                                                           | `todo-list-counters-changed`    |
 | `uncompleteTodo`          | all members                                                           | `todo-list-counters-changed`    |
-| `inviteCollaborator`      | invitee only                                                          | `todo-list-invites-changed`     |
-| `acceptInvite`            | owner + existing collaborators + the accepter (access-granted); owner (invites-changed)              | `todo-list-access-granted` + `todo-list-invites-changed` |
-| `declineInvite` (new)     | owner only                                                            | `todo-list-invites-changed`     |
-| `revokeInvite` (new)      | invitee only                                                          | `todo-list-invites-changed`     |
+| `inviteCollaborator`          | invitee only                                       | `todo-list-invites-changed`  |
+| `acceptInvite` (access-granted) | all members (owner + existing collaborators + the accepter) | `todo-list-access-granted`   |
+| `acceptInvite` (invites-changed) | owner                                             | `todo-list-invites-changed`  |
+| `declineInvite` (new)         | owner only                                         | `todo-list-invites-changed`  |
+| `revokeInvite` (new)          | invitee only                                       | `todo-list-invites-changed`  |
 | `removeCollaborator`      | the removed user                                                      | `todo-list-access-revoked`      |
 | `deleteTodoList`          | every member except the deleter                                       | `todo-list-access-revoked`      |
 
@@ -179,16 +207,28 @@ Copy `ADR-001 — User Inbox Channel + Live+Snapshot Reconciliation` to
 `docs/adrs/0001-realtime-architecture.md` with these edits only:
 
 - Status: `Accepted`.
-- Remove any external-repo file path references (`docs/requirements/inputs/*`,
-  `docs/requirements/pitches/*`) — replace with generic language ("the
-  app's requirements", "the product's scale target").
-- Remove `§`-style references to external spec sections — replace with
-  inline descriptions of the force they represent.
+- Frontmatter: remove `date`, `supersedes`, `superseded-by`. Keep
+  `title`, `status`, `applies-to`.
+- **Strip any path, import, or section reference that does not resolve
+  in this repo; replace with an inline paraphrase of the force it
+  represents.** Examples of what this catches:
+  - External repo paths like `docs/requirements/inputs/qa-notes.md` or
+    `docs/requirements/pitches/00-brief.md` — replaced with inline
+    language ("product requirements specify ≤3s message delivery").
+  - `§2.7.1`, `§3.1`, `§4.4`, etc. — replaced with the force in prose.
+  - Any import in a code snippet that names a package outside this repo
+    (e.g., references to spec-only modules) — replaced with a
+    conceptual equivalent that exists in this repo.
+  - Section references to the imported ADR's OWN sections (e.g., "see
+    §D3 reconnect glue" within the ADR itself) are kept — they're
+    internal, not external.
 - Remove the Rollout section's "Pitch 1 / Pitch 2+" framing — replace
   with a short note: "This ADR is realized in `packages/api/src/domains/user/`
   (user-inbox channel) and `packages/api/src/domains/todo-list/` (per-entity
   channel, retained for focused single-entity collab)."
-- Remove frontmatter `date`, `supersedes`, `superseded-by`.
+- Remove any mention of the sibling repo this ADR was originally drafted
+  in (name or path). Grep the final file for the original repo name
+  before committing.
 - Otherwise keep content verbatim — the chat-example code snippets stay
   because they're the clearest illustration of the pattern.
 
@@ -199,6 +239,15 @@ The imported ADR is linked from `docs/conventions.md` (see 1.8).
 `createdAt DateTime @default(now())` + `updatedAt DateTime @updatedAt` on
 every application-owned model, including join/link tables. Better-Auth
 tables follow Better-Auth's schema (no change).
+
+Audit of current schema:
+
+- `User`, `Session`, `Account`, `Verification` — Better-Auth managed;
+  already comply.
+- `TodoList` — complies (both present).
+- `Todo` — complies (both present).
+- `TodoListMembership` — missing `updatedAt` → add.
+- `TodoListInvite` — missing `updatedAt` → add.
 
 Schema changes this spec:
 
@@ -244,6 +293,15 @@ Every application-owned model has:
 
 Join/link tables included (they represent edges that can be updated).
 Better-Auth-owned tables follow Better-Auth's schema.
+
+## Realtime event naming — pluralization (addendum)
+
+The existing pluralization rule (singular for single-item payloads,
+plural for bulk payloads) governs **payload-shape** events.
+**Notification-shape** events carry no entity; pluralize when the event
+describes change to an aggregate collection (`todo-list-counters-changed`,
+`todo-list-invites-changed`), singular when it describes a single
+conceptual event (`todo-list-access-granted`).
 ```
 
 ---
@@ -270,6 +328,17 @@ too. Behavior:
   `session.user.role === "admin"`), then `UserBlock` (existing).
 - "Jobs Admin" opens `VITE_API_URL + "/admin/queues/"` in a new tab
   (`target="_blank"` + `rel="noreferrer"`).
+
+**FSD layering.** All nav internals (session gating, admin link,
+UserBlock) live in `widgets/navbar.tsx` (existing widget layer) and
+`features/auth/`. `__root.tsx` only imports `<Navbar />` — no inline
+buttons or session logic in the route shell.
+
+**Server-side admin gate.** The admin link is gated client-side, but
+the target URL (`/admin/queues/*` on the API server) must also be gated
+server-side — otherwise any authenticated user could reach it by typing
+the URL. Verify the gate is in place (Bull Board middleware) before
+shipping; if missing, adding it is in scope for this spec.
 
 **Role source.** The `User.role` column already exists (`@default("user")`).
 Session carries it through Better-Auth's standard user-object plumbing.
@@ -320,10 +389,11 @@ searchByUsername: protectedProcedure
 - Returns `[{ id, username, name }]`.
 
 `ShareListDialog` replaces the `<Input>` with a shadcn `Command`
-combobox. Typing queries in real time (debounced ~200ms via `useQuery`
-with input as the key). No match → inline "No user with that username"
-error text below the input; invite button disabled until a match is
-selected.
+combobox. **Debounce mechanism:** a small local `useDebouncedValue`
+hook (~200ms) wraps the raw input. `useQuery` reads the debounced value
+as its input key, so network calls only fire after typing pauses. No
+match → inline "No user with that username" error text below the input;
+invite button disabled until a match is selected.
 
 On explicit `onSubmit` of a still-unresolved string (user hit Enter
 before picking): show the same "No user with that username" error.
@@ -351,10 +421,10 @@ before picking): show the same "No user with that username" error.
 **New mutations:**
 
 - `declineInvite({ token })` — invitee only. Deletes the invite row.
-  Emits `todo-list-invite-pending` to owner's inbox so owner's pending
+  Emits `todo-list-invites-changed` to owner's inbox so owner's pending
   list refreshes.
 - `revokeInvite({ inviteId })` — owner only. Deletes the invite row.
-  Emits `todo-list-invite-pending` to the invitee's inbox so their
+  Emits `todo-list-invites-changed` to the invitee's inbox so their
   dashboard removes it.
 
 All invite mutations (`inviteCollaborator`, `acceptInvite`,
@@ -419,6 +489,12 @@ Concrete fix: server authoritatively assigns `position` on create
 handler should place the new item by `position` ordering, same
 comparator used for the initial query result. If the handler currently
 inserts at index 0 or 1, that's the bug.
+
+**Decision rule regardless of root cause:** the payload's authoritative
+`position` MUST be the sole ordering signal on the remote side. Any
+handler code that re-derives position from `createdAt`, appends blindly
+at index 0, or uses a comparator different from the initial query's is
+the bug and must be deleted.
 
 The plan will start with a reproduction test, then trace through
 `event-handlers.ts` and the todo-list sort comparator in parallel.
@@ -496,6 +572,10 @@ Grouped by router.
 
 **`todoListRouter.collaborators` (changed shape):**
 - Returns `{ owner, collaborators }` instead of a flat array.
+- **Caller sweep required.** This is a breaking return-shape change.
+  Before landing, grep the web app for `trpc.todoList.collaborators` and
+  any `CollaboratorList` consumer; update every call site. Known
+  consumer today: `apps/web/src/features/todo-list/collaborator-list.tsx`.
 
 ### 3.3 Router registration
 
@@ -503,7 +583,7 @@ Append-alpha in `src/router.ts`:
 
 ```ts
 export const appRouter = router({
-  auth: authRouter,
+  todo: todoRouter,
   todoList: todoListRouter,
   user: userRouter,   // NEW
 });
