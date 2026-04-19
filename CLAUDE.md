@@ -78,6 +78,10 @@ All workspace packages use `@project/*` prefix (e.g., `@project/api`, `@project/
 - **Run `make lint` before claiming work is done** — runs both `agent-harness lint` and `tsc -b`
 - **Never use `--no-verify` on commits or pushes.** The pre-commit hook is now read-only (lint + tsc, no fix) — if it fails, fix the underlying issue. Bypassing it is blocked by `.claude/settings.json` permissions.deny and will surface as a tool-call rejection.
 - **Don't run `make fix` mid-task unless you're recovering from a commit rejection.** The Claude Code `Stop` / `SubagentStop` hooks run `agent-harness fix` at turn end automatically. If you do run fix during a turn (e.g., after a commit failed on formatting), re-Read every file you plan to edit next before editing — the fixer may have rewritten content.
+- **When dispatching subagents via the Agent tool, include this tool-use discipline in the prompt:**
+  - Use the **Grep tool** for pattern search, not `bash grep -rn`. Use **Glob**, not `find`. Use **Read**, not `cat`. They're cached, faster, and don't spawn a process.
+  - If making multiple edits to one file, batch them into a **single MultiEdit** call. Don't chain individual Edits with verification calls (`make lint`, tests) between them — saves ~10 tool calls per iteration on heavily-edited files.
+  - Run `make fix` / `make lint` / tests **once after all writes to a file are done**, not between individual edits. If `make fix` rewrites anything, re-Read before continuing.
 
 ## Generated Files (do not edit)
 
