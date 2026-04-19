@@ -3,7 +3,11 @@ import { channel as defaultChannel } from "@project/realtime/channel";
 import { TRPCError } from "@trpc/server";
 import { z } from "zod";
 import { protectedProcedure, router } from "../../trpc.js";
-import { listChannelKey, type TodoListEvent } from "./events.js";
+import {
+  listChannelKey,
+  subscribeToListEvents,
+  type TodoListEvent,
+} from "./events.js";
 import {
   acceptInvite as acceptInviteFn,
   canReadList,
@@ -97,9 +101,8 @@ export const todoListRouter = router({
       if (!allowed) throw new TRPCError({ code: "FORBIDDEN" });
       return listCollaborators(ctx.db, input.listId);
     }),
-  // Native async generator — no observable round-trip, no @internal API.
-  // Auto-closes when the viewer's own membership is revoked (security:
-  // the subscription MUST NOT outlive the viewer's access to the list).
+  // Native async generator (via the subscribeToListEvents helper in
+  // events.ts). Auto-closes when the viewer's own membership is revoked.
   onListEvent: protectedProcedure
     .input(z.object({ listId: z.string().min(1) }))
     .subscription(async function* ({ ctx, input, signal }) {
@@ -110,42 +113,7 @@ export const todoListRouter = router({
       );
       if (!allowed) throw new TRPCError({ code: "FORBIDDEN" });
 
-      const viewerId = ctx.session.user.id;
       const ch = defaultChannel<TodoListEvent>(listChannelKey(input.listId));
-
-      const buffer: TodoListEvent[] = [];
-      let resolveNext: (() => void) | null = null;
-
-      const unsub = await ch.subscribe((event) => {
-        buffer.push(event);
-        resolveNext?.();
-        resolveNext = null;
-      });
-
-      try {
-        while (true) {
-          while (buffer.length > 0) {
-            // biome-ignore lint/style/noNonNullAssertion: length guard above
-            const event = buffer.shift()!;
-            yield event;
-            // Authz cascade: viewer removed → close their own stream.
-            // Owner never receives this about themselves (they're not in
-            // the membership table), so this check is safe for both roles.
-            if (
-              event.kind === "collaborator-removed" &&
-              event.userId === viewerId
-            ) {
-              return;
-            }
-          }
-          if (signal?.aborted) return;
-          await new Promise<void>((resolve) => {
-            resolveNext = resolve;
-            signal?.addEventListener("abort", () => resolve(), { once: true });
-          });
-        }
-      } finally {
-        unsub();
-      }
+      yield* subscribeToListEvents(ch, ctx.session.user.id, signal);
     }),
 });

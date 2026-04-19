@@ -174,13 +174,19 @@ export async function acceptInvite(
   // findFirstOrThrow; one wins `create`, the other fails with P2002 and
   // rolls back cleanly — no partial state, no double membership.
 
-  const invite = await tx.todoListInvite.findFirstOrThrow({
+  const invite = await tx.todoListInvite.findFirst({
     where: {
       token,
       invitedUserId: userId,
       expiresAt: { gt: now },
     },
   });
+  if (!invite) {
+    throw new TRPCError({
+      code: "NOT_FOUND",
+      message: "Invite not found or expired",
+    });
+  }
 
   const membership = await tx.todoListMembership.create({
     data: {
@@ -210,14 +216,30 @@ export async function removeCollaborator(
 ) {
   const provider = options.channel ?? defaultProvider;
 
-  await tx.todoList.findFirstOrThrow({
+  const list = await tx.todoList.findFirst({
     where: { id: listId, userId: ownerId },
   });
+  if (!list) {
+    throw new TRPCError({
+      code: "NOT_FOUND",
+      message: "List not found or not owned by caller",
+    });
+  }
 
-  await tx.todoListMembership.delete({
+  const membership = await tx.todoListMembership.findUnique({
     where: {
       userId_todoListId: { userId: targetUserId, todoListId: listId },
     },
+  });
+  if (!membership) {
+    throw new TRPCError({
+      code: "NOT_FOUND",
+      message: "User is not a collaborator on this list",
+    });
+  }
+
+  await tx.todoListMembership.delete({
+    where: { id: membership.id },
   });
 
   await provider(listChannelKey(listId)).publish({
