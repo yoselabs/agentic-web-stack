@@ -34,13 +34,12 @@ function getQueryClient() {
   return browserQueryClient;
 }
 
-// NOTE: hardcoded dev port. Accepted for this spike per root CLAUDE.md's
-// "dev port literals are allowed" rule. Production would derive from
-// @project/env/client.
-const wsUrl =
-  typeof window === "undefined"
-    ? "ws://localhost:3001/trpc-ws"
-    : `${window.location.protocol === "https:" ? "wss" : "ws"}://${window.location.hostname}:3001/trpc-ws`;
+// Derive WS URL from the HTTP API base URL (which is env.VITE_API_URL-
+// validated via apiClient.baseUrl). Same host, same port, ws(s):// scheme
+// — matches the server mount at /trpc-ws. Derivation (not hardcoded
+// localhost:3001) is what lets the test suite run on its dynamic
+// per-worktree API port.
+const wsUrl = `${apiClient.baseUrl.replace(/^http/, "ws")}/trpc-ws`;
 
 const wsClient = createWSClient({
   url: wsUrl,

@@ -7,7 +7,6 @@ import { Button } from "@project/ui/components/button";
 import { Input } from "@project/ui/components/input";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { createFileRoute, Link } from "@tanstack/react-router";
-import { TRPCClientError } from "@trpc/client";
 import { useRef } from "react";
 import { CompletedTodoItem } from "#/features/todo/completed-todo-item.js";
 import { SortableTodoItem } from "#/features/todo/sortable-todo-item.js";
@@ -47,10 +46,14 @@ function TodoListDetailPage() {
 
   const fileInputRef = useRef<HTMLInputElement>(null);
 
-  if (
-    listQuery.error instanceof TRPCClientError &&
-    listQuery.error.data?.code === "FORBIDDEN"
-  ) {
+  // FORBIDDEN surface: collaborator-removed flips this query to 403 on
+  // the next refetch. The `data` field on TRPCClientError carries the
+  // typed error shape (code === "FORBIDDEN"). Accept any shape whose
+  // `data.code` is FORBIDDEN so the render works regardless of how tRPC
+  // wraps the error across link boundaries.
+  const errData = (listQuery.error as { data?: { code?: string } } | null)
+    ?.data;
+  if (errData?.code === "FORBIDDEN") {
     return <AccessLostEmptyState />;
   }
 
