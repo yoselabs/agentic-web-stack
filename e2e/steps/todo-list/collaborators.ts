@@ -13,7 +13,7 @@ import { waitForHydration } from "../../waits.ts";
 
 const { Given, When, Then, Before, After } = createBdd();
 
-type Actor = {
+export type Actor = {
   context: BrowserContext;
   page: Page;
   tabB?: Page; // populated only by multi-tab scenarios
@@ -22,12 +22,12 @@ type Actor = {
   userId: string; // Better-Auth user id; populated after sign-up via fetchUserId
 };
 
-const actors = new Map<string, Actor>();
+export const actors = new Map<string, Actor>();
 
 // Track list IDs by display name so steps that need to navigate directly
 // to a list can resolve the ID without going through the UI listing
 // (which, for the collaborator, may not show the list before accept).
-const listIdByName = new Map<string, string>();
+export const listIdByName = new Map<string, string>();
 
 // Mailpit is shared across workers but waitForMailTo filters by recipient,
 // so we don't delete-all per scenario (would race with sibling pollers).
@@ -44,7 +44,7 @@ After(async () => {
   listIdByName.clear();
 });
 
-function getActor(name: string): Actor {
+export function getActor(name: string): Actor {
   const actor = actors.get(name);
   if (!actor) {
     throw new Error(
@@ -99,7 +99,7 @@ async function signInOnPage(
   }
 }
 
-async function spawnActor(
+export async function spawnActor(
   browser: import("@playwright/test").Browser,
   name: string,
   email: string,
@@ -114,7 +114,7 @@ async function spawnActor(
 
 // Reads the Better-Auth user id via /api/auth/get-session on the
 // actor's cookie-jar'd page. Throws if the session lacks a user.
-async function fetchUserId(page: Page): Promise<string> {
+export async function fetchUserId(page: Page): Promise<string> {
   const res = await page.request.get(`${TEST_API_URL}/api/auth/get-session`);
   if (!res.ok()) {
     throw new Error(`get-session failed: ${res.status()} ${await res.text()}`);
@@ -129,9 +129,11 @@ async function fetchUserId(page: Page): Promise<string> {
   return id;
 }
 
-// Counts held Web Locks matching `leader-tab:<userId>` on this page.
-// Web Locks are origin-scoped — any tab returns the same snapshot.
-async function heldLeaderLocksOn(page: Page, userId: string): Promise<number> {
+// Counts held Web Locks matching `leader-tab:<userId>`. Origin-scoped.
+export async function heldLeaderLocksOn(
+  page: Page,
+  userId: string,
+): Promise<number> {
   return page.evaluate(async (uid) => {
     const snap = await navigator.locks.query();
     const name = `leader-tab:${uid}`;
@@ -470,7 +472,7 @@ Then(
 // --- Helpers ---
 
 // Resolve a list ID from the actor's viewpoint via todoList.listAccessible.
-async function resolveListIdFor(
+export async function resolveListIdFor(
   actor: Actor,
   listName: string,
 ): Promise<string> {
