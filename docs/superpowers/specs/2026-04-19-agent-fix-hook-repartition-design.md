@@ -54,8 +54,6 @@ Everything below is a mechanical application of that split.
 
 Current `.pre-commit-config.yaml` runs all three checks on `pre-commit`:
 
-Current `.pre-commit-config.yaml` runs all three checks on `pre-commit`:
-
 ```yaml
 repos:
   - repo: local
@@ -116,7 +114,14 @@ repos:
 
       - id: no-format-drift
         name: no format drift (pre-push)
-        entry: bash -c 'git diff --exit-code || { echo ""; echo "⚠ Format drift detected — agent-harness fix made changes that were not committed."; echo "  Run:  make fix && git add -u && git commit -m \"style: apply format fixes\" && git push"; exit 1; }'
+        entry: |
+          bash -c 'git diff --exit-code || {
+            echo;
+            echo "⚠ Format drift detected — agent-harness fix made changes that were not committed.";
+            echo "  Remediation:";
+            echo "    make fix && git add -u && git commit -m style-format-fixes && git push";
+            exit 1;
+          }'
         language: system
         pass_filenames: false
         always_run: true
@@ -156,13 +161,15 @@ Both hooks run `agent-harness fix` in the repo root when a turn (or subagent tur
 
 `agent-harness fix` is idempotent (second run on already-fixed files is a no-op, ~1–3s).
 
+**PATH requirement:** `agent-harness` must be on `PATH` when the Stop hook runs. Claude Code inherits the login shell's environment, so `make setup` (which installs `agent-harness` via the project's harness bootstrap) is sufficient. If a contributor cloned the repo without running `make setup`, the Stop hook fails silently — callable from `make fix` as a manual fallback.
+
 **Timing caveat for subagent-driven flows.** `SubagentStop` fires after the subagent's final message — including after any commits the subagent already made. If a subagent commits unformatted code mid-task and pre-commit was configured with the old `harness-fix` rewriting, that's exactly the pattern this spec eliminates. Under the new design, pre-commit is read-only: the subagent's commit either (a) passes lint (file was already well-formatted, nothing to fix) or (b) fails lint loudly (file stays on disk unchanged, subagent sees the failure, fixes the specific issue, re-commits — no re-Read forced by a silent rewrite). The `SubagentStop` hook then runs fix at turn end as final polish, which may produce a dirty working tree the next turn picks up naturally.
 
 The key property: no commit in the new design silently mutates files. The ~3-call "commit-rejection → fix → re-Read" cycle the spec counts as "unavoidable" only kicks in when the *agent itself* chooses to run `agent-harness fix` mid-turn in response to a lint failure — which is rare, and the count is bounded.
 
 ### 3. `.claude/settings.json` permissions.deny
 
-Same file, block known bypass routes:
+Same `.claude/settings.json` as §2 (merged together in §3a below), block known bypass routes:
 
 ```json
 {
