@@ -1,15 +1,7 @@
 // Step definitions for multi-user todo-list collaboration scenarios.
-//
-// Architectural decision: named actors ("alice", "bob") each run in a
-// FRESH Playwright BrowserContext (incognito profile). This isolates
-// their cookie jars so two sessions coexist in one scenario. The default
-// `page` fixture is reused for single-user scenarios elsewhere; this
-// file deliberately does NOT pipe through that fixture for action/assert
-// steps (the actor name picks the target).
-//
-// Precedent: the admin-gate step file uses module-level state
-// (lastAdminStatus/lastAdminBody) for scenario-scoped caching. Same
-// pattern, scaled to a Map<actorName, Actor>.
+// Each named actor ("alice", "bob") runs in a fresh Playwright
+// BrowserContext (incognito profile) so cookie jars stay isolated.
+// Module-level Maps scope state per scenario (cleared in Before/After).
 
 import type { BrowserContext, Page } from "@playwright/test";
 import { expect } from "@playwright/test";
@@ -24,8 +16,10 @@ const { Given, When, Then, Before, After } = createBdd();
 type Actor = {
   context: BrowserContext;
   page: Page;
+  tabB?: Page; // populated only by multi-tab scenarios
   email: string;
   username: string;
+  userId: string; // Better-Auth user id; populated after sign-up via fetchUserId
 };
 
 const actors = new Map<string, Actor>();
@@ -35,16 +29,11 @@ const actors = new Map<string, Actor>();
 // (which, for the collaborator, may not show the list before accept).
 const listIdByName = new Map<string, string>();
 
+// Mailpit is shared across workers but waitForMailTo filters by recipient,
+// so we don't delete-all per scenario (would race with sibling pollers).
 Before(async () => {
   actors.clear();
   listIdByName.clear();
-  // Mailpit is per-worktree (dynamic TEST_MAILPIT_HTTP_PORT) but shared
-  // across parallel workers. Scenarios in this file assert on recipient
-  // (waitForMailTo filters by `to:`), so stale mail addressed to other
-  // actors is harmless. Per-scenario delete-all would race with a
-  // sibling scenario polling for an email it just sent. Scenarios that
-  // poll for mail account for staleness by content assertions
-  // (toContain(listName)) — safe on reruns since list names are unique.
 });
 
 After(async () => {
@@ -65,10 +54,8 @@ function getActor(name: string): Actor {
   return actor;
 }
 
-// Better-Auth sign-up with an EXPLICIT username. The shared
-// createUserViaApi in auth-client.ts derives username from email.split("@")[0];
-// the collaborator scenarios need stable usernames decoupled from the
-// email prefix (invites target usernames, emails carry tokens).
+// Better-Auth sign-up with an EXPLICIT username — decoupled from email
+// prefix so invite tests can target a stable username.
 async function signUpWithUsername(
   page: Page,
   email: string,
@@ -120,9 +107,36 @@ async function spawnActor(
 ): Promise<Actor> {
   const context = await browser.newContext();
   const page = await context.newPage();
-  const actor: Actor = { context, page, email, username };
+  const actor: Actor = { context, page, email, username, userId: "" };
   actors.set(name, actor);
   return actor;
+}
+
+// Reads the Better-Auth user id via /api/auth/get-session on the
+// actor's cookie-jar'd page. Throws if the session lacks a user.
+async function fetchUserId(page: Page): Promise<string> {
+  const res = await page.request.get(`${TEST_API_URL}/api/auth/get-session`);
+  if (!res.ok()) {
+    throw new Error(`get-session failed: ${res.status()} ${await res.text()}`);
+  }
+  const body = (await res.json()) as { user?: { id?: string } } | null;
+  const id = body?.user?.id;
+  if (!id) {
+    throw new Error(
+      `get-session returned no user.id. Body: ${JSON.stringify(body)}`,
+    );
+  }
+  return id;
+}
+
+// Counts held Web Locks matching `leader-tab:<userId>` on this page.
+// Web Locks are origin-scoped — any tab returns the same snapshot.
+async function heldLeaderLocksOn(page: Page, userId: string): Promise<number> {
+  return page.evaluate(async (uid) => {
+    const snap = await navigator.locks.query();
+    const name = `leader-tab:${uid}`;
+    return (snap.held ?? []).filter((l) => l.name === name).length;
+  }, userId);
 }
 
 // --- Given: actor registration ---
@@ -133,6 +147,7 @@ Given(
     const actor = await spawnActor(browser, name, email, username);
     await signUpWithUsername(actor.page, email, username);
     await signInOnPage(actor.page, email, SHARED_PASSWORD);
+    actor.userId = await fetchUserId(actor.page);
   },
 );
 
@@ -141,15 +156,15 @@ Given(
   async ({ browser }, name: string, username: string, email: string) => {
     const actor = await spawnActor(browser, name, email, username);
     await signUpWithUsername(actor.page, email, username);
-    // Intentionally no sign-in — actor will sign in later when opening
-    // the invite link.
+    // Fetch userId BEFORE clearing cookies — the signup auto-logs in.
+    actor.userId = await fetchUserId(actor.page);
+    // Intentionally no persistent sign-in — actor will sign in later when
+    // opening the invite link or when a later step calls signInOnPage.
     await actor.page.context().clearCookies();
   },
 );
 
-// Create a list through the UI (exercises the form). The listId is
-// cached via the tRPC list endpoint afterwards so later steps can
-// deep-link without re-querying the UI.
+// Create a list via the UI, then cache its id so later steps deep-link.
 Given(
   "{string} has a list named {string}",
   // biome-ignore lint/correctness/noEmptyPattern: playwright-bdd requires object destructuring as first arg
@@ -167,9 +182,8 @@ Given(
   },
 );
 
-// Short-circuits the invite/accept UI with two tRPC HTTP calls on the
-// actors' own cookie-jar'd pages. Speeds the scenario up ~10× vs. a full
-// UI round-trip and isolates this step from selector churn.
+// Short-circuits invite/accept via tRPC HTTP on actors' cookie-jar'd
+// pages — ~10× faster than the full UI round-trip.
 Given(
   "{string} is a collaborator on {string}",
   // biome-ignore lint/correctness/noEmptyPattern: playwright-bdd requires object destructuring as first arg
@@ -202,9 +216,7 @@ Given(
         `inviteCollaborator response missing token: ${JSON.stringify(inviteBody)}`,
       );
     }
-    // Invitee needs to be signed in to accept. For scenarios where bob
-    // was created but not yet signed in (invite scenario's Background),
-    // sign in here.
+    // Invitee must be signed in to accept (signup-only actors clear cookies).
     await signInOnPage(invitee.page, invitee.email, SHARED_PASSWORD);
     const acceptRes = await invitee.page.request.post(
       `${TEST_API_URL}/trpc/todoList.acceptInvite`,
@@ -252,8 +264,7 @@ Given(
     }
     await actor.page.goto(`/todo-lists/${listId}`);
     await waitForHydration(actor.page);
-    // Wait for the list query to resolve — heading flips from "Loading..."
-    // to the list name.
+    // Heading flips from "Loading..." once the list query resolves.
     await expect(
       actor.page.getByRole("heading", { name: listName }),
     ).toBeVisible({ timeout: 10_000 });
@@ -278,8 +289,7 @@ When(
     const dialog = inviter.page.getByRole("dialog");
     await dialog.getByPlaceholder("Username").fill(invitee.username);
     await dialog.getByRole("button", { name: "Invite" }).click();
-    // Wait for the dialog to close (success path closes it, see
-    // share-list-dialog.tsx's onSuccess).
+    // Dialog closes on success (share-list-dialog.tsx onSuccess).
     await expect(dialog).not.toBeVisible({ timeout: 10_000 });
   },
 );
@@ -318,6 +328,28 @@ When(
     const row = actor.page.locator("li", { hasText: todoTitle }).first();
     const checkbox = row.getByRole("checkbox");
     await checkbox.click();
+  },
+);
+
+When(
+  "{string} opens {string} in two browser tabs",
+  // biome-ignore lint/correctness/noEmptyPattern: playwright-bdd requires object destructuring as first arg
+  async ({}, name: string, listName: string) => {
+    const actor = getActor(name);
+    const listId = listIdByName.get(listName);
+    if (!listId) {
+      throw new Error(`List "${listName}" has no known id.`);
+    }
+    const url = `/todo-lists/${listId}`;
+
+    await actor.page.goto(url);
+    await waitForHydration(actor.page);
+
+    const tabB = await actor.context.newPage();
+    await tabB.goto(url);
+    await waitForHydration(tabB);
+
+    actor.tabB = tabB;
   },
 );
 
@@ -384,10 +416,8 @@ Then(
   },
 );
 
-// Timeout note: realtime-dependent assertions need enough headroom for
-// WS → invalidate → refetch → react-query retry backoff. React-query's
-// default retry of 3× with exponential backoff means a 403 surfaces after
-// ~7s (1s + 2s + 4s); the callee should budget ≥10s.
+// Realtime-dependent: WS → invalidate → refetch + react-query retry
+// backoff (~7s for a 403 with default 3× retry). Budget ≥10s.
 Then(
   "{string} sees {string} within {int} second(s)",
   // biome-ignore lint/correctness/noEmptyPattern: playwright-bdd requires object destructuring as first arg
@@ -396,6 +426,27 @@ Then(
     await expect(
       actor.page.getByText(text, { exact: false }).first(),
     ).toBeVisible({ timeout: seconds * 1000 });
+  },
+);
+
+Then(
+  "exactly one of {string}'s tabs holds the {string} Web Lock",
+  // biome-ignore lint/correctness/noEmptyPattern: playwright-bdd requires object destructuring as first arg
+  async ({}, name: string, _lockName: string) => {
+    const actor = getActor(name);
+    if (!actor.tabB) {
+      throw new Error(
+        `Actor "${name}" has no second tab. Call "opens X in two browser tabs" first.`,
+      );
+    }
+    // Web Locks are origin-scoped: both tabs see the same snapshot.
+    // Query one tab; expect exactly one held lock.
+    await expect
+      .poll(() => heldLeaderLocksOn(actor.page, actor.userId), {
+        timeout: 2000,
+        intervals: [100, 250, 500],
+      })
+      .toBe(1);
   },
 );
 
@@ -418,9 +469,7 @@ Then(
 
 // --- Helpers ---
 
-// Resolve a list's ID from the actor's viewpoint by calling
-// todoList.listAccessible via the HTTP tRPC endpoint (cookie jar shared
-// with the page context).
+// Resolve a list ID from the actor's viewpoint via todoList.listAccessible.
 async function resolveListIdFor(
   actor: Actor,
   listName: string,

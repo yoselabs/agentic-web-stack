@@ -1,9 +1,15 @@
 import { Prisma, type PrismaClient } from "@project/db";
+import { channel as defaultChannel } from "@project/realtime/channel";
+import type { Channel } from "@project/realtime/types";
 import { TRPCError } from "@trpc/server";
 import Papa from "papaparse";
+import { listChannelKey, type TodoListEvent } from "../todo-list/events.js";
 import { canReadList } from "../todo-list/service.js";
 
 type DbClient = PrismaClient | Prisma.TransactionClient;
+type ChannelProvider = (key: string) => Channel<TodoListEvent>;
+
+const defaultProvider: ChannelProvider = (k) => defaultChannel(k);
 
 // Row-lock helpers require Prisma.TransactionClient (not the root PrismaClient union).
 // Prisma has no native FOR UPDATE: if the root client is passed, Prisma runs each
@@ -85,7 +91,9 @@ export async function completeTodo(
   viewerId: string,
   id: string,
   completed: boolean,
+  options: { channel?: ChannelProvider } = {},
 ) {
+  const provider = options.channel ?? defaultProvider;
   const todo = await tx.todo.findUniqueOrThrow({ where: { id } });
   const allowed = await canReadList(tx, viewerId, todo.todoListId);
   if (!allowed) {
@@ -94,18 +102,27 @@ export async function completeTodo(
       message: "You do not have access to this list.",
     });
   }
+  let updated: Awaited<ReturnType<typeof tx.todo.update>>;
   if (!completed) {
     await lockActiveTodos(tx, todo.todoListId);
     await shiftActivePositions(tx, todo.todoListId);
-    return tx.todo.update({
+    updated = await tx.todo.update({
       where: { id },
       data: { completed: false, position: 0 },
     });
+  } else {
+    updated = await tx.todo.update({
+      where: { id },
+      data: { completed },
+    });
   }
-  return tx.todo.update({
-    where: { id },
-    data: { completed },
+  // Fan out to collaborators so they see the completion state flip in realtime.
+  await provider(listChannelKey(todo.todoListId)).publish({
+    kind: "todo-updated",
+    listId: todo.todoListId,
+    todoId: id,
   });
+  return updated;
 }
 
 export async function reorderTodos(

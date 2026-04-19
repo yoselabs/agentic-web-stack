@@ -18,3 +18,22 @@ Feature: Todo list collaborators
     When "alice" removes "bob" from "Shared revoke"
     Then "bob" sees "You no longer have access to this list" within 15 seconds
     And reloading "Shared revoke" as "bob" shows the access-lost state
+
+  Scenario: Real-time sync between owner and collaborator
+    Given "alice" is signed up and signed in as "alice-sync" with email "alice-sync@example.com"
+    And "bob" is signed up with username "bob-sync" and email "bob-sync@example.com"
+    And "alice" has a list named "Shared sync"
+    And "bob" is a collaborator on "Shared sync"
+    And "Shared sync" has a todo "Milk"
+    And "alice" has "Shared sync" open in a browser
+    And "bob" has "Shared sync" open in a browser
+    When "bob" toggles the todo "Milk" to done
+    Then "alice" sees the todo "Milk" marked done within 3 seconds
+
+  Scenario: Multi-tab leader election holds exactly one Web Lock
+    Given "alice" is signed up and signed in as "alice-multitab" with email "alice-multitab@example.com"
+    And "bob" is signed up with username "bob-multitab" and email "bob-multitab@example.com"
+    And "alice" has a list named "Shared multitab"
+    And "bob" is a collaborator on "Shared multitab"
+    When "bob" opens "Shared multitab" in two browser tabs
+    Then exactly one of "bob"'s tabs holds the "leader-tab" Web Lock
