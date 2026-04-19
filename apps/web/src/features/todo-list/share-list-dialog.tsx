@@ -3,6 +3,7 @@ import { Button } from "@project/ui/components/button";
 import {
   Dialog,
   DialogContent,
+  DialogDescription,
   DialogHeader,
   DialogTitle,
   DialogTrigger,
@@ -44,6 +45,10 @@ export function ShareListDialog({
       <DialogContent>
         <DialogHeader>
           <DialogTitle>Invite a collaborator</DialogTitle>
+          <DialogDescription>
+            Invite someone by their @username. They'll receive an email to
+            accept.
+          </DialogDescription>
         </DialogHeader>
         <form
           className="flex gap-2"

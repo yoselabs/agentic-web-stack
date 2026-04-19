@@ -33,6 +33,18 @@ export function CollaboratorList({
   );
 
   const isOwner = ownerId === currentUserId;
+
+  if (collaborators.isPending) {
+    return (
+      <p className="text-sm text-muted-foreground">Loading collaborators…</p>
+    );
+  }
+  if (collaborators.isError) {
+    return (
+      <p className="text-sm text-destructive">Couldn't load collaborators.</p>
+    );
+  }
+
   const list = collaborators.data ?? [];
 
   if (list.length === 0) {
