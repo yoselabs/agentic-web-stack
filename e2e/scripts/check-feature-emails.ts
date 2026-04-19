@@ -21,8 +21,12 @@ type ScenarioRef = { file: string; line: number; title: string };
 
 const emailToScenarios = new Map<string, ScenarioRef[]>();
 
-for (const file of readdirSync(FEATURES_DIR).sort()) {
-  if (!file.endsWith(".feature")) continue;
+const allEntries = readdirSync(FEATURES_DIR, { recursive: true }) as string[];
+const featureFiles = allEntries
+  .filter((entry) => entry.endsWith(".feature"))
+  .sort();
+
+for (const file of featureFiles) {
   const content = readFileSync(path.join(FEATURES_DIR, file), "utf8");
   const lines = content.split("\n");
 
