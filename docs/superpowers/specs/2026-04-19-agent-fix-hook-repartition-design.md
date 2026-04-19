@@ -38,7 +38,21 @@ Secondary problem: `superpowers:subagent-driven-development` tells subagents to 
 
 ## Design
 
+### Core insight
+
+Pre-commit today does two distinct things: (a) checks code for correctness (read-only), and (b) rewrites files to fix formatting (mutating). Only (b) causes the cache-invalidation waste — a read-only check that *rejects* a commit leaves the file on disk identical to what the agent wrote, so no re-Read is needed to recover. A mutating check that *accepts* the commit silently changes the file, invalidating the agent's cached content for the next Edit.
+
+This design separates those two concerns by git stage:
+- **Pre-commit becomes strictly read-only.** Lint failures are loud, visible in the agent's bash output, and leave the file untouched. The agent fixes the reported issue and re-commits — no re-Read round-trip because nothing mutated.
+- **Fix mutations happen only at turn boundaries** (Claude Code `Stop` / `SubagentStop` hooks) or on `pre-push` (safety net). In both cases, no agent is mid-edit, so no cache to invalidate.
+
+Everything below is a mechanical application of that split.
+
 ### 1. Split prek hooks across git stages
+
+**Prerequisite:** prek 0.3.x or newer (for `stages: [pre-commit]` / `stages: [pre-push]` naming; older versions used `commit` / `push`). Current repo uses prek 0.3.6 via homebrew.
+
+Current `.pre-commit-config.yaml` runs all three checks on `pre-commit`:
 
 Current `.pre-commit-config.yaml` runs all three checks on `pre-commit`:
 
@@ -102,7 +116,7 @@ repos:
 
       - id: no-format-drift
         name: no format drift (pre-push)
-        entry: git diff --exit-code
+        entry: bash -c 'git diff --exit-code || { echo ""; echo "⚠ Format drift detected — agent-harness fix made changes that were not committed."; echo "  Run:  make fix && git add -u && git commit -m \"style: apply format fixes\" && git push"; exit 1; }'
         language: system
         pass_filenames: false
         always_run: true
@@ -113,7 +127,7 @@ One-time install: `prek install --hook-type pre-commit --hook-type pre-push`. `m
 
 ### 2. Claude Code Stop + SubagentStop hooks
 
-Add to `.claude/settings.json` (create if absent):
+Add to `.claude/settings.json`. Use `agent-harness fix` directly, **not** `make fix`, because `make fix` also runs `pnpm typecheck` (10–30s on this monorepo) — that's already covered by pre-commit and pre-push, so running it on every turn end would bloat latency without benefit. The fix step alone is what we need at the turn boundary.
 
 ```json
 {
@@ -122,7 +136,7 @@ Add to `.claude/settings.json` (create if absent):
       {
         "matcher": "",
         "hooks": [
-          { "type": "command", "command": "make fix" }
+          { "type": "command", "command": "agent-harness fix" }
         ]
       }
     ],
@@ -130,7 +144,7 @@ Add to `.claude/settings.json` (create if absent):
       {
         "matcher": "",
         "hooks": [
-          { "type": "command", "command": "make fix" }
+          { "type": "command", "command": "agent-harness fix" }
         ]
       }
     ]
@@ -138,9 +152,13 @@ Add to `.claude/settings.json` (create if absent):
 }
 ```
 
-Both hooks run `make fix` in the repo root when a turn ends. Because they fire outside any tool-use call, no agent is mid-edit — no cache to invalidate. If fix produces changes, they appear on disk after the turn; the next turn starts with a clean Read, which the agent does anyway.
+Both hooks run `agent-harness fix` in the repo root when a turn (or subagent turn) ends. Because they fire outside any tool-use call, no agent is mid-edit — no cache to invalidate. If fix produces changes, they appear on disk after the turn; the next turn starts with a clean Read, which the agent does anyway.
 
-`make fix` is already idempotent (second run produces no diff), so a Stop hook that fires after a no-op turn costs one `agent-harness fix` invocation (~3s) and nothing else.
+`agent-harness fix` is idempotent (second run on already-fixed files is a no-op, ~1–3s).
+
+**Timing caveat for subagent-driven flows.** `SubagentStop` fires after the subagent's final message — including after any commits the subagent already made. If a subagent commits unformatted code mid-task and pre-commit was configured with the old `harness-fix` rewriting, that's exactly the pattern this spec eliminates. Under the new design, pre-commit is read-only: the subagent's commit either (a) passes lint (file was already well-formatted, nothing to fix) or (b) fails lint loudly (file stays on disk unchanged, subagent sees the failure, fixes the specific issue, re-commits — no re-Read forced by a silent rewrite). The `SubagentStop` hook then runs fix at turn end as final polish, which may produce a dirty working tree the next turn picks up naturally.
+
+The key property: no commit in the new design silently mutates files. The ~3-call "commit-rejection → fix → re-Read" cycle the spec counts as "unavoidable" only kicks in when the *agent itself* chooses to run `agent-harness fix` mid-turn in response to a lint failure — which is rare, and the count is bounded.
 
 ### 3. `.claude/settings.json` permissions.deny
 
@@ -152,13 +170,53 @@ Same file, block known bypass routes:
     "deny": [
       "Bash(git commit*--no-verify*)",
       "Bash(git push*--no-verify*)",
-      "Bash(git commit -n*)"
+      "Bash(git commit -n)",
+      "Bash(git commit -n *)"
     ]
   }
 }
 ```
 
-These patterns specifically block the shortest routes an agent might discover when pre-commit fails. Not foolproof (a determined agent could `git update-ref` or shell out to another shell), but matches community practice (issue #40117) and closes the 99% case.
+These patterns specifically block the shortest routes an agent might discover when pre-commit fails. The two `-n` entries together cover `git commit -n` and `git commit -n -m "..."` without the overly-greedy `-n*` form matching things like `-nasty-flag`.
+
+**Out of scope:** environment-variable bypasses (`HUSKY=0 git commit`, `PREK_DISABLE=1 git commit`, `git -c core.hooksPath=/dev/null commit`). A determined agent could also shell out to a sub-shell to dodge the matcher. This design follows community practice (CC issue #40117) and closes the 99% case — not the 100% case. If env-var bypass becomes a real failure mode, wrap with a `PreToolUse(Bash)` hook that scrubs hook-disabling envs; tracked as a follow-up.
+
+### 3a. Final merged `.claude/settings.json`
+
+Both the hook config (§2) and the permissions config (§3) land in the same file:
+
+```json
+{
+  "hooks": {
+    "Stop": [
+      {
+        "matcher": "",
+        "hooks": [
+          { "type": "command", "command": "agent-harness fix" }
+        ]
+      }
+    ],
+    "SubagentStop": [
+      {
+        "matcher": "",
+        "hooks": [
+          { "type": "command", "command": "agent-harness fix" }
+        ]
+      }
+    ]
+  },
+  "permissions": {
+    "deny": [
+      "Bash(git commit*--no-verify*)",
+      "Bash(git push*--no-verify*)",
+      "Bash(git commit -n)",
+      "Bash(git commit -n *)"
+    ]
+  }
+}
+```
+
+Repo currently has only `.claude/settings.local.json` (a small allowlist). The new `.claude/settings.json` is created fresh and committed; `settings.local.json` stays as-is for per-developer overrides.
 
 ### 4. Update project `CLAUDE.md`
 
