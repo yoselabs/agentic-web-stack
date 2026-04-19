@@ -1,4 +1,12 @@
-import { afterAll, afterEach, beforeAll, describe, expect, it } from "bun:test";
+import {
+  afterAll,
+  afterEach,
+  beforeAll,
+  beforeEach,
+  describe,
+  expect,
+  it,
+} from "bun:test";
 import { db } from "@project/db";
 import {
   completeTodo,
@@ -137,7 +145,7 @@ describe("todo service", () => {
       createTodo(tx, TEST_USER_ID, "To delete", TEST_LIST_ID),
     );
 
-    await deleteTodo(db, TEST_USER_ID, todo.id);
+    await db.$transaction((tx) => deleteTodo(tx, TEST_USER_ID, todo.id));
 
     const todos = await listTodos(db, TEST_USER_ID, TEST_LIST_ID);
     expect(todos.find((t) => t.id === todo.id)).toBeUndefined();
@@ -254,5 +262,206 @@ describe("todo service", () => {
 
     await db.todo.deleteMany({ where: { todoListId: listB.id } });
     await db.todoList.delete({ where: { id: listB.id } });
+  });
+});
+
+describe("todo CRUD by collaborators", () => {
+  const OWNER_ID = "test-owner-todo-collab";
+  const COLLAB_ID = "test-collab-todo-collab";
+  const OUTSIDER_ID = "test-outsider-todo-collab";
+  let sharedListId: string;
+
+  beforeAll(async () => {
+    await db.user.deleteMany({
+      where: { id: { in: [OWNER_ID, COLLAB_ID, OUTSIDER_ID] } },
+    });
+    await db.user.createMany({
+      data: [
+        {
+          id: OWNER_ID,
+          name: "Owner",
+          email: "owner-todo-collab@example.com",
+          username: "owner-todo-collab",
+          emailVerified: false,
+        },
+        {
+          id: COLLAB_ID,
+          name: "Collab",
+          email: "collab-todo-collab@example.com",
+          username: "collab-todo-collab",
+          emailVerified: false,
+        },
+        {
+          id: OUTSIDER_ID,
+          name: "Outsider",
+          email: "outsider-todo-collab@example.com",
+          username: "outsider-todo-collab",
+          emailVerified: false,
+        },
+      ],
+    });
+  });
+
+  beforeEach(async () => {
+    const list = await db.todoList.create({
+      data: { name: "Shared Todo List", userId: OWNER_ID },
+    });
+    sharedListId = list.id;
+    await db.todoListMembership.create({
+      data: {
+        userId: COLLAB_ID,
+        todoListId: sharedListId,
+        role: "collaborator",
+      },
+    });
+  });
+
+  afterEach(async () => {
+    await db.todo.deleteMany({ where: { todoListId: sharedListId } });
+    await db.todoListMembership.deleteMany({
+      where: { todoListId: sharedListId },
+    });
+    await db.todoList.deleteMany({ where: { id: sharedListId } });
+  });
+
+  afterAll(async () => {
+    await db.user.deleteMany({
+      where: { id: { in: [OWNER_ID, COLLAB_ID, OUTSIDER_ID] } },
+    });
+  });
+
+  it("collaborator can listTodos and sees owner's rows", async () => {
+    await db.todo.create({
+      data: {
+        title: "Owner's milk",
+        userId: OWNER_ID,
+        todoListId: sharedListId,
+        position: 0,
+      },
+    });
+    const todos = await listTodos(db, COLLAB_ID, sharedListId);
+    expect(todos.map((t) => t.title)).toContain("Owner's milk");
+    expect(todos.length).toBe(1);
+  });
+
+  it("collaborator can createTodo; userId records the creator", async () => {
+    const created = await db.$transaction((tx) =>
+      createTodo(tx, COLLAB_ID, "Bob's bread", sharedListId),
+    );
+    expect(created.userId).toBe(COLLAB_ID);
+    expect(created.todoListId).toBe(sharedListId);
+    expect(created.title).toBe("Bob's bread");
+  });
+
+  it("collaborator can completeTodo on owner's row; update actually applies", async () => {
+    const ownerTodo = await db.todo.create({
+      data: {
+        title: "Owner's todo",
+        userId: OWNER_ID,
+        todoListId: sharedListId,
+        position: 0,
+        completed: false,
+      },
+    });
+    const updated = await db.$transaction((tx) =>
+      completeTodo(tx, COLLAB_ID, ownerTodo.id, true),
+    );
+    expect(updated.id).toBe(ownerTodo.id);
+    expect(updated.completed).toBe(true);
+
+    // Verify row actually changed (catches stale {id, userId} filter leaking)
+    const fresh = await db.todo.findUnique({ where: { id: ownerTodo.id } });
+    expect(fresh?.completed).toBe(true);
+  });
+
+  it("collaborator can deleteTodo on owner's row; row actually gone", async () => {
+    const ownerTodo = await db.todo.create({
+      data: {
+        title: "Owner's doomed todo",
+        userId: OWNER_ID,
+        todoListId: sharedListId,
+        position: 0,
+      },
+    });
+    const deleted = await db.$transaction((tx) =>
+      deleteTodo(tx, COLLAB_ID, ownerTodo.id),
+    );
+    expect(deleted.id).toBe(ownerTodo.id);
+
+    const fresh = await db.todo.findUnique({ where: { id: ownerTodo.id } });
+    expect(fresh).toBeNull();
+  });
+
+  it("collaborator can reorderTodos; positions actually update", async () => {
+    const first = await db.todo.create({
+      data: {
+        title: "First",
+        userId: OWNER_ID,
+        todoListId: sharedListId,
+        position: 0,
+        completed: false,
+      },
+    });
+    const second = await db.todo.create({
+      data: {
+        title: "Second",
+        userId: OWNER_ID,
+        todoListId: sharedListId,
+        position: 1,
+        completed: false,
+      },
+    });
+
+    await db.$transaction((tx) =>
+      reorderTodos(tx, COLLAB_ID, sharedListId, [second.id, first.id]),
+    );
+
+    const freshFirst = await db.todo.findUnique({ where: { id: first.id } });
+    const freshSecond = await db.todo.findUnique({ where: { id: second.id } });
+    expect(freshSecond?.position).toBe(0);
+    expect(freshFirst?.position).toBe(1);
+  });
+
+  it("collaborator can exportTodosAsCSV and CSV includes owner's rows", async () => {
+    await db.todo.create({
+      data: {
+        title: "Owner's export row",
+        userId: OWNER_ID,
+        todoListId: sharedListId,
+        position: 0,
+      },
+    });
+    const csv = await exportTodosAsCSV(db, COLLAB_ID, sharedListId);
+    expect(csv).toContain("Owner's export row");
+  });
+
+  it("collaborator can importTodosFromCSV; new rows have userId=collaborator", async () => {
+    const csv = Buffer.from("title\nCollab row A\nCollab row B\n", "utf-8");
+    const res = await db.$transaction((tx) =>
+      importTodosFromCSV(tx, COLLAB_ID, csv, sharedListId),
+    );
+    expect(res.count).toBe(2);
+
+    const todos = await db.todo.findMany({
+      where: { todoListId: sharedListId },
+      orderBy: { position: "asc" },
+    });
+    const imported = todos.filter((t) => t.title.startsWith("Collab row"));
+    expect(imported.length).toBe(2);
+    expect(imported.every((t) => t.userId === COLLAB_ID)).toBe(true);
+  });
+
+  it("outsider listTodos throws FORBIDDEN", async () => {
+    await expect(
+      listTodos(db, OUTSIDER_ID, sharedListId),
+    ).rejects.toMatchObject({
+      code: "FORBIDDEN",
+    });
+  });
+
+  it("outsider createTodo throws FORBIDDEN", async () => {
+    await expect(
+      db.$transaction((tx) => createTodo(tx, OUTSIDER_ID, "x", sharedListId)),
+    ).rejects.toMatchObject({ code: "FORBIDDEN" });
   });
 });
