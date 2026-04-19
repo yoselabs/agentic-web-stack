@@ -43,10 +43,9 @@ when("I sign out and sign in as {string}", async ({ page }, email: string) => {
   await signOutBtn.click();
   await page.waitForURL("**/", { timeout: 5000 });
 
-  // Sign up as new user
-  await page.goto("/login");
+  // Sign up as new user. /login and /signup are now separate routes.
+  await page.goto("/signup");
   await waitForHydration(page);
-  await page.getByRole("button", { name: "Sign Up" }).click();
   await page.getByLabel("Name", { exact: true }).fill(email.split("@")[0]);
   await page.getByLabel("Username").fill(email.split("@")[0]);
   await page.getByLabel("Email").fill(email);

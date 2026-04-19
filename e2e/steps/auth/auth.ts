@@ -49,7 +49,11 @@ given("I am on the todo lists page", async ({ page }) => {
 when(
   "I sign up as {string} with email {string}",
   async ({ page }, name: string, email: string) => {
-    await page.getByRole("button", { name: "Sign Up" }).click();
+    // Sign-up lives at /signup now; /login only renders the sign-in form.
+    // Navigate via the cross-link to exercise it end-to-end.
+    await page.getByRole("link", { name: "Sign Up" }).click();
+    await page.waitForURL(/\/signup/, { timeout: 5000 });
+    await waitForHydration(page);
     await page.getByLabel("Name", { exact: true }).fill(name);
     await page.getByLabel("Username").fill(email.split("@")[0]);
     await page.getByLabel("Email").fill(email);
