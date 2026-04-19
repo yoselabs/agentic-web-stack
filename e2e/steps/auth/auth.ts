@@ -1,8 +1,8 @@
 import { expect } from "@playwright/test";
 import { createBdd } from "playwright-bdd";
-import { createUserViaApi, signInViaApi } from "../auth-client.ts";
-import { SHARED_PASSWORD } from "../fixtures/credentials.ts";
-import { waitForHydration } from "../waits.ts";
+import { createUserViaApi, signInViaApi } from "../../auth-client.ts";
+import { SHARED_PASSWORD } from "../../fixtures/credentials.ts";
+import { waitForHydration } from "../../waits.ts";
 
 const { Given: given, When: when, Then: then } = createBdd();
 

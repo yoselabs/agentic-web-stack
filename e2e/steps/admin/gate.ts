@@ -9,7 +9,7 @@ import { execSync } from "node:child_process";
 import { expect } from "@playwright/test";
 import { envForSubprocess, PROJECT_ROOT } from "@project/test-infra";
 import { createBdd } from "playwright-bdd";
-import { TEST_API_URL } from "../test-env.ts";
+import { TEST_API_URL } from "../../test-env.ts";
 
 const { Given: given, When: when, Then: then } = createBdd();
 

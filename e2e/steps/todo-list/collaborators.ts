@@ -14,10 +14,10 @@
 import type { BrowserContext, Page } from "@playwright/test";
 import { expect } from "@playwright/test";
 import { createBdd } from "playwright-bdd";
-import { SHARED_PASSWORD } from "../fixtures/credentials.ts";
-import { getMessageBody, waitForMailTo } from "../helpers/mailpit.ts";
-import { TEST_API_URL } from "../test-env.ts";
-import { waitForHydration } from "../waits.ts";
+import { SHARED_PASSWORD } from "../../fixtures/credentials.ts";
+import { getMessageBody, waitForMailTo } from "../../helpers/mailpit.ts";
+import { TEST_API_URL } from "../../test-env.ts";
+import { waitForHydration } from "../../waits.ts";
 
 const { Given, When, Then, Before, After } = createBdd();
 

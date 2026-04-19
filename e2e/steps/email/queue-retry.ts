@@ -19,8 +19,8 @@ import { execSync } from "node:child_process";
 import { expect } from "@playwright/test";
 import { testDbEnv } from "@project/test-infra";
 import { createBdd } from "playwright-bdd";
-import { SHARED_PASSWORD } from "../fixtures/credentials.ts";
-import { TEST_API_URL } from "../test-env.ts";
+import { SHARED_PASSWORD } from "../../fixtures/credentials.ts";
+import { TEST_API_URL } from "../../test-env.ts";
 
 const { Given, When, Then, After } = createBdd();
 
