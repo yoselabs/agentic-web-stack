@@ -8,6 +8,11 @@ import {
   it,
 } from "bun:test";
 import { db } from "@project/db";
+import { MemoryChannelFactory } from "@project/realtime/memory";
+import {
+  listChannelKey,
+  type TodoListEvent,
+} from "@project/api/domains/todo-list/events";
 import {
   completeTodo,
   createTodo,
@@ -449,6 +454,29 @@ describe("todo CRUD by collaborators", () => {
     const imported = todos.filter((t) => t.title.startsWith("Collab row"));
     expect(imported.length).toBe(2);
     expect(imported.every((t) => t.userId === COLLAB_ID)).toBe(true);
+  });
+
+  it("completeTodo publishes todo-updated event on the list channel", async () => {
+    const factory = new MemoryChannelFactory();
+    const published: TodoListEvent[] = [];
+    const unsub = await factory
+      .channel<TodoListEvent>(listChannelKey(sharedListId))
+      .subscribe((e) => {
+        published.push(e);
+      });
+    const ownerTodo = await db.todo.create({
+      data: { title: "Publish me", userId: OWNER_ID, todoListId: sharedListId },
+    });
+    await db.$transaction((tx) =>
+      completeTodo(tx, COLLAB_ID, ownerTodo.id, true, {
+        channel: (k) => factory.channel(k),
+      }),
+    );
+    unsub();
+    await factory.closeAll();
+    expect(published).toEqual([
+      { kind: "todo-updated", listId: sharedListId, todoId: ownerTodo.id },
+    ]);
   });
 
   it("outsider listTodos throws FORBIDDEN", async () => {
