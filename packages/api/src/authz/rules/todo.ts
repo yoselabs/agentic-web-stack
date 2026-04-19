@@ -1,7 +1,8 @@
-// Owner OR collaborator can read/update. Only owner can delete.
-// Membership check is done at service level (service fetches the
-// membership row before issuing the authz check) — CASL conditions
-// over collection relations aren't expressive enough for this shape.
+// Owner-only rules (CASL). Collaborator access is enforced imperatively
+// in the service via `canReadList` / membership lookups — CASL's
+// conditions language can't express "user is in related-rows of X"
+// cleanly, so service-layer checks are the canonical authz path for
+// collaborator access.
 
 import type { AbilityBuilder } from "@casl/ability";
 import type { AppAbility, SessionUser } from "../types.js";

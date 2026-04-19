@@ -157,15 +157,18 @@ describe("collaborator lifecycle", () => {
 
   it("invite creates TodoListInvite with 7-day expiry", async () => {
     await db.$transaction(async (tx) => {
-      const invite = await inviteCollaborator(
+      const result = await inviteCollaborator(
         tx,
         OWNER_ID,
         listId,
         "invitee-collab",
       );
-      expect(invite.invitedUserId).toBe(INVITEE_ID);
-      expect(invite.todoListId).toBe(listId);
-      expect(invite.expiresAt.getTime()).toBeGreaterThan(Date.now());
+      expect(result.invite.invitedUserId).toBe(INVITEE_ID);
+      expect(result.invite.todoListId).toBe(listId);
+      expect(result.invite.expiresAt.getTime()).toBeGreaterThan(Date.now());
+      expect(result.inviteeEmail).toBe("invitee-collab@example.com");
+      expect(result.inviterName).toBe("Owner");
+      expect(result.listName).toBe("Shared");
     });
   });
 
@@ -186,11 +189,11 @@ describe("collaborator lifecycle", () => {
         received = e;
       });
 
-    const invite = await db.$transaction((tx) =>
+    const result = await db.$transaction((tx) =>
       inviteCollaborator(tx, OWNER_ID, listId, "invitee-collab"),
     );
     await db.$transaction((tx) =>
-      acceptInvite(tx, INVITEE_ID, invite.token, {
+      acceptInvite(tx, INVITEE_ID, result.invite.token, {
         channel: (k) => factory.channel(k),
       }),
     );
@@ -203,7 +206,7 @@ describe("collaborator lifecycle", () => {
     expect(membership).not.toBeNull();
 
     const remaining = await db.todoListInvite.findUnique({
-      where: { id: invite.id },
+      where: { id: result.invite.id },
     });
     expect(remaining).toBeNull();
 
@@ -217,21 +220,25 @@ describe("collaborator lifecycle", () => {
   });
 
   it("accept fails when invite is expired", async () => {
-    const invite = await db.$transaction((tx) =>
+    const result = await db.$transaction((tx) =>
       inviteCollaborator(tx, OWNER_ID, listId, "invitee-collab", {
         nowMs: Date.now() - 10 * 86_400_000,
       }),
     );
     await expect(
-      db.$transaction((tx) => acceptInvite(tx, INVITEE_ID, invite.token)),
+      db.$transaction((tx) =>
+        acceptInvite(tx, INVITEE_ID, result.invite.token),
+      ),
     ).rejects.toThrow();
   });
 
   it("remove deletes membership and publishes event", async () => {
-    const invite = await db.$transaction((tx) =>
+    const result = await db.$transaction((tx) =>
       inviteCollaborator(tx, OWNER_ID, listId, "invitee-collab"),
     );
-    await db.$transaction((tx) => acceptInvite(tx, INVITEE_ID, invite.token));
+    await db.$transaction((tx) =>
+      acceptInvite(tx, INVITEE_ID, result.invite.token),
+    );
 
     const factory = new MemoryChannelFactory();
     let received: unknown = null;
@@ -263,10 +270,12 @@ describe("collaborator lifecycle", () => {
   });
 
   it("listAccessibleTodoLists returns owner's + collaborator's lists", async () => {
-    const invite = await db.$transaction((tx) =>
+    const result = await db.$transaction((tx) =>
       inviteCollaborator(tx, OWNER_ID, listId, "invitee-collab"),
     );
-    await db.$transaction((tx) => acceptInvite(tx, INVITEE_ID, invite.token));
+    await db.$transaction((tx) =>
+      acceptInvite(tx, INVITEE_ID, result.invite.token),
+    );
 
     const ownerLists = await listAccessibleTodoLists(db, OWNER_ID);
     expect(ownerLists.find((l) => l.id === listId)).toBeTruthy();

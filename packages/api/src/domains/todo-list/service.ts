@@ -1,8 +1,8 @@
 import { randomBytes } from "node:crypto";
 import type { Prisma, PrismaClient } from "@project/db";
-import { sendEmail } from "@project/email/service";
 import { channel as defaultChannel } from "@project/realtime/channel";
 import type { Channel } from "@project/realtime/types";
+import { TRPCError } from "@trpc/server";
 import { INVITE_EXPIRY_DAYS, INVITE_RETENTION_DAYS } from "./constants.js";
 import { listChannelKey, type TodoListEvent } from "./events.js";
 
@@ -75,23 +75,46 @@ export async function listAccessibleTodoLists(db: DbClient, userId: string) {
   });
 }
 
+// Returns the row + the denormalized fields the router needs to send
+// the invite email AFTER the transaction commits. Sending inside the tx
+// would leak an email for an invite that later rolls back.
+export type InviteCollaboratorResult = {
+  invite: {
+    id: string;
+    token: string;
+    invitedUserId: string;
+    todoListId: string;
+    expiresAt: Date;
+    createdAt: Date;
+  };
+  inviteeEmail: string;
+  inviterName: string;
+  listName: string;
+};
+
 export async function inviteCollaborator(
   tx: Prisma.TransactionClient,
   ownerId: string,
   listId: string,
   username: string,
-  options: { channel?: ChannelProvider; nowMs?: number } = {},
-) {
+  options: { nowMs?: number } = {},
+): Promise<InviteCollaboratorResult> {
   const list = await tx.todoList.findFirstOrThrow({
     where: { id: listId, userId: ownerId },
   });
 
   const invitee = await tx.user.findUnique({ where: { username } });
   if (!invitee) {
-    throw new Error(`No user with username "${username}"`);
+    throw new TRPCError({
+      code: "NOT_FOUND",
+      message: `No user with username "${username}"`,
+    });
   }
   if (invitee.id === ownerId) {
-    throw new Error("Cannot invite yourself");
+    throw new TRPCError({
+      code: "BAD_REQUEST",
+      message: "Cannot invite yourself",
+    });
   }
 
   const existing = await tx.todoListMembership.findUnique({
@@ -100,7 +123,10 @@ export async function inviteCollaborator(
     },
   });
   if (existing) {
-    throw new Error("User is already a collaborator");
+    throw new TRPCError({
+      code: "CONFLICT",
+      message: "User is already a collaborator",
+    });
   }
 
   const token = randomBytes(24).toString("hex");
@@ -120,17 +146,12 @@ export async function inviteCollaborator(
     where: { id: ownerId },
   });
 
-  await sendEmail({
-    template: "invite-collaborator",
-    to: invitee.email,
-    vars: {
-      inviterName: owner.name,
-      listName: list.name,
-      acceptUrl: `/invites/${token}`,
-    },
-  });
-
-  return invite;
+  return {
+    invite,
+    inviteeEmail: invitee.email,
+    inviterName: owner.name,
+    listName: list.name,
+  };
 }
 
 export async function acceptInvite(
@@ -147,17 +168,11 @@ export async function acceptInvite(
   // only a session matching invitedUserId can accept. DO NOT copy this
   // pattern to email-based invites without adding an email-ownership step.
 
-  // Lock the invite row to serialize concurrent accept attempts. Without
-  // the lock, two tabs clicking Accept could both pass the expiry check
-  // and one would then fail on the unique membership constraint.
-  await tx.$queryRaw`
-    SELECT id FROM "TodoListInvite"
-    WHERE token = ${token}
-      AND "invitedUserId" = ${userId}
-      AND "expiresAt" > ${now}
-    ORDER BY id
-    FOR NO KEY UPDATE
-  `;
+  // CONCURRENCY: the race-winner guarantee comes from the
+  // @@unique([userId, todoListId]) constraint on TodoListMembership.
+  // Under concurrent accept attempts on the same token, both txs pass
+  // findFirstOrThrow; one wins `create`, the other fails with P2002 and
+  // rolls back cleanly — no partial state, no double membership.
 
   const invite = await tx.todoListInvite.findFirstOrThrow({
     where: {
