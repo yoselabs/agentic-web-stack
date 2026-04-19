@@ -76,6 +76,8 @@ All workspace packages use `@project/*` prefix (e.g., `@project/api`, `@project/
 - **QueryClient must be per-request on server** — see `getQueryClient()` in `apps/web/src/router.tsx`
 - **TanStack Start is NOT Next.js** — use `createServerFn`, not `getServerSideProps` or `"use server"`
 - **Run `make lint` before claiming work is done** — runs both `agent-harness lint` and `tsc -b`
+- **Never use `--no-verify` on commits or pushes.** The pre-commit hook is now read-only (lint + tsc, no fix) — if it fails, fix the underlying issue. Bypassing it is blocked by `.claude/settings.json` permissions.deny and will surface as a tool-call rejection.
+- **Don't run `make fix` mid-task unless you're recovering from a commit rejection.** The Claude Code `Stop` / `SubagentStop` hooks run `agent-harness fix` at turn end automatically. If you do run fix during a turn (e.g., after a commit failed on formatting), re-Read every file you plan to edit next before editing — the fixer may have rewritten content.
 
 ## Generated Files (do not edit)
 
