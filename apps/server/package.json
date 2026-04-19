@@ -13,16 +13,20 @@
     "@bull-board/hono": "catalog:",
     "@project/jobs": "workspace:*",
     "@hono/node-server": "^1.13.0",
+    "@hono/node-ws": "catalog:",
     "@hono/trpc-server": "^0.3.0",
+    "@trpc/server": "^11.0.0",
     "@project/api": "workspace:*",
     "@project/auth": "workspace:*",
     "@project/db": "workspace:*",
     "@project/env": "workspace:*",
     "hono": "^4.7.0",
-    "pino": "^10.3.1"
+    "pino": "^10.3.1",
+    "ws": "catalog:"
   },
   "devDependencies": {
     "@types/node": "catalog:",
+    "@types/ws": "catalog:",
     "pino-pretty": "^13.1.3"
   }
 }

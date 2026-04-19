@@ -19,3 +19,6 @@ catalog:
   "@types/nodemailer": ^6.4.17
   "@bull-board/api": ^6.7.0
   "@bull-board/hono": ^6.7.0
+  "@hono/node-ws": ^1.1.1
+  ws: ^8.18.0
+  "@types/ws": ^8.5.13

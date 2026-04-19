@@ -1,3 +1,4 @@
+import type { IncomingMessage, Server } from "node:http";
 import { serve } from "@hono/node-server";
 import { trpcServer } from "@hono/trpc-server";
 import { createContext } from "@project/api/context";
@@ -6,9 +7,14 @@ import { appRouter } from "@project/api/router";
 import { auth } from "@project/auth";
 import { db } from "@project/db";
 import { env } from "@project/env/server";
+import {
+  applyWSSHandler,
+  type CreateWSSContextFnOptions,
+} from "@trpc/server/adapters/ws";
 import { Hono } from "hono";
 import { cors } from "hono/cors";
 import { secureHeaders } from "hono/secure-headers";
+import { WebSocketServer } from "ws";
 import { createBullBoardAdapter } from "./admin/bull-board.js";
 import { requireAdmin } from "./admin/middleware.js";
 import { logger } from "./logger.js";
@@ -120,6 +126,43 @@ app.use("/admin/*", requireAdmin(auth));
 const bullBoardAdapter = createBullBoardAdapter();
 app.route("/admin/queues", bullBoardAdapter.registerPlugin());
 
-serve({ fetch: app.fetch, port: env.PORT }, (info) => {
+const httpServer = serve({ fetch: app.fetch, port: env.PORT }, (info) => {
   logger.info(`Server running at http://localhost:${info.port}`);
+});
+
+// WebSocket server for tRPC subscriptions.
+// Piggybacks on the same port as the HTTP server — the Node http.Server
+// dispatches "upgrade" events to the WebSocketServer before Hono sees them.
+const wss = new WebSocketServer({
+  server: httpServer as Server,
+  path: "/trpc-ws",
+});
+
+function incomingMessageToHeaders(req: IncomingMessage): Headers {
+  const headers = new Headers();
+  for (const [key, value] of Object.entries(req.headers)) {
+    if (value === undefined) continue;
+    if (Array.isArray(value)) {
+      for (const v of value) headers.append(key, v);
+    } else {
+      headers.set(key, value);
+    }
+  }
+  return headers;
+}
+
+const wsHandler = applyWSSHandler({
+  wss,
+  router: appRouter,
+  createContext: async ({ req }: CreateWSSContextFnOptions) => {
+    const session = await auth.api.getSession({
+      headers: incomingMessageToHeaders(req),
+    });
+    return createContext({ session });
+  },
+});
+
+process.on("SIGTERM", () => {
+  wsHandler.broadcastReconnectNotification();
+  wss.close();
 });
