@@ -11,10 +11,12 @@ model User {
   createdAt     DateTime  @default(now())
   updatedAt     DateTime  @updatedAt
 
-  sessions Session[]
-  accounts Account[]
-  todos     Todo[]
-  todoLists TodoList[]
+  sessions        Session[]
+  accounts        Account[]
+  todos           Todo[]
+  todoLists       TodoList[]
+  memberships     TodoListMembership[]
+  invitesReceived TodoListInvite[]
 }
 
 model Session {

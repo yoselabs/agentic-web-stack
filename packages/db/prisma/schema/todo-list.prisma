@@ -8,6 +8,36 @@ model TodoList {
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
 
-  user  User   @relation(fields: [userId], references: [id], onDelete: Cascade)
-  todos Todo[]
+  user        User                   @relation(fields: [userId], references: [id], onDelete: Cascade)
+  todos       Todo[]
+  memberships TodoListMembership[]
+  invites     TodoListInvite[]
+}
+
+model TodoListMembership {
+  id         String   @id @default(cuid())
+  userId     String
+  todoListId String
+  role       String   @default("collaborator") // "collaborator" | "owner"
+  createdAt  DateTime @default(now())
+
+  user     User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  todoList TodoList @relation(fields: [todoListId], references: [id], onDelete: Cascade)
+
+  @@unique([userId, todoListId])
+}
+
+model TodoListInvite {
+  id            String   @id @default(cuid())
+  token         String   @unique
+  invitedUserId String
+  todoListId    String
+  expiresAt     DateTime
+  createdAt     DateTime @default(now())
+
+  invitedUser User     @relation(fields: [invitedUserId], references: [id], onDelete: Cascade)
+  todoList    TodoList @relation(fields: [todoListId], references: [id], onDelete: Cascade)
+
+  @@index([invitedUserId])
+  @@index([todoListId])
 }
