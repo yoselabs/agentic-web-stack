@@ -1,7 +1,13 @@
 import type { AppRouter } from "@project/api/router";
 import { QueryClient } from "@tanstack/react-query";
 import { createRouter as createTanStackRouter } from "@tanstack/react-router";
-import { createTRPCClient, httpBatchLink } from "@trpc/client";
+import {
+  createTRPCClient,
+  createWSClient,
+  httpBatchLink,
+  splitLink,
+  wsLink,
+} from "@trpc/client";
 import { createTRPCOptionsProxy } from "@trpc/tanstack-react-query";
 import { apiClient } from "#/shared/api-client";
 import { routeTree } from "./routeTree.gen";
@@ -28,12 +34,26 @@ function getQueryClient() {
   return browserQueryClient;
 }
 
+// NOTE: hardcoded dev port. Accepted for this spike per root CLAUDE.md's
+// "dev port literals are allowed" rule. Production would derive from
+// @project/env/client.
+const wsUrl =
+  typeof window === "undefined"
+    ? "ws://localhost:3001/trpc-ws"
+    : `${window.location.protocol === "https:" ? "wss" : "ws"}://${window.location.hostname}:3001/trpc-ws`;
+
+const wsClient = createWSClient({ url: wsUrl });
+
 const trpcClient = createTRPCClient<AppRouter>({
   links: [
-    httpBatchLink({
-      // NOTE: "/trpc" inlined by design — matches server mount. See zero-conf design spec §D3.
-      url: `${apiClient.baseUrl}/trpc`,
-      fetch: apiClient.fetch,
+    splitLink({
+      condition: (op) => op.type === "subscription",
+      true: wsLink({ client: wsClient }),
+      false: httpBatchLink({
+        // NOTE: "/trpc" inlined by design — matches server mount. See zero-conf design spec §D3.
+        url: `${apiClient.baseUrl}/trpc`,
+        fetch: apiClient.fetch,
+      }),
     }),
   ],
 });
