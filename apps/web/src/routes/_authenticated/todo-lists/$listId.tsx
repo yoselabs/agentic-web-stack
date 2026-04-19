@@ -7,10 +7,12 @@ import { Button } from "@project/ui/components/button";
 import { Input } from "@project/ui/components/input";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { createFileRoute, Link } from "@tanstack/react-router";
+import { TRPCClientError } from "@trpc/client";
 import { useRef } from "react";
 import { CompletedTodoItem } from "#/features/todo/completed-todo-item.js";
 import { SortableTodoItem } from "#/features/todo/sortable-todo-item.js";
 import { useTodos } from "#/features/todo/use-todos.js";
+import { AccessLostEmptyState } from "#/features/todo-list/access-lost-empty-state.js";
 import { CollaboratorList } from "#/features/todo-list/collaborator-list.js";
 import { ShareListDialog } from "#/features/todo-list/share-list-dialog.js";
 import { useTodoListLiveUpdates } from "#/features/todo-list/use-todo-list-live-updates.js";
@@ -44,6 +46,13 @@ function TodoListDetailPage() {
   } = useTodos(trpc, queryClient, listId);
 
   const fileInputRef = useRef<HTMLInputElement>(null);
+
+  if (
+    listQuery.error instanceof TRPCClientError &&
+    listQuery.error.data?.code === "FORBIDDEN"
+  ) {
+    return <AccessLostEmptyState />;
+  }
 
   return (
     <main className="max-w-2xl mx-auto px-4 sm:px-6 py-8 sm:py-10">
