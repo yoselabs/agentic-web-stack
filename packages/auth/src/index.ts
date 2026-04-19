@@ -37,6 +37,17 @@ export const auth = betterAuth({
     },
   },
   trustedOrigins: [env.CORS_ORIGIN],
+  // Cross-subdomain cookie scope. Enabled only when AUTH_COOKIE_DOMAIN is
+  // set; otherwise better-auth uses its default host-only cookie.
+  advanced: env.AUTH_COOKIE_DOMAIN
+    ? {
+        defaultCookieAttributes: {
+          domain: env.AUTH_COOKIE_DOMAIN,
+          path: "/",
+          sameSite: "lax",
+        },
+      }
+    : undefined,
 });
 
 export type Session = typeof auth.$Infer.Session;

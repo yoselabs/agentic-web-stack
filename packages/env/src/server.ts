@@ -23,6 +23,14 @@ export const env = createEnv({
       .min(32)
       .default("change-me-to-a-random-32-char-secret-key"),
     BETTER_AUTH_URL: z.string().url().default("http://localhost:3001"),
+    // Optional: leading dot = cross-subdomain cookie scope (e.g. ".example.com"
+    // lets app.example.com and api.example.com share the session cookie).
+    // Leave unset for the default host-only cookie — correct when frontend
+    // and API share a host.
+    AUTH_COOKIE_DOMAIN: z
+      .string()
+      .startsWith(".", "must start with . for cross-subdomain cookies")
+      .optional(),
     NODE_ENV: z
       .enum(["development", "production", "test"])
       .default("development"),
