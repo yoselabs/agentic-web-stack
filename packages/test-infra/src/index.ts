@@ -149,6 +149,13 @@ export function envForSubprocess(
   } else if (role === "web") {
     out.PORT = String(webPort);
     out.VITE_API_URL = apiUrl;
+    // Web container's SSR runtime uses SSR_API_URL (defaults to :3001
+    // in @project/env/server). Tests run on dynamic ports, so without
+    // this override the SSR auth fetch hits the wrong port, fail-soft
+    // in session.ts deletes the cookie, and every scenario lands on
+    // /login. Same value as VITE_API_URL here because test web and
+    // test api share one host — docker demo is where they differ.
+    out.SSR_API_URL = apiUrl;
   }
   return out;
 }

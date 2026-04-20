@@ -118,12 +118,18 @@ export async function inviteCollaborator(
   tx: Prisma.TransactionClient,
   ownerId: string,
   listId: string,
-  username: string,
+  rawUsername: string,
   options: {
     nowMs?: number;
     userInboxChannel?: UserInboxChannelProvider;
   } = {},
 ): Promise<InviteCollaboratorResult> {
+  // Normalize at the boundary — the autocomplete UI may pass "@alice"
+  // if the user re-edits after selection, and a typed-by-hand "@alice"
+  // hits the same path. Server is the single point of normalization;
+  // see also searchUsersByUsername.
+  const username = rawUsername.trim().replace(/^@+/, "");
+
   const list = await tx.todoList.findFirstOrThrow({
     where: { id: listId, userId: ownerId },
   });

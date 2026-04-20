@@ -6,25 +6,27 @@ import {
   CardTitle,
 } from "@project/ui/components/card";
 import { createFileRoute, Link, redirect } from "@tanstack/react-router";
-import { SignInForm } from "#/features/auth/sign-in-form";
+import { SignUpForm } from "#/features/auth/sign-up-form";
 
-export const Route = createFileRoute("/login")({
+export const Route = createFileRoute("/signup")({
   beforeLoad: ({ context }) => {
     if (context.session) throw redirect({ to: "/dashboard" });
   },
-  component: LoginPage,
+  component: SignUpPage,
 });
 
-function LoginPage() {
+function SignUpPage() {
   return (
     <main className="flex min-h-screen items-center justify-center px-4">
       <Card className="w-full max-w-sm">
         <CardHeader className="text-center">
-          <CardTitle className="text-2xl">Sign In</CardTitle>
-          <CardDescription>Enter your credentials to sign in</CardDescription>
+          <CardTitle className="text-2xl">Create Account</CardTitle>
+          <CardDescription>
+            Enter your details to create an account
+          </CardDescription>
         </CardHeader>
         <CardContent>
-          <SignInForm />
+          <SignUpForm />
 
           <p className="mt-4 text-center text-sm text-muted-foreground">
             <Link
@@ -36,12 +38,12 @@ function LoginPage() {
           </p>
 
           <p className="mt-4 text-center text-sm text-muted-foreground">
-            Don't have an account?{" "}
+            Already have an account?{" "}
             <Link
-              to="/signup"
+              to="/login"
               className="text-foreground underline underline-offset-4 hover:text-primary"
             >
-              Sign Up
+              Sign In
             </Link>
           </p>
         </CardContent>

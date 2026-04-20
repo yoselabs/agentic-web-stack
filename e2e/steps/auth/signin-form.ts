@@ -20,9 +20,11 @@ when("I focus then blur the email field leaving it empty", async ({ page }) => {
 });
 
 when("I toggle to the sign-up mode", async ({ page }) => {
-  // The mode toggle is an inline <button type="button"> rendered below the
-  // submit button. In signin mode its label is "Sign Up".
-  await page.getByRole("button", { name: "Sign Up", exact: true }).click();
+  // /login and /signup are now separate routes. The cross-link in the
+  // sign-in card navigates to /signup where the SignUpForm renders with
+  // its own placeholders.
+  await page.getByRole("link", { name: "Sign Up", exact: true }).click();
+  await page.waitForURL(/\/signup/, { timeout: 5000 });
 });
 
 then("the password field shows no error", async ({ page }) => {

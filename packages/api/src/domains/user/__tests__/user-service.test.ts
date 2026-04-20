@@ -78,4 +78,25 @@ describe("searchUsersByUsername", () => {
     const rows = await searchUsersByUsername(db, CALLER_ID, "caller");
     expect(rows.map((r) => r.id)).not.toContain(CALLER_ID);
   });
+
+  it("strips a leading '@' prefix from the search input", async () => {
+    const rows = await searchUsersByUsername(db, CALLER_ID, "@ali");
+    const usernames = rows.map((r) => r.username).sort();
+    expect(usernames).toEqual(["ali-admin", "alice", "alicia"]);
+  });
+
+  it("strips repeated leading '@' characters greedily", async () => {
+    const rows = await searchUsersByUsername(db, CALLER_ID, "@@alice");
+    expect(rows.map((r) => r.username)).toContain("alice");
+  });
+
+  it("strips '@' after trimming surrounding whitespace", async () => {
+    const rows = await searchUsersByUsername(db, CALLER_ID, "  @alice  ");
+    expect(rows.map((r) => r.username)).toContain("alice");
+  });
+
+  it("returns [] when the prefix is only '@' characters", async () => {
+    const rows = await searchUsersByUsername(db, CALLER_ID, "@@");
+    expect(rows).toEqual([]);
+  });
 });
