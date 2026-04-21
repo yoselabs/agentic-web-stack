@@ -73,7 +73,7 @@ services:
     command:
       - "sh"
       - "-c"
-      - "pnpm --filter @project/db exec prisma db push --skip-generate"
+      - "pnpm --filter @project/db exec prisma db push"
     environment:
       <<: *app-env
     healthcheck:

@@ -67,7 +67,7 @@ the `prisma-client` generator that emits to `src/generated/`). This is
 load-bearing:
 
 - `make clean` wipes `node_modules`. `pnpm install` alone does NOT regenerate the Prisma client.
-- `scripts/test-db.ts` passes `--skip-generate` to keep test runs fast, so the test path also doesn't generate.
+- Prisma 7's `db push` no longer implicitly runs generate, so no flag is needed to keep test paths fast — they simply never trigger generate.
 - Without this hook, `make clean && pnpm install && make test-unit` would fail to resolve `./generated/client`.
 
 Do not remove this hook.

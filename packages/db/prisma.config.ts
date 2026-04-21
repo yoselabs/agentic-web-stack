@@ -27,6 +27,13 @@ if (!process.env.DATABASE_URL) {
     "postgresql://postgres:postgres@localhost:5432/app";
 }
 
+// Prisma 7 moved the datasource URL out of `schema.prisma` and into the
+// config file. The CLI (migrate/db push/studio) reads `datasource.url`
+// from here; the runtime PrismaClient receives it via an adapter in
+// src/index.ts.
 export default defineConfig({
   schema: "prisma/schema",
+  datasource: {
+    url: process.env.DATABASE_URL,
+  },
 });

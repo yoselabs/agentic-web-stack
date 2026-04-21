@@ -267,7 +267,9 @@ export function setupTestDatabase(suite: TestSuite): void {
     isContainerHealthy(env.TEST_MAILPIT_CONTAINER);
   if (allHealthy) {
     try {
-      execSync("pnpm exec prisma db push --force-reset --skip-generate", {
+      // Prisma 7 removed `--skip-generate` — db push no longer invokes
+      // generate implicitly, so the flag is unnecessary (and rejected).
+      execSync("pnpm exec prisma db push --force-reset", {
         cwd: prismaCwd,
         stdio: "inherit",
         env: pushEnv,
@@ -299,7 +301,7 @@ export function setupTestDatabase(suite: TestSuite): void {
     stdio: "inherit",
     env: composeEnv,
   });
-  execSync("pnpm exec prisma db push --skip-generate", {
+  execSync("pnpm exec prisma db push", {
     cwd: prismaCwd,
     stdio: "inherit",
     env: pushEnv,

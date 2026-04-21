@@ -61,7 +61,7 @@
     "packages/db": {
       "entry": ["src/index.ts", "scripts/**/*.ts", "prisma.config.ts"],
       "ignore": ["src/generated/**"],
-      "ignoreDependencies": ["@prisma/client"]
+      "ignoreDependencies": ["@prisma/client", "pg", "@types/pg"]
     },
     "e2e": {
       "entry": [

@@ -54,7 +54,7 @@ services:
     command:
       - "sh"
       - "-c"
-      - "cd /app/packages/db && ./node_modules/.bin/prisma db push --skip-generate && bun /app/scripts/seed/seed.ts"
+      - "cd /app/packages/db && ./node_modules/.bin/prisma db push && bun /app/scripts/seed/seed.ts"
     environment:
       <<: *app-env
     # migrate is a one-shot sidecar — no healthcheck.
