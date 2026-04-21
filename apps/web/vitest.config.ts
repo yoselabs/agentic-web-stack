@@ -80,6 +80,11 @@ export default defineConfig({
           globals: false,
           css: false,
           include: ["src/**/*.test.{ts,tsx}", "test/**/*.test.{ts,tsx}"],
+          // `.browser.test.tsx` files belong to the `browser` project
+          // (real Chromium). Without this exclude they'd match the
+          // `.test.{ts,tsx}` glob above and boot under happy-dom, which
+          // fails at `@vitest/browser/context` import time.
+          exclude: ["**/*.browser.test.{ts,tsx}"],
         },
       },
       {
@@ -132,7 +137,7 @@ export default defineConfig({
             // lags the runtime contract on the vitest re-export.
             instances: [{ browser: "chromium" }] as any,
           },
-          include: ["src/**/*.browser.test.tsx"],
+          include: ["src/**/*.browser.test.tsx", "test/**/*.browser.test.tsx"],
           // Reuse the jsdom setup file — jest-dom matchers + RTL
           // cleanup are safe under browser mode too. The browser
           // render helper (`test/browser-render.tsx`) uses

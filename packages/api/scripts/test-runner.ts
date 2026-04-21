@@ -26,6 +26,12 @@ const result = spawnSync(
       // source of truth — adding a service in CONTAINER_SERVICES flows
       // through automatically, no hand-wiring here.
       ...envForSubprocess("unit"),
+      // Bun's `bun test` defaults NODE_ENV to "test" if unset. The env
+      // schema (packages/env/src/server.ts) deliberately rejects that —
+      // test-harness signalling goes through TEST_MODE=1, not NODE_ENV.
+      // Pin NODE_ENV explicitly so the child process sees a schema-valid
+      // value regardless of what bun would otherwise inject.
+      NODE_ENV: "development",
     },
   },
 );
