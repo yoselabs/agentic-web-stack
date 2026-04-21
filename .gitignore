@@ -58,6 +58,10 @@ apps/web/.lost-pixel/
 
 # Vitest browser mode failure screenshots
 **/__screenshots__/
+# Vitest 4 renamed the browser failure-artifact directory; keep both
+# for backwards compatibility until the __screenshots__ dir is gone
+# from all worktrees.
+**/.vitest-attachments/
 
 # macOS (added by agent-harness)
 .AppleDB
