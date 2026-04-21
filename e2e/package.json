@@ -9,7 +9,7 @@
     "generate": "bddgen"
   },
   "devDependencies": {
-    "@playwright/test": "^1.52.0",
+    "@playwright/test": "^1.59.1",
     "@project/lint": "workspace:*",
     "@project/test-infra": "workspace:*",
     "playwright-bdd": "^8.0.0"

@@ -58,8 +58,8 @@
     "@project/jobs": "workspace:*",
     "@project/rate-limit": "workspace:*",
     "@project/realtime": "workspace:*",
-    "@trpc/server": "^11.0.0",
-    "hono": "^4.12.12",
+    "@trpc/server": "^11.16.0",
+    "hono": "^4.12.14",
     "papaparse": "^5.5.3",
     "zod": "catalog:"
   },
