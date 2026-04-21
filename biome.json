@@ -4,6 +4,11 @@
   "plugins": [
     "./packages/lint/src/grit-plugins/import-type-for-app-router.grit"
   ],
+  "vcs": {
+    "enabled": true,
+    "clientKind": "git",
+    "useIgnoreFile": true
+  },
   "linter": {
     "enabled": true,
     "rules": {
@@ -30,7 +35,8 @@
         "noCommonJs": "error"
       },
       "suspicious": {
-        "noConsole": "error"
+        "noConsole": "error",
+        "noDeprecatedImports": "error"
       }
     }
   },
