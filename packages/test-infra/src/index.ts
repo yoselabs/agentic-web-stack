@@ -65,7 +65,7 @@ const PROFILES = {
 //
 // Adding a new container service = one entry here + one column in PROFILES
 // above + compose blocks + Zod schema entry in @project/env/server. The
-// `scripts/checks/check-test-infra-integrity.ts` audit cross-checks all three.
+// `packages/lint/src/check-test-infra-integrity.ts` audit cross-checks all three.
 export const CONTAINER_SERVICES = {
   db: {
     envVar: "DATABASE_URL",

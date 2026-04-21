@@ -74,14 +74,15 @@ Never truncate lint or test output — read the full error.
 
 **Shell-wrapper pattern for optional binaries.** When a linter depends on a binary that may not be installed locally or in CI (e.g. `lychee`, `shellcheck`, `actionlint`), wrap it in `scripts/wrappers/run-<name>.sh` that checks `command -v <tool>` and prints a `[lint:<name>] <tool> not installed — skipping` line + `exit 0` when absent. Root script points at the wrapper (`"lint:<name>": "./scripts/wrappers/run-<name>.sh"`). This keeps `make lint` green on fresh machines while still enforcing the check where the binary is present (devs with brew, CI job with the tool installed). See `scripts/wrappers/run-actionlint.sh` / `scripts/wrappers/run-lychee.sh` / `scripts/wrappers/run-shellcheck.sh` for the canonical form.
 
-**Adding a new custom check** (in `scripts/checks/check-*.ts`):
-1. Create `scripts/checks/check-<name>.ts`:
-   - Export `check<Name>(): Promise<CheckResult>` using `timeCheck()` from `scripts/checks/checks-types.ts`.
+**Adding a new custom check** (in `packages/lint/src/check-*.ts`):
+1. Create `packages/lint/src/check-<name>.ts`:
+   - Export `check<Name>(): Promise<CheckResult>` using `timeCheck()` from `packages/lint/src/checks-types.ts`.
    - Add `if (import.meta.main) { ... process.exit(result.ok ? 0 : 1) }` for standalone runs.
-2. Append `"lint:check:<name>": "bun scripts/checks/check-<name>.ts"` to root `package.json` scripts.
-3. Add `//#lint:check:<name>` turbo task in `turbo.json` with **narrow** `inputs` — only the files this check actually scans. Per-check granularity means only that one check reruns when its scope changes.
+2. Append `"lint:check:<name>": "bun packages/lint/src/check-<name>.ts"` to root `package.json` scripts.
+3. Add `//#lint:check:<name>` turbo task in `turbo.json` with **narrow** `inputs` — only the files this check actually scans (e.g. `packages/lint/src/check-<name>.ts` + `packages/lint/src/checks-types.ts` + the globs it scans). Per-check granularity means only that one check reruns when its scope changes.
 4. Append `lint:check:<name>` to `TURBO_LINT_TASKS` in `Makefile`.
-5. Optional: add fixture test in `scripts/checks/__tests__/check-<name>.test.ts`.
+5. Optional: add fixture test in `packages/lint/src/__tests__/check-<name>.test.ts`.
+6. Add a subpath export `"./checks/<name>": { "default": "./src/check-<name>.ts" }` to `packages/lint/package.json` if the check is imported by other workspaces (e.g., for test scaffolding).
 
 No per-package edits, no per-package script duplication.
 
@@ -123,12 +124,12 @@ A domain's name is reused across every layer it touches. The layer terminology d
 
 A new capability lands under the same `<name>` in every layer it touches.
 
-**Enforced by** `scripts/checks/check-domain-names.ts` (runs via `make lint`). Asymmetric-by-design domains (backend-only `auth`, frontend-only `mobile-nav`) are hard-coded in the script's allowlist. If you add a new asymmetric domain, extend the allowlist rather than silencing the check.
+**Enforced by** `packages/lint/src/check-domain-names.ts` (runs via `make lint`). Asymmetric-by-design domains (backend-only `auth`, frontend-only `mobile-nav`) are hard-coded in the script's allowlist. If you add a new asymmetric domain, extend the allowlist rather than silencing the check.
 
 ## Critical Rules
 
 - **Single source of truth (SSOT) — where it matters.** Values that genuinely change (domain rules, Zod schemas, Prisma types) live in exactly one place and are imported everywhere. Values that are constants-forever (dev ports, local DB creds) are literals duplicated across the 3-4 infra files that need them — SSOT prevents drift, which requires change, and these values don't change.
-  - **No barrel imports for `@project/env` and `@project/api`** — must use explicit subpaths (`@project/env/server`, `@project/api/domains/todo-list/todo-service`). Enforced by `scripts/checks/check-no-barrel.ts`. Barrels would pull server-only env / tRPC server code into client bundles. `@project/auth` and `@project/db` **do** expose a `.` entry (auth re-exports the Better-Auth `auth` instance server-side; db re-exports the generated PrismaClient) and are deliberately excluded from the Grit rule.
+  - **No barrel imports for `@project/env` and `@project/api`** — must use explicit subpaths (`@project/env/server`, `@project/api/domains/todo-list/todo-service`). Enforced by `packages/lint/src/check-no-barrel.ts`. Barrels would pull server-only env / tRPC server code into client bundles. `@project/auth` and `@project/db` **do** expose a `.` entry (auth re-exports the Better-Auth `auth` instance server-side; db re-exports the generated PrismaClient) and are deliberately excluded from the Grit rule.
   - **Runtime env vars** → `@project/env` (the only module that reads `process.env`; `/server` and `/client` subpaths). Zod defaults provide dev values so zero-conf boot works without a `.env` file.
   - **Domain constants** (upload limits, password rules, status enums) → a `constants.ts` inside the owning domain (e.g., `packages/api/src/domains/todo-list/todo-constants.ts`, `packages/auth/src/constants.ts`). Client imports via the domain's subpath export.
   - **Infra constants** (dev ports `3000`/`3001`/`5432`, DB name `"app"`, user `"postgres"`) → literal in `docker-compose.yml`, `Makefile`, `.github/workflows/ci.yml`, and Zod defaults in `packages/env/src/server.ts`. Not in a shared package. Rationale: [ADR-002](docs/adrs/0002-configuration-patterns.md).
@@ -176,7 +177,7 @@ A new capability lands under the same `<name>` in every layer it touches.
 | Use `PointerSensor` for DnD touch support | `PointerSensor` consumes Chrome DevTools simulated touch events, blocking `TouchSensor` | Use `MouseSensor` + `TouchSensor` instead of `PointerSensor` + `TouchSensor`, add `touch-action: none` to draggable items |
 | Run `agent-harness lint` directly instead of `make lint` | `agent-harness lint` alone passes but `tsc -b` catches implicit `any`, missing imports, type mismatches | Use `make lint` (runs both `agent-harness lint` + `tsc -b`). Pre-commit hook also enforces this |
 | Read `process.env.X` outside `packages/env/` | Bypasses Zod validation; env schema changes don't propagate; caught by `make lint` grep check | Import `env` from `@project/env/server` (or `/client` for web) and read `env.X` |
-| Import from `@project/env` or `@project/api` without a subpath | No barrel export; the top-level path doesn't resolve. Enforced by `scripts/checks/check-no-barrel.ts`. Same class of bug as `import { appRouter }` | Use subpath: `@project/env/server`, `@project/api/domains/todo-list/todo-service`. (`@project/auth` / `@project/db` barrel imports are allowed — they're excluded from the Grit rule.) |
+| Import from `@project/env` or `@project/api` without a subpath | No barrel export; the top-level path doesn't resolve. Enforced by `packages/lint/src/check-no-barrel.ts`. Same class of bug as `import { appRouter }` | Use subpath: `@project/env/server`, `@project/api/domains/todo-list/todo-service`. (`@project/auth` / `@project/db` barrel imports are allowed — they're excluded from the Grit rule.) |
 | Create `.env` for dev before running `make dev` | Zero-conf: `@project/env` has Zod defaults for every var. A `.env` is for *overriding* defaults, not required to boot | Just run `make setup && make dev` — no `.env` needed |
 | Add a shared `@project/config`-like package for dev ports | SSOT drift prevention only pays off when values change. Dev ports don't | Hardcode literals in Makefile / compose / CI + Zod default in env |
 

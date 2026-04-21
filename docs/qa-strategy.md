@@ -45,7 +45,7 @@ Every invariant the template relies on is enforced by **types, static checks, or
 - `lint:tsc` — incremental build (`tsc -b`)
 - `lint:markdown`, `lint:links`, `lint:spell`, `lint:shell` — doc/shell hygiene
 - `lint:prisma`, `lint:knip`, `lint:jscpd`, `lint:sherif`, `lint:publint`, `lint:depcruise`, `lint:secretlint`, `lint:actionlint` — external linters
-- `lint:check:<name>` (14 and counting) — custom `scripts/checks/check-*.ts` enforcing repo-specific invariants
+- `lint:check:<name>` (14 and counting) — custom `packages/lint/src/check-*.ts` enforcing repo-specific invariants
 
 **Invariant → tool map** (selected):
 
@@ -205,7 +205,7 @@ The pyramid is not closed. New genres of bug may warrant new gates. Before addin
 
 1. **What bug class does it catch that existing gates don't?** If every bug it catches is already caught faster upstream, don't add it.
 2. **Which existing gate would it obsolete?** If none — you're adding complexity. Justify.
-3. **What's its place in the pyramid?** If slower than #5, it belongs at on-demand / post-deploy tier. If faster than #2, it's probably a static check — add a `scripts/checks/check-*.ts`.
+3. **What's its place in the pyramid?** If slower than #5, it belongs at on-demand / post-deploy tier. If faster than #2, it's probably a static check — add a `packages/lint/src/check-*.ts`.
 4. **Document here first, wire second.** Bump this table before the first task lands.
 
 ## 7. References

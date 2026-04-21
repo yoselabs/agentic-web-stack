@@ -50,8 +50,8 @@
     },
     "//#lint:check:no-barrel": {
       "inputs": [
-        "scripts/checks/check-no-barrel.ts",
-        "scripts/checks/checks-types.ts",
+        "packages/lint/src/check-no-barrel.ts",
+        "packages/lint/src/checks-types.ts",
         "packages/*/package.json",
         "apps/*/src/**/*.{ts,tsx,mts,cts,js,mjs}",
         "packages/*/src/**/*.{ts,tsx,mts,cts,js,mjs}",
@@ -64,16 +64,16 @@
     },
     "//#lint:check:server-bind": {
       "inputs": [
-        "scripts/checks/check-server-bind.ts",
-        "scripts/checks/checks-types.ts",
+        "packages/lint/src/check-server-bind.ts",
+        "packages/lint/src/checks-types.ts",
         "apps/server/src/index.ts"
       ],
       "outputs": []
     },
     "//#lint:check:domain-names": {
       "inputs": [
-        "scripts/checks/check-domain-names.ts",
-        "scripts/checks/checks-types.ts",
+        "packages/lint/src/check-domain-names.ts",
+        "packages/lint/src/checks-types.ts",
         "apps/web/src/features/**",
         "packages/api/src/domains/**",
         "e2e/features/**",
@@ -83,8 +83,8 @@
     },
     "//#lint:check:trpc-patterns": {
       "inputs": [
-        "scripts/checks/check-trpc-patterns.ts",
-        "scripts/checks/checks-types.ts",
+        "packages/lint/src/check-trpc-patterns.ts",
+        "packages/lint/src/checks-types.ts",
         "apps/web/src/**/*.{ts,tsx}",
         "!**/routeTree.gen.ts"
       ],
@@ -92,8 +92,8 @@
     },
     "//#lint:check:test-infra-integrity": {
       "inputs": [
-        "scripts/checks/check-test-infra-integrity.ts",
-        "scripts/checks/checks-types.ts",
+        "packages/lint/src/check-test-infra-integrity.ts",
+        "packages/lint/src/checks-types.ts",
         "packages/test-infra/src/**",
         "packages/env/src/server.ts",
         "docker-compose.test.yml"
@@ -103,15 +103,15 @@
     "//#lint:check:feature-emails": {
       "inputs": [
         "e2e/scripts/check-feature-emails.ts",
-        "scripts/checks/checks-types.ts",
+        "packages/lint/src/checks-types.ts",
         "e2e/features/**/*.feature"
       ],
       "outputs": []
     },
     "//#lint:check:duplicate-names": {
       "inputs": [
-        "scripts/checks/check-duplicate-names.ts",
-        "scripts/checks/checks-types.ts",
+        "packages/lint/src/check-duplicate-names.ts",
+        "packages/lint/src/checks-types.ts",
         ".config/allowlists/duplicate-names.json",
         "apps/*/src/**/*.{ts,tsx}",
         "packages/*/src/**/*.{ts,tsx}",
@@ -125,8 +125,8 @@
     },
     "//#lint:check:no-cwd": {
       "inputs": [
-        "scripts/checks/check-no-cwd.ts",
-        "scripts/checks/checks-types.ts",
+        "packages/lint/src/check-no-cwd.ts",
+        "packages/lint/src/checks-types.ts",
         "apps/*/src/**/*.{ts,tsx}",
         "packages/*/src/**/*.{ts,tsx}",
         "e2e/**/*.{ts,tsx}",
@@ -138,8 +138,8 @@
     },
     "//#lint:check:test-siblings": {
       "inputs": [
-        "scripts/checks/check-test-siblings.ts",
-        "scripts/checks/checks-types.ts",
+        "packages/lint/src/check-test-siblings.ts",
+        "packages/lint/src/checks-types.ts",
         ".config/allowlists/test-siblings.json",
         "apps/web/src/**/use-*.{ts,tsx}"
       ],
@@ -147,16 +147,16 @@
     },
     "//#lint:check:stories-siblings": {
       "inputs": [
-        "scripts/checks/check-stories-siblings.ts",
-        "scripts/checks/checks-types.ts",
+        "packages/lint/src/check-stories-siblings.ts",
+        "packages/lint/src/checks-types.ts",
         "apps/web/src/widgets/**/*.tsx"
       ],
       "outputs": []
     },
     "//#lint:check:env-example": {
       "inputs": [
-        "scripts/checks/check-env-example.ts",
-        "scripts/checks/checks-types.ts",
+        "packages/lint/src/check-env-example.ts",
+        "packages/lint/src/checks-types.ts",
         "packages/env/src/server.ts",
         "packages/env/src/client.ts",
         ".env.example"
@@ -290,8 +290,8 @@
     },
     "//#lint:check:adrs": {
       "inputs": [
-        "scripts/checks/check-adrs.ts",
-        "scripts/checks/checks-types.ts",
+        "packages/lint/src/check-adrs.ts",
+        "packages/lint/src/checks-types.ts",
         "docs/adrs/**/*.md",
         "apps/**/*.{ts,tsx}",
         "packages/**/*.{ts,tsx}",
@@ -304,16 +304,16 @@
     },
     "//#lint:check:state-machines": {
       "inputs": [
-        "scripts/checks/lint-state-machines.ts",
-        "scripts/checks/checks-types.ts",
+        "packages/lint/src/lint-state-machines.ts",
+        "packages/lint/src/checks-types.ts",
         "e2e/features/**/*.feature"
       ],
       "outputs": []
     },
     "//#lint:check:pitch-coverage": {
       "inputs": [
-        "scripts/checks/check-pitch-coverage.ts",
-        "scripts/checks/checks-types.ts",
+        "packages/lint/src/check-pitch-coverage.ts",
+        "packages/lint/src/checks-types.ts",
         "docs/requirements/pitches/**/*.md",
         "e2e/features/**/*.feature"
       ],
@@ -321,8 +321,8 @@
     },
     "//#lint:check:scoped-landmarks": {
       "inputs": [
-        "scripts/checks/check-scoped-landmarks.ts",
-        "scripts/checks/checks-types.ts",
+        "packages/lint/src/check-scoped-landmarks.ts",
+        "packages/lint/src/checks-types.ts",
         ".config/allowlists/scoped-landmarks.json",
         "e2e/steps/**/*.ts"
       ],
@@ -330,8 +330,8 @@
     },
     "//#lint:check:perspective-boundary": {
       "inputs": [
-        "scripts/checks/check-perspective-boundary.ts",
-        "scripts/checks/checks-types.ts",
+        "packages/lint/src/check-perspective-boundary.ts",
+        "packages/lint/src/checks-types.ts",
         ".config/allowlists/perspective-boundary.json",
         "apps/**/*.{ts,tsx}",
         "packages/**/*.{ts,tsx}",

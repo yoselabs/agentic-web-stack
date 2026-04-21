@@ -1,7 +1,9 @@
 {
   "$schema": "https://biomejs.dev/schemas/2.4.12/schema.json",
   "assist": { "actions": { "source": { "organizeImports": "on" } } },
-  "plugins": ["./scripts/checks/grit-plugins/import-type-for-app-router.grit"],
+  "plugins": [
+    "./packages/lint/src/grit-plugins/import-type-for-app-router.grit"
+  ],
   "linter": {
     "enabled": true,
     "rules": {
@@ -63,6 +65,7 @@
       "includes": [
         "packages/env/**",
         "packages/test-infra/**",
+        "packages/lint/**",
         "scripts/**",
         "**/scripts/**",
         "**/vite.config.ts",

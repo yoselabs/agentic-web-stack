@@ -3,7 +3,7 @@
 ## Architecture
 
 Hono server on port 3001, bound to `0.0.0.0` (container runtimes can't reach
-`127.0.0.1` from another container). Enforced by `scripts/checks/check-server-bind.ts`
+`127.0.0.1` from another container). Enforced by `packages/lint/src/check-server-bind.ts`
 via `make lint`.
 
 Responsibilities:

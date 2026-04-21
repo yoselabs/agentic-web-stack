@@ -41,7 +41,7 @@ to `docker compose` — it is Node-only test tooling, not runtime code.
 ## Adding a new container service (e.g. Redis)
 
 This is a multi-file change the integrity audit
-(`scripts/checks/check-test-infra-integrity.ts`) backs up. Touch points:
+(`packages/lint/src/check-test-infra-integrity.ts`) backs up. Touch points:
 
 1. **`src/index.ts`:**
    - Add `redis: 6300` to `PROFILES.e2e`, `redis: 6400` to `PROFILES.unit`.

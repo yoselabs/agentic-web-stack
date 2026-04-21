@@ -117,7 +117,7 @@ export function runAdrs(root: string = DEFAULT_ROOT): { errors: string[] } {
     .filter((p) => !p.startsWith(`${ADR_DIR}/`)) // ADRs self-cite; handled above
     .filter((p) => !/\/__tests__\//.test(p)) // fixture tests contain synthetic cites
     .filter((p) => !/\.test\.(ts|tsx)$/.test(p))
-    .filter((p) => p !== "scripts/check-adrs.ts"); // the regex lives here
+    .filter((p) => p !== "packages/lint/src/check-adrs.ts"); // the regex lives here
 
   for (const rel of allFiles) {
     const src = readFileSync(join(root, rel), "utf8");

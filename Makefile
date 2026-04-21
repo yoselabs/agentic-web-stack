@@ -79,8 +79,8 @@ fix: db-generate ## Auto-fix lint issues + typecheck
 # - @project/api uses `bun test` (Prisma-heavy, native DB speed)
 # - @project/web uses Vitest (Vite plugin reuse + React 19 + RTL interop)
 # See docs/adrs/0003-web-test-runner.md.
-test-unit: db-generate ## Unit tests: @project/api (Bun) + @project/web (Vitest) in parallel
-	pnpm exec turbo run test --filter=@project/api --filter=@project/web --log-order=grouped
+test-unit: db-generate ## Unit tests: @project/api (Bun) + @project/web (Vitest) + @project/lint (Bun) in parallel
+	pnpm exec turbo run test --filter=@project/api --filter=@project/web --filter=@project/lint --log-order=grouped
 
 # Real-Chromium component tests. Opt-in per component via the
 # `*.browser.test.tsx` suffix. Separate from `make test-unit` — real
@@ -91,8 +91,8 @@ test-browser: db-generate ## Real-Chromium component tests (*.browser.test.tsx)
 	pnpm --filter @project/web exec vitest run --project browser
 
 # Unit tests for the custom-check modules themselves (bun test).
-test-checks: ## Unit tests for scripts/checks/check-*.ts modules
-	@bun test scripts/checks/__tests__/
+test-checks: ## Unit tests for @project/lint fixture tests
+	pnpm --filter @project/lint test
 
 # Run all test suites sequentially. Useful for pre-merge confidence runs.
 test-all: test-unit test-browser test-checks test ## Run unit + browser + checks + BDD suites (pre-merge confidence check)
