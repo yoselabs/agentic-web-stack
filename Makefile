@@ -75,9 +75,12 @@ fix: db-generate ## Auto-fix lint issues + typecheck
 	@agent-harness fix
 	pnpm -w run typecheck
 
-# Unit / integration tests (bun test, isolated unit-suite Postgres via scripts/test-db.ts)
-test-unit: db-generate ## Unit / integration tests via bun test (isolated unit-suite DB)
-	pnpm --filter @project/api test
+# Unit / integration tests — heterogeneous:
+# - @project/api uses `bun test` (Prisma-heavy, native DB speed)
+# - @project/web uses Vitest (Vite plugin reuse + React 19 + RTL interop)
+# See docs/adrs/0003-web-test-runner.md.
+test-unit: db-generate ## Unit tests: @project/api (Bun) + @project/web (Vitest) in parallel
+	pnpm exec turbo run test --filter=@project/api --filter=@project/web --log-order=grouped
 
 # Unit tests for the custom-check modules themselves (bun test).
 test-checks: ## Unit tests for scripts/check-*.ts modules
