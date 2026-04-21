@@ -35,7 +35,7 @@
       ],
       "project": ["src/**/*.{ts,tsx}", "test/**/*.{ts,tsx}"],
       "ignore": ["src/routeTree.gen.ts"],
-      "ignoreDependencies": ["@testing-library/user-event"]
+      "ignoreDependencies": ["@testing-library/user-event", "@project/query"]
     },
     "apps/server": {
       "entry": ["src/index.ts"],
@@ -79,7 +79,7 @@
     }
   },
   "ignore": [
-    "apps/web/src/shared/use-optimistic-mutation.ts",
+    "packages/query/src/use-optimistic-mutation.ts",
     "packages/email/src/index.ts",
     "packages/env/src/index.ts",
     "packages/jobs/src/index.ts"

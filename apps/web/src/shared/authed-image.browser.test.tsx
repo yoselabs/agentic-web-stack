@@ -13,7 +13,7 @@
 
 import { describe, expect, it, vi } from "vitest";
 import { renderWithTRPC } from "../../test/browser-render.js";
-import { AuthedImage } from "./authed-image.js";
+import { AuthedImage } from "@project/media/authed-image";
 
 // 1×1 transparent PNG as a base64 data URL. Decodes cleanly in every
 // browser — `naturalWidth` is 1, not 0.

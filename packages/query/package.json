@@ -1,0 +1,23 @@
+{
+  "name": "@project/query",
+  "version": "0.0.0",
+  "private": true,
+  "type": "module",
+  "exports": {
+    "./use-optimistic-mutation": {
+      "default": "./src/use-optimistic-mutation.ts"
+    }
+  },
+  "peerDependencies": {
+    "@tanstack/react-query": "^5.75.0",
+    "react": "^19.0.0"
+  },
+  "dependencies": {
+    "sonner": "^2.0.7"
+  },
+  "devDependencies": {
+    "@tanstack/react-query": "^5.75.0",
+    "@types/react": "^19.2.14",
+    "react": "^19.2.0"
+  }
+}

@@ -9,7 +9,7 @@ import {
   wsLink,
 } from "@trpc/client";
 import { createTRPCOptionsProxy } from "@trpc/tanstack-react-query";
-import { apiClient } from "#/shared/api-client";
+import { apiClient } from "@project/http/client";
 import { routeTree } from "./routeTree.gen";
 
 function makeQueryClient() {
