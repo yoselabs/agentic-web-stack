@@ -6,7 +6,7 @@ deciders: [denis]
 verified_by:
   - apps/web/vitest.config.ts
   - apps/web/test/browser-render.tsx
-  - apps/web/src/shared/authed-image.browser.test.tsx
+  - apps/web/test/authed-image.browser.test.tsx
 ---
 
 # ADR-0007 — Browser-Mode Component Tests
@@ -151,9 +151,9 @@ stories rarely needs browser-mode tests — only when (1)–(3) apply.
 - `apps/web/vitest.config.ts` — `browser` project definition.
 - `apps/web/test/browser-render.tsx` — `renderWithTRPC` adapter for
   `vitest-browser-react`.
-- `apps/web/src/shared/authed-image.tsx` — reference stub component
+- `packages/media/src/authed-image.tsx` — reference stub component
   (minimal `<img>` wrapper; no attachment feature yet).
-- `apps/web/src/shared/authed-image.browser.test.tsx` — exemplar test
+- `apps/web/test/authed-image.browser.test.tsx` — exemplar test
   asserting valid data URL → `naturalWidth > 0`, bogus URL →
   `naturalWidth === 0`, `alt` always rendered.
 - `docs/qa-strategy.md` §3.4 — pyramid placement.

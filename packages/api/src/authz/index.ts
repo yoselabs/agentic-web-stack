@@ -7,8 +7,8 @@
 
 import { AbilityBuilder } from "@casl/ability";
 import { createPrismaAbility } from "@casl/prisma";
+import { applyTodoRules } from "../domains/todo-list/authz.js";
 import { applyAdminRules } from "./rules/admin.js";
-import { applyTodoRules } from "./rules/todo.js";
 import type { AppAbility, SessionUser } from "./types.js";
 
 export function abilityFor(user: SessionUser | null): AppAbility {

@@ -5,7 +5,7 @@
 // collaborator access.
 
 import type { AbilityBuilder } from "@casl/ability";
-import type { AppAbility, SessionUser } from "../types.js";
+import type { AppAbility, SessionUser } from "../../authz/types.js";
 
 export function applyTodoRules(
   { can }: AbilityBuilder<AppAbility>,

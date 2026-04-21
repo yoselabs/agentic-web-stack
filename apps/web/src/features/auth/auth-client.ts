@@ -1,7 +1,7 @@
+import { apiClient } from "@project/http/client";
 import type { BetterAuthClientOptions } from "better-auth/client";
 import { inferAdditionalFields } from "better-auth/client/plugins";
 import { createAuthClient } from "better-auth/react";
-import { apiClient } from "@project/http/client";
 
 // Schema literal mirroring packages/auth/src/index.ts additionalFields.
 // Kept as a literal here (rather than importing the server `auth` value)

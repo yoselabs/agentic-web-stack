@@ -11,9 +11,9 @@
 // the reference a fork can copy when it grows a real attachment
 // feature. See @adr 0007.
 
-import { describe, expect, it, vi } from "vitest";
-import { renderWithTRPC } from "../../test/browser-render.js";
 import { AuthedImage } from "@project/media/authed-image";
+import { describe, expect, it, vi } from "vitest";
+import { renderWithTRPC } from "./browser-render.js";
 
 // 1×1 transparent PNG as a base64 data URL. Decodes cleanly in every
 // browser — `naturalWidth` is 1, not 0.

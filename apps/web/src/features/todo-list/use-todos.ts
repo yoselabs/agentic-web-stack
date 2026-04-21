@@ -13,7 +13,7 @@ import type { TRPCOptionsProxy } from "@trpc/tanstack-react-query";
 import { useState } from "react";
 import { flushSync } from "react-dom";
 import { toast } from "sonner";
-import { todoHttpClient } from "#/shared/todo-http-client";
+import { todoHttpClient } from "#/features/todo-list/todo-http-client";
 
 export function useTodos(
   trpc: TRPCOptionsProxy<AppRouter>,

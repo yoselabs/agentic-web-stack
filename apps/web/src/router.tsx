@@ -1,4 +1,5 @@
 import type { AppRouter } from "@project/api/router";
+import { apiClient } from "@project/http/client";
 import { QueryClient } from "@tanstack/react-query";
 import { createRouter as createTanStackRouter } from "@tanstack/react-router";
 import {
@@ -9,7 +10,6 @@ import {
   wsLink,
 } from "@trpc/client";
 import { createTRPCOptionsProxy } from "@trpc/tanstack-react-query";
-import { apiClient } from "@project/http/client";
 import { routeTree } from "./routeTree.gen";
 
 function makeQueryClient() {
