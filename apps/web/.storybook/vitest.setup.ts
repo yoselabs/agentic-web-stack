@@ -19,6 +19,14 @@ import preview from "./preview";
  * Without this, stories render without `QueryClientProvider` and the
  * a11y addon never runs — a hook test inside a widget would crash on
  * `useQuery` and violations would escape to silent panel warnings.
+ *
+ * Storybook 10.3 emits an advisory on boot ("Skipping automatic
+ * provisioning of preview annotations to avoid conflicts") because
+ * `@storybook/addon-vitest` tries to auto-register these itself.
+ * Removing our call causes stories to fail with `NoRenderFunctionError`
+ * — the addon's auto-registration doesn't currently cover the React
+ * renderer wiring that `preview` brings in. The advisory is
+ * informational; keep the explicit call.
  */
 const project = setProjectAnnotations([a11yAnnotations, preview]);
 beforeAll(project.beforeAll);

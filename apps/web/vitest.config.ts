@@ -2,6 +2,7 @@ import { createRequire } from "node:module";
 import { fileURLToPath } from "node:url";
 import { storybookTest } from "@storybook/addon-vitest/vitest-plugin";
 import viteReact from "@vitejs/plugin-react";
+import { playwright } from "@vitest/browser-playwright";
 import { defineConfig } from "vitest/config";
 
 // Vitest config for apps/web.
@@ -104,12 +105,9 @@ export default defineConfig({
           // `make test-unit` invocation.
           browser: {
             enabled: true,
-            provider: "playwright",
+            provider: playwright(),
             headless: true,
-            // biome-ignore lint/suspicious/noExplicitAny: browser.instances is
-            // typed on @vitest/browser for the v3 surface but the vitest
-            // re-export lags; runtime contract matches.
-            instances: [{ browser: "chromium" }] as any,
+            instances: [{ browser: "chromium" }],
           },
           setupFiles: ["./.storybook/vitest.setup.ts"],
           globals: false,
@@ -130,12 +128,9 @@ export default defineConfig({
           // sibling and it lands in this project automatically.
           browser: {
             enabled: true,
-            provider: "playwright",
+            provider: playwright(),
             headless: true,
-            // biome-ignore lint/suspicious/noExplicitAny: see note on
-            // the `storybook` project above — the `instances` type
-            // lags the runtime contract on the vitest re-export.
-            instances: [{ browser: "chromium" }] as any,
+            instances: [{ browser: "chromium" }],
           },
           include: ["src/**/*.browser.test.tsx", "test/**/*.browser.test.tsx"],
           // Reuse the jsdom setup file — jest-dom matchers + RTL

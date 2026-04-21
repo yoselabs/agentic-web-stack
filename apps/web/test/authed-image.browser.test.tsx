@@ -26,7 +26,7 @@ const BOGUS_DATA_URL = "data:image/png;base64,AAAA";
 
 describe("AuthedImage (browser-mode)", () => {
   it("loads a valid image — naturalWidth > 0", async () => {
-    const { getByAltText } = renderWithTRPC(
+    const { getByAltText } = await renderWithTRPC(
       <AuthedImage src={VALID_PNG_DATA_URL} alt="valid pixel" />,
     );
 
@@ -43,7 +43,7 @@ describe("AuthedImage (browser-mode)", () => {
   });
 
   it("fails to load a bogus image — naturalWidth stays 0", async () => {
-    const { getByAltText } = renderWithTRPC(
+    const { getByAltText } = await renderWithTRPC(
       <AuthedImage src={BOGUS_DATA_URL} alt="bogus pixel" />,
     );
 
@@ -56,7 +56,7 @@ describe("AuthedImage (browser-mode)", () => {
   });
 
   it("renders alt text regardless of load state", async () => {
-    const { getByAltText } = renderWithTRPC(
+    const { getByAltText } = await renderWithTRPC(
       <AuthedImage src={BOGUS_DATA_URL} alt="always-there alt" />,
     );
 

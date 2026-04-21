@@ -59,11 +59,14 @@ export function createTestQueryClient(): QueryClient {
  *
  * Returns the full `vitest-browser-react` result plus the
  * `queryClient` for post-render assertions (`client.getQueryData`).
+ *
+ * Async since `vitest-browser-react@2` (`render` now returns a Promise).
+ * Call sites must `await` — previously you could destructure synchronously.
  */
-export function renderWithTRPC(
+export async function renderWithTRPC(
   ui: ReactElement,
   { seed, queryClient }: BrowserRenderOptions = {},
-): ReturnType<typeof render> & { queryClient: QueryClient } {
+): Promise<Awaited<ReturnType<typeof render>> & { queryClient: QueryClient }> {
   const client = queryClient ?? createTestQueryClient();
 
   if (seed) {
@@ -76,6 +79,6 @@ export function renderWithTRPC(
     <QueryClientProvider client={client}>{children}</QueryClientProvider>
   );
 
-  const result = render(ui, { wrapper: Wrapper });
+  const result = await render(ui, { wrapper: Wrapper });
   return Object.assign(result, { queryClient: client });
 }

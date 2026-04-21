@@ -27,15 +27,15 @@ catalog:
   "@cucumber/gherkin": ^39.0.0
   "@cucumber/messages": ^32.3.1
   gray-matter: ^4.0.3
-  vitest: ^3.2.0
-  "@vitest/browser": ^3.2.0
-  "vitest-browser-react": ^1.0.1
+  vitest: ^4.1.5
+  "@vitest/browser": ^4.1.5
+  "vitest-browser-react": ^2.2.0
   "@testing-library/react": ^16.3.0
   "@testing-library/user-event": ^14.5.0
   "@testing-library/jest-dom": ^6.6.0
   "happy-dom": ^17.0.0
-  storybook: ^9.0.0
-  "@storybook/react-vite": ^9.0.0
-  "@storybook/addon-vitest": ^9.0.0
-  "@storybook/addon-a11y": ^9.0.0
+  storybook: ^10.3.5
+  "@storybook/react-vite": ^10.3.5
+  "@storybook/addon-vitest": ^10.3.5
+  "@storybook/addon-a11y": ^10.3.5
   "lost-pixel": ^3.22.0
