@@ -132,34 +132,178 @@ registry other features will plug into — add a row to this table in the
 same commit that introduces it. This keeps the list authoritative and
 prevents silent plug-in points from accumulating.
 
-## Test-mode detection
+## API perspective shape — `{ self, others }` at tRPC boundaries
 
-Runtime code that needs to branch on "am I running under the test
-harness?" reads `env.IS_TEST` from `@project/env/server`. Never read
-`process.env.NODE_ENV`, `process.env.VITEST`, or `process.env.TEST_MODE`
-directly — `@project/env` is the only module allowed to touch
-`process.env` (enforced by `make lint`).
+When a domain exposes a list where the current user's row carries
+structurally different data than everyone else's row — presence, typing
+indicator, draft state, unread counters for self — the tRPC boundary
+MUST split the response into `{ self, others }` rather than a uniform
+`Member[]` with a `currentUserId` hint.
 
-`env.IS_TEST` is a derived boolean. It's true when either of:
+```ts
+// packages/api/src/domains/chat/chat-router.ts
+roomMembers: protectedProcedure
+  .input(z.object({ roomId: z.string() }))
+  .query(async ({ ctx, input }) => ({
+    // Self row intentionally lacks `presence` — it's client-derived.
+    self: await memberFor(ctx.db, input.roomId, ctx.session.user.id),
+    // Server owns presence for everyone else.
+    others: await membersExcept(ctx.db, input.roomId, ctx.session.user.id),
+  })),
+```
 
-1. `process.env.VITEST === "true"` — set natively by Vitest / `bun test`.
-   Primary signal for unit/integration runs. The runner sets this; the
-   test harness does not.
-2. `process.env.TEST_MODE === "1"` — set ONLY by the Playwright harness
-   when spawning the web + API servers under test. Wired through
-   `envForSubprocess(suite, role?)` in `@project/test-infra`, which
-   Playwright's `webServer` env blocks and any test-side subprocess
-   launcher spread into the child process env.
+**Why the split.** The self row has a different type than other rows.
+The compiler now forces every consumer to branch — `self.presence`
+literally does not exist, so copy-paste from the `others` render path
+fails `tsc -b`. A uniform array cannot encode "self's presence lives
+on the client, everyone else's lives on the server" — drift is only a
+matter of time.
 
-**Why not overload `NODE_ENV=test`?** Vite's SSR build flips `jsxDEV`
-imports on `NODE_ENV`. Setting it to `"test"` breaks the built web
-bundle that the e2e suite serves via Nitro. The split — `VITEST` for
-Vitest, `TEST_MODE` for e2e, `NODE_ENV` only for dev/prod — keeps the
-build graph consistent while still giving runtime code a single boolean
-to branch on.
+**Naming.** Prefer `self` (symmetric with `others`). `viewer` is
+acceptable if the domain already uses GraphQL-native naming. Pick one
+per domain and commit.
 
-**`NODE_ENV=test` is a hard error.** The Zod schema in
-`packages/env/src/server.ts` accepts only `"development" | "production"`.
-Anyone setting `NODE_ENV=test` gets a loud boot-time failure instead of
-a silent test-mode flip. Client-side / Vite SSR code should never reach
-`env.IS_TEST` either; test-mode branching is a server-only concern.
+**Opt-in lint.** The domain-specific "self-varying" field (the one
+clients compute locally and the server must not return for self) is
+guarded by a Grit rule / `check-perspective-boundary.ts` fallback that
+flags `$row.$field` accesses outside the owning hook. Configure per
+domain via `.perspective-boundary.json` — see the next section.
+
+**Tradeoff.** List-rendering code must merge `self` back in for sorted
+display. Do it once per domain.
+
+Prior art: Relay's `viewer`, Slack `self`, Discord gateway
+`READY.user`, GitHub / Shopify / Linear GraphQL.
+
+## Client-derived state via `@project/realtime/derived`
+
+For state the client authoritatively computes from its own activity
+signals — presence, typing indicator, cursor, focus state, draft
+— use `createDerivedSource<T>` from `@project/realtime/derived`. Built
+on `useSyncExternalStore` + `BroadcastChannel` + `navigator.locks` so
+one tab (the lock leader) drives `compute()` and broadcasts; the
+others follow. SSR-safe. Full API lives in
+[`packages/realtime/src/derived.ts`](../packages/realtime/src/derived.ts).
+
+```ts
+// apps/web/src/features/chat/use-self-presence.ts (sketch)
+import { createDerivedSource } from "@project/realtime/derived";
+
+const source = createDerivedSource<"online" | "afk" | "offline">({
+  key: "self-presence",
+  initial: "offline",
+  activityEvents: ["mousemove", "keydown", "visibilitychange"],
+  tickMs: 1_000,
+  compute: (lastActivityAt, now) => {
+    const idleMs = now - lastActivityAt;
+    if (idleMs < 60_000) return "online";
+    if (idleMs < 300_000) return "afk";
+    return "offline";
+  },
+});
+
+export const useSelfPresence = source.hook;
+export const presenceMock = source.mock; // DI for unit tests
+```
+
+**Configuring the `perspective-boundary` rule.** When a domain opts
+into the `{ self, others }` split above, register the self-varying
+field in the repo-root config so the lint rule flags cross-boundary
+access:
+
+```json
+// .perspective-boundary.json
+{
+  "rules": [
+    {
+      "field": "presence",
+      "allowedFiles": ["apps/web/src/features/chat/use-self-presence.ts"]
+    }
+  ]
+}
+```
+
+Every non-allowed file that writes `x.presence` fails `make lint`.
+The rule ships unconfigured (empty `rules: []`) in this template — no
+domain has opted in yet.
+
+**Why a primitive instead of Liveblocks / Yjs.** Template scale does
+not justify a SaaS dependency or Yjs runtime. `derived.ts` is ~300 LOC
+including the mock. Leader-tab coordination is the only thing you
+own — everything else is browser primitives.
+
+## Cross-origin media — signed short-TTL URLs, never cookie `<img>`
+
+Authenticated media (user-uploaded attachments, private avatars) MUST
+be delivered via short-TTL HMAC-signed URLs and consumed by dumb
+`<img src>` tags. Never set `crossOrigin="use-credentials"` on
+`<img>` / `<video>` / `<audio>` elements in user-facing code.
+
+```ts
+// packages/api/src/domains/<name>/attachment-sign.ts (sketch)
+import { createHmac } from "node:crypto";
+import { env } from "@project/env/server";
+
+export function signAttachmentUrl(id: string, ttlSec = 600): string {
+  const exp = Math.floor(Date.now() / 1000) + ttlSec;
+  const sig = createHmac("sha256", env.ATTACHMENT_SIGNING_KEY)
+    .update(`${id}.${exp}`)
+    .digest("base64url");
+  return `${env.BETTER_AUTH_URL}/api/attachments/${id}?exp=${exp}&sig=${sig}`;
+}
+```
+
+```tsx
+// Consumer — boringly plain, no CORS, no credentials, CDN-cacheable.
+<img src={attachment.signedUrl} alt={attachment.originalName} />
+```
+
+**Why not `crossOrigin="use-credentials"`.** It forces
+`Access-Control-Allow-Credentials: true` paired with a specific
+(non-`*`) origin, which breaks CDN caching — each response becomes
+per-cookie. It also silently fails the moment a third origin joins the
+deployment (CDN, preview env, review app). Signed URLs work
+identically in every environment.
+
+**Same-origin proxying** (Vite `server.proxy`) is acceptable **in dev
+only** and must never ship to prod — edge rewrites conflate app and
+API routing domains and complicate multi-region deploys. Pick one
+pattern per deployment, never mix.
+
+Prior art: Cal.com, Dub (R2 presign), Linear, Midday. `next/image`
+defaults to a same-origin loader for the same reason.
+
+Deployment-side rationale and env-var wiring live in
+[`DEPLOYMENT.md`](../DEPLOYMENT.md#signed-url-media-pattern).
+
+## BDD placement scoping — scope to landmark, not bare `page.getBy*`
+
+Step definitions under `e2e/steps/**/*.ts` that assert the **placement**
+of a UI element MUST scope the query to an accessibility landmark
+(`getByRole('navigation' | 'main' | 'complementary' | 'contentinfo')`)
+or a named container. Bare top-level `page.getByTestId(...)` /
+`page.getByText(...)` / `page.getByRole(...)` passes whether the
+element lives in the intended container or the wrong one — that class
+of bug has shipped silently before.
+
+```ts
+// Bad — passes whether the badge lives in the navbar or a random header strip.
+const badge = page.getByTestId("notifications-badge");
+await expect(badge).toBeVisible();
+
+// Good — fails loudly if the badge is rendered outside <nav>.
+const nav = page.getByRole("navigation", { name: "Primary" });
+await expect(nav.getByTestId("notifications-badge")).toBeVisible();
+```
+
+**Escape hatch.** A step that asserts "this element exists *somewhere*
+on the page" (rare — usually a bug smell) MUST precede the query with
+a `// placement-agnostic:` comment on the line immediately above. The
+lint rule allows unscoped queries only when that comment is present.
+
+**Enforcement.** A Grit plugin
+(`scripts/grit-plugins/scoped-landmark-queries.grit`) flags unscoped
+top-level queries in step files. A fallback
+`scripts/check-scoped-landmarks.ts` ships for patterns Grit cannot
+express (e.g., "preceding-line comment" context). Both wire into
+`make lint`.

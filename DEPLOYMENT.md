@@ -50,3 +50,29 @@ Postgres image creds (`POSTGRES_USER` / `POSTGRES_PASSWORD` / `POSTGRES_DB`) are
 ## Monitoring
 
 `/health` on the API returns DB connectivity status; `/health` on the web container returns process liveness. Bull Board is mounted at `/admin/queues` on the API server for BullMQ queue inspection — put it behind auth at the reverse-proxy layer before exposing publicly. Logs are structured JSON via Pino and written to stdout; ship them from the container runtime to your aggregator (Loki, CloudWatch, Datadog).
+
+## Signed-URL media pattern
+
+Authenticated media (user-uploaded attachments, private avatars) ships via **short-TTL HMAC-signed URLs**, never via cookie-authenticated `<img>` tags. The full convention — do / don't, code sketch, why not `crossOrigin="use-credentials"`, why not same-origin proxy in prod — lives in [`docs/conventions.md`](docs/conventions.md#cross-origin-media--signed-short-ttl-urls-never-cookie-img). This section covers the deployment side only.
+
+**Required env var:** `ATTACHMENT_SIGNING_KEY` — 32+ random bytes, base64 or hex. Signatures are stateless HMAC-SHA256; rotating the key invalidates all outstanding URLs, which is intended (short TTL means blast radius is ≤ TTL).
+
+**CDN caching.** Signed URLs are per-attachment, per-expiration — effectively immutable for their TTL. Put the attachment endpoint behind a CDN (Cloudflare, CloudFront, Fastly) with `Cache-Control: public, max-age=<ttl>` and a `Vary: Sig` header. The leading-dot cookie domain (`AUTH_COOKIE_DOMAIN`) does NOT apply — the signed-URL handler is stateless and reads no cookies.
+
+**Why not `crossOrigin="use-credentials"` on `<img>`.** Forces `Access-Control-Allow-Credentials: true` paired with a specific (non-`*`) origin; CDNs degrade to per-cookie cache entries and the setup silently fails the moment a third origin joins (preview envs, review apps). Signed URLs work identically from any origin.
+
+**Why not same-origin proxy in prod.** Vite `server.proxy` is a dev convenience only. In prod it requires an edge rewrite at the reverse proxy (Traefik/Vercel/Cloudflare) that conflates app and API routing domains and couples WAF rules across two services. Signed URLs degrade into plain static-asset delivery at the edge.
+
+### Filesystem paths in env — anchor to repo root, not `process.cwd()`
+
+Related deployment landmine: env vars that hold filesystem paths (attachment storage root, upload temp dir, seed data directory) MUST resolve relative to the **repo root**, not to the process's current working directory. When the API container runs from `/app/apps/server/`, a relative path like `./data/attachments` resolves to `/app/apps/server/data/attachments` — but a seed script running from `/app/` writes to `/app/data/attachments`. Two directories, same env var, silent disagreement.
+
+`packages/env/src/paths.ts` exposes an `absPath()` Zod helper that transforms relative paths to absolute at parse time by anchoring to the nearest `pnpm-workspace.yaml`. Every path-valued env var in `packages/env/src/server.ts` MUST use it:
+
+```ts
+// packages/env/src/server.ts
+STORAGE_ROOT: absPath().default("./data/attachments"),
+UPLOADS_TMP:  absPath().default("./data/tmp"),
+```
+
+Rationale and the companion `scripts/check-no-cwd.ts` linter live in [`docs/adrs/0005-env-path-anchoring.md`](docs/adrs/0005-env-path-anchoring.md).

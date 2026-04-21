@@ -517,6 +517,12 @@ importers:
       '@types/node':
         specifier: 'catalog:'
         version: 25.6.0
+      '@types/react':
+        specifier: ^19.2.14
+        version: 19.2.14
+      react:
+        specifier: ^19.2.0
+        version: 19.2.5
       typescript:
         specifier: 'catalog:'
         version: 5.9.3
