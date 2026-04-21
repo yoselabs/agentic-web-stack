@@ -1,3 +1,4 @@
+// @adr 0006
 import type { StorybookConfig } from "@storybook/react-vite";
 
 /**
@@ -11,16 +12,25 @@ import type { StorybookConfig } from "@storybook/react-vite";
  * - `@storybook/addon-a11y` runs axe-core against every rendered story.
  *   Severity is promoted to `error` in `preview.tsx` so a11y violations
  *   fail story tests (not just the panel warning).
- * - `@storybook/addon-vitest` runs stories through the same Vitest worker
- *   pool as the jsdom unit tests. Stories become test cases; `make
- *   test-unit` picks them up automatically via the vitest projects config.
+ * - `@storybook/addon-vitest` runs stories through the same Vitest
+ *   worker pool as the jsdom unit tests. Stories become test cases;
+ *   `make test-unit` picks them up automatically via the vitest
+ *   projects config.
  *
  * See ADR-0006.
  */
 const config: StorybookConfig = {
   framework: {
     name: "@storybook/react-vite",
-    options: {},
+    options: {
+      builder: {
+        // Dedicated minimal vite config — apps/web/vite.config.ts wires
+        // TanStack Start + Nitro which break Storybook's multi-entry
+        // build. See `.storybook/vite.config.ts` for the long-form
+        // rationale.
+        viteConfigPath: ".storybook/vite.config.ts",
+      },
+    },
   },
   stories: ["../src/**/*.stories.@(ts|tsx)"],
   addons: ["@storybook/addon-a11y", "@storybook/addon-vitest"],
