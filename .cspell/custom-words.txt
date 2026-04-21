@@ -175,6 +175,8 @@ Workstreams
 XADD
 XRANGE
 XREAD
+lostpixel
+Storycap
 yamllint
 yose
 yoselabs
