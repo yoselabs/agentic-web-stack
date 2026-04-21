@@ -9,8 +9,8 @@ catalog:
   "@casl/react": ^5.0.0
   "@prisma/client": ^7.7.0
   prisma: ^7.7.0
-  zod: ^3.25.76
-  "@t3-oss/env-core": ^0.12.0
+  zod: ^4.3.6
+  "@t3-oss/env-core": ^0.13.11
   "@types/node": ^25.6.0
   typescript: ^6.0.3
   bullmq: ^5.75.2
