@@ -1,80 +1,46 @@
-import { env } from "@project/env/client";
-import { Button } from "@project/ui/components/button";
-import { Link } from "@tanstack/react-router";
-import { useSession } from "#/features/auth/auth-client";
-import { UserBlock } from "#/features/auth/user-block";
-import { Logo } from "./logo";
-import { MobileNav } from "./mobile-nav";
+import type { ReactNode } from "react";
 
-const authedLinks = [
-  { to: "/dashboard" as const, label: "Dashboard" },
-  { to: "/todo-lists" as const, label: "Todo Lists" },
-];
+/**
+ * Slot contract for the top-level `Navbar` shell.
+ *
+ * Every visible affordance the navbar renders is a typed key. A call site that
+ * forgets a required affordance (e.g. the Pitch-5A notifications drop) becomes
+ * a `tsc -b` error instead of a silent regression.
+ *
+ * Keep required slots non-optional. Use `?` only for role-gated affordances
+ * (e.g. admin-only jobs link) that are structurally absent for most users.
+ *
+ * See ADR-0004 (`docs/adrs/0004-ui-shell-slots.md`).
+ */
+export type NavbarSlots = {
+  logo: ReactNode;
+  /** Desktop primary navigation (empty fragment when logged out). */
+  primaryLinks: ReactNode;
+  /** Admin-only links (jobs admin, etc.). Omit when the viewer is not an admin. */
+  adminActions?: ReactNode;
+  /** User affordance — UserBlock when authed, Sign-In button when not. */
+  user: ReactNode;
+  /** Mobile hamburger / drawer. Always rendered; visibility is CSS-gated. */
+  mobileNav: ReactNode;
+};
 
-export function Navbar() {
-  const { data: session } = useSession();
-  const isAuthed = !!session;
-  const isAdmin =
-    isAuthed && (session.user as { role?: string }).role === "admin";
-  // No trailing slash — Hono mounts Bull Board's entry route at exactly
-  // `/admin/queues`. With a trailing slash the entry handler doesn't match
-  // and the request falls through to a 404 (the API subroutes still work
-  // because they don't depend on the bare slash).
-  const jobsAdminHref = `${env.VITE_API_URL}/admin/queues`;
-
+export function Navbar({ slots }: { slots: NavbarSlots }) {
   return (
     <nav className="border-b px-6 py-3 flex items-center justify-between">
       {/* Desktop */}
       <div className="flex items-center gap-6">
-        <Logo />
-        {isAuthed && (
-          <div className="hidden md:flex items-center gap-6">
-            {authedLinks.map((link) => (
-              <Link
-                key={link.to}
-                to={link.to}
-                className="text-sm text-muted-foreground hover:text-foreground"
-                activeProps={{
-                  className: "text-sm font-semibold text-foreground",
-                }}
-              >
-                {link.label}
-              </Link>
-            ))}
-          </div>
-        )}
+        {slots.logo}
+        <div className="hidden md:flex items-center gap-6">
+          {slots.primaryLinks}
+        </div>
       </div>
 
       <div className="hidden md:flex items-center gap-4">
-        {isAuthed ? (
-          <>
-            {isAdmin && (
-              <a
-                href={jobsAdminHref}
-                target="_blank"
-                rel="noreferrer"
-                className="text-sm text-muted-foreground hover:text-foreground"
-              >
-                Jobs Admin
-              </a>
-            )}
-            <UserBlock />
-          </>
-        ) : (
-          <Button asChild size="sm">
-            <Link to="/login">Sign In</Link>
-          </Button>
-        )}
+        {slots.adminActions}
+        {slots.user}
       </div>
 
-      <div className="md:hidden">
-        <MobileNav
-          isAuthed={isAuthed}
-          isAdmin={isAdmin}
-          jobsAdminHref={jobsAdminHref}
-          authedLinks={authedLinks}
-        />
-      </div>
+      <div className="md:hidden">{slots.mobileNav}</div>
     </nav>
   );
 }
