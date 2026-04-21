@@ -11,24 +11,26 @@ import {
   SheetContent,
   SheetTrigger,
 } from "@project/ui/components/sheet";
-import { Link } from "@tanstack/react-router";
 import { Menu } from "lucide-react";
-import { useState } from "react";
-import { UserBlock } from "#/features/auth/user-block";
+import { type ReactNode, useState } from "react";
 
-export type MobileNavProps = {
-  isAuthed: boolean;
-  isAdmin: boolean;
-  jobsAdminHref: string;
-  authedLinks: ReadonlyArray<{ to: string; label: string }>;
+/**
+ * Slot contract for the mobile drawer shell. Same discipline as `NavbarSlots`:
+ * every affordance the drawer renders is a typed key so a forgotten admin
+ * action or user block fails compilation.
+ *
+ * See ADR-0004 (`docs/adrs/0004-ui-shell-slots.md`).
+ */
+export type MobileNavSlots = {
+  /** Primary navigation links rendered inside the drawer. */
+  primaryLinks: ReactNode;
+  /** Admin-only links. Omit for non-admin viewers. */
+  adminActions?: ReactNode;
+  /** User affordance — UserBlock when authed, Sign-In button when not. */
+  user: ReactNode;
 };
 
-export function MobileNav({
-  isAuthed,
-  isAdmin,
-  jobsAdminHref,
-  authedLinks,
-}: MobileNavProps) {
+export function MobileNav({ slots }: { slots: MobileNavSlots }) {
   const [open, setOpen] = useState(false);
   return (
     <Sheet open={open} onOpenChange={setOpen}>
@@ -39,43 +41,25 @@ export function MobileNav({
         </Button>
       </SheetTrigger>
       <SheetContent>
-        <nav className="flex flex-col gap-4 mt-6">
-          {isAuthed &&
-            authedLinks.map((link) => (
-              <Link
-                key={link.to}
-                to={link.to}
-                className="text-lg text-muted-foreground hover:text-foreground"
-                activeProps={{
-                  className: "text-lg font-semibold text-foreground",
-                }}
-                onClick={() => setOpen(false)}
-              >
-                {link.label}
-              </Link>
-            ))}
-          {isAuthed && isAdmin && (
-            <a
-              href={jobsAdminHref}
-              target="_blank"
-              rel="noreferrer"
-              className="text-lg text-muted-foreground hover:text-foreground"
-              onClick={() => setOpen(false)}
-            >
-              Jobs Admin
-            </a>
-          )}
-          <div className="border-t pt-4 mt-2">
-            {isAuthed ? (
-              <UserBlock />
-            ) : (
-              <Button asChild className="w-full">
-                <Link to="/login" onClick={() => setOpen(false)}>
-                  Sign In
-                </Link>
-              </Button>
-            )}
-          </div>
+        {/* Close the drawer when any link inside is activated. Captured on
+            the container so individual slot contents don't need to know they
+            live inside the drawer. Scoped to anchors only so dropdown
+            triggers (e.g. UserBlock) don't accidentally dismiss it. */}
+        <nav
+          className="flex flex-col gap-4 mt-6"
+          onClick={(event) => {
+            const target = event.target as HTMLElement;
+            if (target.closest("a")) setOpen(false);
+          }}
+          onKeyDown={(event) => {
+            if (event.key !== "Enter" && event.key !== " ") return;
+            const target = event.target as HTMLElement;
+            if (target.closest("a")) setOpen(false);
+          }}
+        >
+          {slots.primaryLinks}
+          {slots.adminActions}
+          <div className="border-t pt-4 mt-2">{slots.user}</div>
         </nav>
       </SheetContent>
     </Sheet>
