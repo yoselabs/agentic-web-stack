@@ -8,65 +8,109 @@ Frontend is organized by FSD layers. Routes stay file-based (TanStack Router req
 
 ```
 src/
-  routes/          # TanStack Router file-based routes — thin shells that compose features/widgets
-  features/        # User-facing capabilities with business logic
-    auth/          # auth-client, UserBlock
-  widgets/         # Composed UI blocks (combine features + UI components)
-    navbar.tsx     # Navbar, Logo
-  shared/          # Cross-cutting: lib, config (when needed)
+  routes/          # TanStack Router file-based routes — thin shells, ~8 lines per file
+  features/        # User-facing capabilities — page components, hooks, forms, live-updates
+    auth/          # auth-client, login-page, signup-page, forms, session (SSR)
+    todo-list/     # todo-lists-page, detail page, invite-page, hooks, widgets
+    dashboard/     # cross-domain dashboard composition
+    landing/       # public landing page
+    user/          # user-scoped hooks (inbox, debounce)
+  widgets/         # Composed UI blocks used across features (Navbar, AppShell)
 ```
+
+Cross-cutting primitives that previously lived in `src/shared/` now live in workspace packages:
+
+- HTTP fetch wrapper → `@project/http/client`
+- Optimistic-mutation helper → `@project/query/use-optimistic-mutation`
+- Authed media primitives → `@project/media/authed-image`
+
+See `docs/package-taxonomy.md` for the full decision tree.
 
 **Layer rules:**
 - `routes/` → imports from `features/`, `widgets/`, `@project/ui`
 - `widgets/` → imports from `features/`, `@project/ui`
-- `features/` → imports from `shared/`, `@project/ui`
-- `shared/` → imports from `@project/ui` only
+- `features/` → imports from other `features/`, `@project/*` packages, `@project/ui`
 - **Never import upward** (features must not import from widgets or routes)
 
 **Adding a new feature:** create `src/features/<name>/` with its UI components and logic. Import it from routes.
 
-**Mandatory:** Routes must be thin shells — layout, context providers, mutation hooks, and composition only. Extract all reusable components, types, and business logic into `features/` or `widgets/`. Never inline feature components in route files.
+**Mandatory — route-shell rule.** Routes are thin shells: `createFileRoute` config, `beforeLoad` guard, `validateSearch`, and a `component:` that imports the real page from `features/<name>/<page>-page.tsx`. The whole file is ~8 lines. The page component — which owns layout, forms, data wiring, and composition — lives under `features/`.
+
+Before/after — the rule catches this regression cleanly:
+
+```tsx
+// BAD — inlined page component in the route file
+export const Route = createFileRoute("/login")({ component: LoginPage });
+function LoginPage() { return (<main>...50 lines of JSX...</main>); }
+
+// GOOD — route file is a shell, page lives in features/
+// routes/login.tsx
+import { createFileRoute, redirect } from "@tanstack/react-router";
+import { LoginPage } from "#/features/auth/login-page";
+export const Route = createFileRoute("/login")({
+  beforeLoad: ({ context }) => {
+    if (context.session) throw redirect({ to: "/dashboard" });
+  },
+  component: LoginPage,
+});
+
+// features/auth/login-page.tsx
+export function LoginPage() { return (<main>...50 lines of JSX...</main>); }
+```
+
+If the page needs route context (`useRouteContext`, `useParams`, `useSearch`), wrap one thin component in the route file that calls those hooks and passes the values down as props:
+
+```tsx
+// routes/_authenticated/todo-lists/$listId.tsx
+export const Route = createFileRoute("/_authenticated/todo-lists/$listId")({
+  component: RouteComponent,
+});
+function RouteComponent() {
+  const { trpc, session } = Route.useRouteContext();
+  const { listId } = Route.useParams();
+  return (
+    <TodoListDetailPage
+      trpc={trpc}
+      listId={listId}
+      currentUserId={session?.user.id ?? null}
+    />
+  );
+}
+```
 
 ## Adding a New Page
 
-1. Create a route file in `src/routes/`:
+1. Create the page component under `src/features/<name>/<name>-page.tsx` (e.g. `features/auth/login-page.tsx`, `features/landing/landing-page.tsx`). If the page composes two domains that neither alone owns, create a new `features/<name>/` dir (e.g. `features/dashboard/` for a dashboard that mixes user session and todo-list invites).
+2. Create a thin route file in `src/routes/`:
    - Public page: `src/routes/about.tsx`
    - Authenticated page: `src/routes/_authenticated/settings.tsx`
-2. Export `Route` using `createFileRoute`
-3. The route tree regenerates automatically on `vite dev`
-   If the dev server isn't running, run `make routes` to regenerate without starting the full dev server.
-   When adding multiple routes, create all route files first, then run `make routes` once.
+3. Export `Route` using `createFileRoute` and set `component` to the page (or a `RouteComponent` wrapper that forwards route-context values).
+4. The route tree regenerates automatically on `vite dev`. If the dev server isn't running, run `make routes` to regenerate without starting it. When adding multiple routes, create all route files first, then run `make routes` once.
 
-### Public page
+### Public page (no route context)
 
 ```tsx
+// features/landing/landing-page.tsx
+export function LandingPage() { return <main>Landing</main>; }
+
+// routes/index.tsx
 import { createFileRoute } from "@tanstack/react-router";
-
-export const Route = createFileRoute("/about")({
-  component: AboutPage,
-});
-
-function AboutPage() {
-  return <main>About</main>;
-}
+import { LandingPage } from "#/features/landing/landing-page";
+export const Route = createFileRoute("/")({ component: LandingPage });
 ```
 
 ### Authenticated page
 
 ```tsx
+// routes/_authenticated/settings.tsx
 import { createFileRoute } from "@tanstack/react-router";
-
+import { SettingsPage } from "#/features/user/settings-page";
 export const Route = createFileRoute("/_authenticated/settings")({
   component: SettingsPage,
 });
-
-function SettingsPage() {
-  // ctx.session is guaranteed non-null inside _authenticated
-  return <main>Settings</main>;
-}
 ```
 
-Pages under `_authenticated/` are protected by the layout route's auth guard.
+Pages under `_authenticated/` are protected by the layout route's auth guard — `ctx.session` is guaranteed non-null inside.
 
 ## Using tRPC Data
 
@@ -167,7 +211,7 @@ See `features/todo-list/use-todo-lists.ts` for the full optimistic delete patter
 For endpoints that aren't tRPC procedures (file upload/download, webhooks), use `apiClient`:
 
 ```typescript
-import { apiClient } from "#/shared/api-client";
+import { apiClient } from "@project/http/client";
 
 // POST with FormData
 const res = await apiClient.fetch("/api/upload", {
@@ -230,7 +274,7 @@ Never call `navigate()` during render — use `useEffect`.
 - Create `QueryClient` as a module-level singleton — use `getQueryClient()` pattern
 - Import `appRouter` value (only `import type { AppRouter }`)
 - **Never import from `@project/env` without a subpath.** The env package exposes `/server` and `/client` only; there is no barrel (enforced by `scripts/check-no-barrel.ts`). Web code imports from `@project/env/client` exclusively. A barrel would transitively pull server-only vars (DATABASE_URL, BETTER_AUTH_SECRET) into the client bundle.
-- **Make HTTP calls directly with `fetch()`.** All server calls from the web app MUST go through `apiClient` (`apps/web/src/shared/api-client.ts`). `apiClient.fetch(path, init)` prepends the base URL and sets cookie-auth credentials. This keeps the base URL in a single place and prevents scattered `fetch(`http://...`)` calls.
+- **Make HTTP calls directly with `fetch()`.** All server calls from the web app MUST go through `apiClient` (from `@project/http/client`). `apiClient.fetch(path, init)` prepends the base URL and sets cookie-auth credentials. This keeps the base URL in a single place and prevents scattered `fetch(`http://...`)` calls.
 - Put `verbatimModuleSyntax: true` in tsconfig — breaks TanStack Start
 - Add `credentials: "include"` — already configured in the tRPC httpBatchLink
 - Import upward in FSD layers (features must not import from widgets or routes)
