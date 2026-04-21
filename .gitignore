@@ -19,7 +19,12 @@ packages/db/src/generated/
 
 # IDE
 .idea/
-.vscode/
+# VSCode: gitignore user-local state, commit shared defaults.
+.vscode/*
+!.vscode/settings.json
+!.vscode/extensions.json
+!.vscode/launch.json
+!.vscode/tasks.json
 *.swp
 *.swo
 

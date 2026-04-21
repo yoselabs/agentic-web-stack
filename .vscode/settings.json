@@ -1,0 +1,180 @@
+{
+  // ───────────────────────────────────────────────────────────────
+  // FILE NESTING — the cleanest cure for root-dotfile sprawl.
+  //
+  // VS Code collapses related files under a "parent" in Explorer.
+  // This is the "separate viewport" effect — click `package.json`
+  // to expand; the 20+ tool-config dotfiles hide beneath it.
+  //
+  // Nothing is hidden — nesting is visual-only. `files.exclude`
+  // would truly hide; we intentionally don't use that for configs
+  // because first-day contributors need to see they exist.
+  // ───────────────────────────────────────────────────────────────
+  "explorer.fileNesting.enabled": true,
+  "explorer.fileNesting.expand": false,
+  "explorer.fileNesting.patterns": {
+    // Everything package-adjacent collapses under package.json.
+    // Tool configs + ratchet allowlists + ignore files + hooks config.
+    // The comma-list syntax supports glob patterns.
+    "package.json": "pnpm-lock.yaml, pnpm-workspace*.yaml, .npmrc, .nvmrc, .node-version, .pre-commit-config.yaml, .agent-harness.yml, turbo.json, knip.json, biome.json, .cspell.json, .cspell, .markdownlint*, .lychee.toml, .jscpd.json, .dependency-cruiser.cjs, .prismalintrc.json, .secretlintrc.json, .secretlintignore, .yamllint.yml, .duplicate-names-allow.json, .test-siblings-allow.json, .scoped-landmarks-allow.json, .perspective-boundary.json, .gitignore, .dockerignore, Makefile",
+
+    // TypeScript variants nest under the base config.
+    "tsconfig.json": "tsconfig.*.json, tsconfig.tsbuildinfo",
+
+    // Docker files as a group.
+    "Dockerfile": "docker-compose*.yml, .dockerignore",
+
+    // Env files nest under .env (the primary).
+    ".env": ".env.*",
+    ".env.example": ".env, .env.*",
+
+    // Top-level docs cluster under README.
+    "README.md": "CLAUDE.md, LICENSE, TODO.md, DEPLOYMENT.md, CHANGELOG.md",
+
+    // Source-file nesting for TS/TSX siblings (tests, stories, types).
+    "*.ts": "${capture}.test.ts, ${capture}.spec.ts, ${capture}.d.ts",
+    "*.tsx": "${capture}.test.tsx, ${capture}.stories.tsx, ${capture}.browser.test.tsx, ${capture}.spec.tsx"
+  },
+
+  // ───────────────────────────────────────────────────────────────
+  // EXPLORER / SEARCH / WATCHER — hide the truly irrelevant.
+  // These DO hide (not nest). Only for generated / cached artifacts
+  // that should never be browsed or searched.
+  // ───────────────────────────────────────────────────────────────
+  "files.exclude": {
+    "**/.turbo": true,
+    "**/.tsbuildinfo": true,
+    "**/node_modules": true,
+    "**/.features-gen": true,
+    "**/routeTree.gen.ts": false, // visible but nested under parent
+    "**/storybook-static": true,
+    "**/.lost-pixel": true,
+    "**/dist": true,
+    "**/.output": true,
+    "**/.vinxi": true,
+    "**/.tanstack": true
+  },
+  "search.exclude": {
+    "**/node_modules": true,
+    "**/dist": true,
+    "**/.output": true,
+    "**/.features-gen": true,
+    "**/generated": true,
+    "**/src/generated": true,
+    "**/routeTree.gen.ts": true,
+    "**/pnpm-lock.yaml": true,
+    "**/storybook-static": true,
+    "**/.lost-pixel": true,
+    "**/.turbo": true,
+    "**/test-results": true,
+    "**/.claude/worktrees": true
+  },
+  "files.watcherExclude": {
+    "**/.turbo/**": true,
+    "**/node_modules/**": true,
+    "**/dist/**": true,
+    "**/.output/**": true,
+    "**/.features-gen/**": true,
+    "**/generated/**": true,
+    "**/storybook-static/**": true,
+    "**/.lost-pixel/**": true,
+    "**/test-results/**": true
+  },
+
+  // ───────────────────────────────────────────────────────────────
+  // FORMAT + LINT — Biome everywhere it can go; disable conflicts.
+  // ───────────────────────────────────────────────────────────────
+  "editor.defaultFormatter": "biomejs.biome",
+  "editor.formatOnSave": true,
+  "editor.codeActionsOnSave": {
+    "quickfix.biome": "explicit",
+    "source.organizeImports.biome": "explicit"
+  },
+  "[typescript]": { "editor.defaultFormatter": "biomejs.biome" },
+  "[typescriptreact]": { "editor.defaultFormatter": "biomejs.biome" },
+  "[javascript]": { "editor.defaultFormatter": "biomejs.biome" },
+  "[javascriptreact]": { "editor.defaultFormatter": "biomejs.biome" },
+  "[json]": { "editor.defaultFormatter": "biomejs.biome" },
+  "[jsonc]": { "editor.defaultFormatter": "biomejs.biome" },
+  "[css]": { "editor.defaultFormatter": "biomejs.biome" },
+  "[markdown]": {
+    "editor.defaultFormatter": "DavidAnson.vscode-markdownlint",
+    "editor.formatOnSave": false
+  },
+  "[prisma]": { "editor.defaultFormatter": "Prisma.prisma" },
+  "[yaml]": { "editor.defaultFormatter": "redhat.vscode-yaml" },
+  "[dockerfile]": { "editor.defaultFormatter": "ms-azuretools.vscode-docker" },
+
+  // Disable Prettier / ESLint conflicts — Biome owns these.
+  "prettier.enable": false,
+  "eslint.enable": false,
+
+  // ───────────────────────────────────────────────────────────────
+  // TYPESCRIPT — use workspace version; strict inlay hints for AI-readability.
+  // ───────────────────────────────────────────────────────────────
+  "typescript.tsdk": "node_modules/typescript/lib",
+  "typescript.enablePromptUseWorkspaceTsdk": true,
+  "typescript.preferences.importModuleSpecifier": "non-relative",
+  "typescript.preferences.preferTypeOnlyAutoImports": true,
+  "typescript.inlayHints.parameterNames.enabled": "literals",
+  "typescript.inlayHints.functionLikeReturnTypes.enabled": true,
+  "typescript.updateImportsOnFileMove.enabled": "always",
+
+  // ───────────────────────────────────────────────────────────────
+  // EDITOR ergonomics — tab width, rulers, wrap.
+  // ───────────────────────────────────────────────────────────────
+  "editor.tabSize": 2,
+  "editor.insertSpaces": true,
+  "editor.rulers": [100],
+  "editor.wordWrap": "off",
+  "editor.bracketPairColorization.enabled": true,
+  "editor.guides.bracketPairs": "active",
+  "editor.stickyScroll.enabled": true,
+  "editor.linkedEditing": true,
+
+  // ───────────────────────────────────────────────────────────────
+  // TEST / TERMINAL — Bun awareness; shell default.
+  // ───────────────────────────────────────────────────────────────
+  "terminal.integrated.env.osx": {
+    "BUN_INSTALL": "$HOME/.bun"
+  },
+  "testing.openTesting": "neverOpen",
+  "vitest.disableWorkspaceWarning": true,
+
+  // ───────────────────────────────────────────────────────────────
+  // PLAYWRIGHT / BDD — let the Playwright extension see our project.
+  // ───────────────────────────────────────────────────────────────
+  "playwright.reuseBrowser": true,
+  "playwright.env": {
+    "TEST_MODE": "1"
+  },
+
+  // ───────────────────────────────────────────────────────────────
+  // CSPELL — pull from repo config instead of the global one.
+  // ───────────────────────────────────────────────────────────────
+  "cSpell.enabled": true,
+  "cSpell.customDictionaries": {
+    "project-words": {
+      "name": "project-words",
+      "path": "${workspaceFolder}/.cspell/custom-words.txt",
+      "addWords": true,
+      "scope": "workspace"
+    }
+  },
+
+  // ───────────────────────────────────────────────────────────────
+  // GIT — don't smart-commit without explicit staging.
+  // ───────────────────────────────────────────────────────────────
+  "git.enableSmartCommit": false,
+  "git.confirmSync": false,
+  "git.autofetch": true,
+  "git.pruneOnFetch": true,
+
+  // ───────────────────────────────────────────────────────────────
+  // WORKBENCH — break-tie colors for the many generated files we nest.
+  // ───────────────────────────────────────────────────────────────
+  "workbench.tree.indent": 12,
+  "workbench.editor.labelFormat": "short",
+  "explorer.sortOrder": "type",
+  "testing.automaticallyOpenTestResults": "neverOpen"
+}

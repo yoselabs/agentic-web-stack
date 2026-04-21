@@ -1,0 +1,112 @@
+{
+  // ═══════════════════════════════════════════════════════════════════════
+  // Multi-root workspace. Open this FILE (not the folder) to get a labeled
+  // top-level view: frontend / backend / worker / libs / e2e / scripts /
+  // docs / root-configs.
+  //
+  // `.vscode/settings.json` still applies when someone opens the folder
+  // directly (code .). The settings block below inherits + extends for
+  // workspace-mode-specific tweaks (e.g., root folder hides apps/packages
+  // so its view is "just the configs").
+  // ═══════════════════════════════════════════════════════════════════════
+  "folders": [
+    { "name": "🌐 apps/web", "path": "apps/web" },
+    { "name": "🖥️  apps/server", "path": "apps/server" },
+    { "name": "⚙️  apps/worker", "path": "apps/worker" },
+
+    { "name": "📦 packages/api", "path": "packages/api" },
+    { "name": "📦 packages/auth", "path": "packages/auth" },
+    { "name": "📦 packages/db", "path": "packages/db" },
+    { "name": "📦 packages/email", "path": "packages/email" },
+    { "name": "📦 packages/env", "path": "packages/env" },
+    { "name": "📦 packages/jobs", "path": "packages/jobs" },
+    { "name": "📦 packages/rate-limit", "path": "packages/rate-limit" },
+    { "name": "📦 packages/realtime", "path": "packages/realtime" },
+    { "name": "📦 packages/test-infra", "path": "packages/test-infra" },
+    { "name": "📦 packages/ui", "path": "packages/ui" },
+
+    { "name": "🧪 e2e", "path": "e2e" },
+    { "name": "🛠️  scripts", "path": "scripts" },
+    { "name": "📄 docs", "path": "docs" },
+
+    // Root last — a quick drop-in for config files without the app/package
+    // noise. Hidden via files.exclude in this folder's scoped settings.
+    { "name": "🏠 root", "path": "." }
+  ],
+
+  "settings": {
+    // ─── Root-folder view: hide what's already exposed as dedicated folders ───
+    // These only apply to the "🏠 root" folder's Explorer tree.
+    // Each dedicated folder above uses the normal settings.json.
+    "files.exclude": {
+      "apps": true,
+      "packages": true,
+      "e2e": true,
+      "scripts": true,
+      "docs": true,
+      "**/.turbo": true,
+      "**/.tsbuildinfo": true,
+      "**/node_modules": true,
+      "**/.features-gen": true,
+      "**/.tanstack": true,
+      "**/storybook-static": true,
+      "**/.lost-pixel": true,
+      "**/dist": true,
+      "**/.output": true,
+      "**/.vinxi": true
+    },
+
+    // File nesting (same as .vscode/settings.json — duplicated for workspace mode).
+    "explorer.fileNesting.enabled": true,
+    "explorer.fileNesting.expand": false,
+    "explorer.fileNesting.patterns": {
+      "package.json": "pnpm-lock.yaml, pnpm-workspace*.yaml, .npmrc, .nvmrc, .node-version, .pre-commit-config.yaml, .agent-harness.yml, turbo.json, knip.json, biome.json, .cspell.json, .cspell, .markdownlint*, .lychee.toml, .jscpd.json, .dependency-cruiser.cjs, .prismalintrc.json, .secretlintrc.json, .secretlintignore, .yamllint.yml, .duplicate-names-allow.json, .test-siblings-allow.json, .scoped-landmarks-allow.json, .perspective-boundary.json, .gitignore, .dockerignore, Makefile",
+      "tsconfig.json": "tsconfig.*.json, tsconfig.tsbuildinfo",
+      "Dockerfile": "docker-compose*.yml, .dockerignore",
+      ".env": ".env.*",
+      ".env.example": ".env, .env.*",
+      "README.md": "CLAUDE.md, LICENSE, TODO.md, DEPLOYMENT.md, CHANGELOG.md",
+      "*.ts": "${capture}.test.ts, ${capture}.spec.ts, ${capture}.d.ts",
+      "*.tsx": "${capture}.test.tsx, ${capture}.stories.tsx, ${capture}.browser.test.tsx, ${capture}.spec.tsx"
+    },
+
+    // Search should span all folders but skip generated / vendored.
+    "search.exclude": {
+      "**/node_modules": true,
+      "**/dist": true,
+      "**/.output": true,
+      "**/.features-gen": true,
+      "**/generated": true,
+      "**/src/generated": true,
+      "**/routeTree.gen.ts": true,
+      "**/pnpm-lock.yaml": true,
+      "**/storybook-static": true,
+      "**/.lost-pixel": true,
+      "**/.turbo": true,
+      "**/test-results": true,
+      "**/.claude/worktrees": true
+    }
+  },
+
+  "extensions": {
+    "recommendations": [
+      "biomejs.biome",
+      "Prisma.prisma",
+      "bradlc.vscode-tailwindcss",
+      "cucumberopen.cucumber-official",
+      "redhat.vscode-yaml",
+      "tamasfe.even-better-toml",
+      "ms-azuretools.vscode-docker",
+      "ms-playwright.playwright",
+      "vitest.explorer",
+      "DavidAnson.vscode-markdownlint",
+      "streetsidesoftware.code-spell-checker",
+      "eamodio.gitlens",
+      "mikestead.dotenv"
+    ],
+    "unwantedRecommendations": [
+      "esbenp.prettier-vscode",
+      "dbaeumer.vscode-eslint"
+    ]
+  }
+}
