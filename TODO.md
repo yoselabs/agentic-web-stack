@@ -5,6 +5,20 @@ Decisions and tasks deferred during initial build (Phases 1-6).
 Items marked **[template]** should be added to the template itself.
 Items marked **[recipe]** should be documented as patterns — added per-project when needed.
 
+## Immediate TODO
+
+Next-up work surfaced in the 2026-04-21 handover. Not yet started — pick up one at a time.
+
+- [ ] **Session decorator for Storybook** — add `withSession(user)` decorator (mocked auth context + MSW tRPC handler; no backend). Removes the last `!test` tag on `apps/web/src/widgets/app-navbar.stories.tsx`, enables a11y coverage on AppNavbar.
+- [ ] **Close `.config/allowlists/test-siblings.json` ratchet** — write the 9 missing `use-*.test.ts` siblings one feature at a time, shrinking the allowlist to empty. Current misses: `auth/use-forgot-password`, `auth/use-reset-password`, `todo-list/use-leader-tab`, `todo-list/use-todo-list-live-updates`, `todo-list/use-todo-lists`, `todo-list/use-todos`, `user/use-debounced-value`, `user/use-user-inbox`, `shared/use-optimistic-mutation`.
+- [ ] **Promote nursery rules `warn` → `error`** — fix incidental hits first, then flip in `biome.json`: `useExhaustiveSwitchCases`, `useExplicitType`, `useSortedClasses` (nursery section).
+- [ ] **Vitest 4 upgrade pass** — unlocks `vitest-browser-react@2.x`, may simplify the storybook-project wiring. *(May be absorbed or reordered by the pending upgrade audit — see below.)*
+- [ ] **`check-spec-acceptance.ts`** — walk `docs/superpowers/specs/*` acceptance criteria and fail CI if any text assertion doesn't resolve. Monitors whether merged spec acceptance criteria actually fired. Spec docs are a great handover surface but currently unverified post-merge.
+- [ ] **Codebase upgrade audit** — in flight (2026-04-21). Will produce a prioritized list of major-version upgrades and opportunities to leverage new features. Expected to reframe the Vitest 4 item above.
+- [ ] **Capabilities / patterns index (parked)** — agents struggle to discover what exists in the template when implementing features (auth flows, real-time, background jobs, rate limiting, ratchets, lint checks, etc.). Idea: describe capabilities + cross-linked pattern docs (e.g., "background job pattern") so agents can navigate by intent. *Deferred — revisit after the items above land.*
+
+> **Note:** the "Rejected" table at the bottom of this file still lists Storybook as rejected, but Storybook has since been adopted (see `apps/web/src/widgets/app-navbar.stories.tsx` and `docs/adrs/0006-storybook-and-visual-regression.md`). The Rejected entry should be removed or updated next time this file is touched.
+
 ## Architecture — Scaling to Medium Projects
 
 - [x] **[template]** Feature-Sliced Design (FSD) — `features/`, `widgets/`, `shared/` layers with TanStack Router file-based routes as thin shells
