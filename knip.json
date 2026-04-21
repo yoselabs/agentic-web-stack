@@ -71,8 +71,7 @@
         "helpers/**/*.ts",
         "steps/**/*.ts",
         "scripts/**/*.ts",
-        "test-env.ts",
-        "auth-client.ts"
+        "test-env.ts"
       ],
       "project": ["**/*.ts"],
       "ignore": [".features-gen/**", "test-results/**", "playwright-report/**"]

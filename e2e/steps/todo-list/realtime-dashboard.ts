@@ -7,7 +7,7 @@
 import { expect } from "@playwright/test";
 import { createBdd } from "playwright-bdd";
 import { TEST_API_URL } from "../../test-env.ts";
-import { waitForHydration } from "../../waits.ts";
+import { waitForHydration } from "../../helpers/waits.ts";
 import { getActor, listIdByName } from "./collaborators.ts";
 
 const { Given, When, Then } = createBdd();

@@ -73,7 +73,7 @@
         "e2e/steps/**",
         "e2e/global-setup.ts",
         "e2e/test-env.ts",
-        "e2e/auth-client.ts"
+        "e2e/helpers/auth-client.ts"
       ],
       "linter": {
         "rules": {

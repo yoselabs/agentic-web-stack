@@ -2,7 +2,7 @@
 title: "Repo Reorganization — .config/ + scripts/ split + packages/lint"
 status: Approved
 date: 2026-04-21
-source: /Users/iorlas/Workspaces/agentic-web-stack/docs/repo-organization-research.md
+source: /Users/iorlas/Workspaces/agentic-web-stack/docs/research/repo-organization-research.md
 scope: pure file-move + path-string refactor; no behavior change; rollback via `git revert`
 ---
 
@@ -272,7 +272,7 @@ After Phase C merges:
 
 ## 7. References
 
-- `docs/repo-organization-research.md` — the 3-option survey that led here.
+- `docs/research/repo-organization-research.md` — the 3-option survey that led here.
 - `CLAUDE.md` — "Adding a new custom check" recipe (updates in Phase B + C).
 - `docs/qa-strategy.md` — references check paths (updates in Phase B).
 - `docs/adrs/0002-configuration-patterns.md` — complements; doesn't conflict.

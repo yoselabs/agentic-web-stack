@@ -124,7 +124,7 @@ component tests" spread across scripts.
 - **Positive.** Stories double as AI-agent documentation — the
   `satisfies Meta<typeof Component>` contract + CSF3 typed args give
   an agent the *real* prop shape of a component without needing to
-  parse JSX. See `docs/storybook-ecosystem-research.md`.
+  parse JSX. See `docs/research/storybook-ecosystem-research.md`.
 - **Positive.** A story's `parameters.trpc.queries` seed is the same
   shape as a unit test's `renderWithTRPC({ seed })` — mocking is one
   pattern across both surfaces.
@@ -168,6 +168,6 @@ component tests" spread across scripts.
 - `apps/web/lostpixel.config.ts` — visual-regression config.
 - `apps/web/src/widgets/navbar.stories.tsx` — the exemplar CSF3 story set (LoggedOut / LoggedInBasic / LoggedInAdmin).
 - `scripts/check-stories-siblings.ts` — enforces every widget has a `.stories.tsx` sibling.
-- `docs/storybook-ecosystem-research.md` — survey of SB9 addons with AI-agent implications.
+- `docs/research/storybook-ecosystem-research.md` — survey of SB9 addons with AI-agent implications.
 - `docs/qa-strategy.md` §3.3 + §3.6 — pyramid placement.
 - Spec: `docs/superpowers/specs/2026-04-21-template-prevention-foundation-design.md` §4 WS5.
