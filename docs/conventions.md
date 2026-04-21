@@ -307,3 +307,33 @@ top-level queries in step files. A fallback
 `scripts/check-scoped-landmarks.ts` ships for patterns Grit cannot
 express (e.g., "preceding-line comment" context). Both wire into
 `make lint`.
+
+## Web app Vitest project selection
+
+The web app has three Vitest projects in `apps/web/vitest.config.ts`.
+Each test file lands in exactly one of them based on its filename
+suffix — picking the wrong one either slows the edit loop
+(happy-dom test promoted to browser mode unnecessarily) or hides
+bugs the suffix should expose.
+
+| Filename | Project | Environment | Purpose |
+|---|---|---|---|
+| `*.test.tsx` | `unit` | happy-dom | Default — pure logic + component rendering + hook tests |
+| `*.stories.tsx` | `storybook` | chromium (`@vitest/browser` + playwright) | State enumeration + a11y via axe |
+| `*.browser.test.tsx` | `browser` | chromium (same provider) | Real-browser invariants — `<img>` load / `naturalWidth`, CSS layout, clipboard, CORS |
+
+**Use `*.browser.test.tsx` only for bugs jsdom cannot see.** Typical
+triggers: cross-origin `<img>` credential mode, `naturalWidth === 0`
+image-load failures, `IntersectionObserver` / `ResizeObserver` /
+`getBoundingClientRect` assertions, clipboard, drag-and-drop with
+real pointer events. Everything else stays in the `unit` project —
+happy-dom is 10× faster per test.
+
+Run with `make test-browser`. Excluded from `make test-unit` because
+chromium cold-start is seconds, not milliseconds; runs alongside BDD
+in the pre-merge lane (see `make test-all`).
+
+Reference: exemplar at `apps/web/src/shared/authed-image.browser.test.tsx`,
+helper at `apps/web/test/browser-render.tsx`, rationale in
+`docs/adrs/0007-browser-mode-component-tests.md`. Pyramid placement:
+`docs/qa-strategy.md` §3.4.
