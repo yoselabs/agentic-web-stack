@@ -1,0 +1,109 @@
+{
+  "$schema": "https://unpkg.com/knip@6/schema.json",
+  "workspaces": {
+    "**": {
+      "entry": [
+        "src/**/*.{ts,tsx}",
+        "scripts/**/*.{ts,tsx}",
+        "src/__tests__/**/*.test.{ts,tsx}",
+        "src/**/__tests__/**/*.test.{ts,tsx}"
+      ],
+      "project": ["src/**/*.{ts,tsx}"]
+    },
+    ".": {
+      "entry": [
+        "scripts/**/*.ts",
+        "e2e/playwright.config.ts",
+        "e2e/global-setup.ts",
+        "e2e/scripts/**/*.ts",
+        "e2e/steps/**/*.ts",
+        "e2e/fixtures/**/*.ts",
+        "e2e/helpers/**/*.ts"
+      ],
+      "project": ["scripts/**/*.ts"]
+    },
+    "apps/web": {
+      "entry": [
+        "vite.config.ts",
+        "src/router.tsx",
+        "src/routes/**/*.{ts,tsx}",
+        "src/routeTree.gen.ts"
+      ],
+      "project": ["src/**/*.{ts,tsx}"],
+      "ignore": ["src/routeTree.gen.ts"]
+    },
+    "apps/server": {
+      "entry": ["src/index.ts"],
+      "ignoreDependencies": ["@hono/node-ws", "ws"]
+    },
+    "apps/worker": {
+      "entry": ["src/index.ts"],
+      "ignoreDependencies": ["@project/env", "ioredis"]
+    },
+    "packages/api": {
+      "entry": [
+        "src/router.ts",
+        "src/context.ts",
+        "src/authz/index.ts",
+        "src/domains/**/*.ts",
+        "scripts/**/*.ts",
+        "src/__tests__/**/*.test.ts",
+        "src/**/__tests__/**/*.test.ts"
+      ],
+      "project": ["src/**/*.ts"],
+      "ignoreDependencies": ["@project/jobs", "bullmq"]
+    },
+    "packages/db": {
+      "entry": ["src/index.ts", "scripts/**/*.ts", "prisma.config.ts"],
+      "ignore": ["src/generated/**"],
+      "ignoreDependencies": ["@prisma/client"]
+    },
+    "e2e": {
+      "entry": [
+        "playwright.config.ts",
+        "global-setup.ts",
+        "fixtures/**/*.ts",
+        "helpers/**/*.ts",
+        "steps/**/*.ts",
+        "scripts/**/*.ts",
+        "test-env.ts",
+        "auth-client.ts"
+      ],
+      "project": ["**/*.ts"],
+      "ignore": [".features-gen/**", "test-results/**", "playwright-report/**"]
+    }
+  },
+  "ignore": [
+    "apps/web/src/shared/use-optimistic-mutation.ts",
+    "packages/email/src/index.ts",
+    "packages/env/src/index.ts",
+    "packages/jobs/src/index.ts"
+  ],
+  "ignoreDependencies": [
+    "@casl/ability",
+    "@casl/react",
+    "@tanstack/router-plugin",
+    "tailwindcss",
+    "tailwindcss-animate",
+    "nitro",
+    "tslib",
+    "@secretlint/secretlint-rule-preset-recommend",
+    "dependency-cruiser",
+    "prisma-lint",
+    "publint",
+    "secretlint",
+    "sherif",
+    "jscpd",
+    "pino-pretty",
+    "turbo"
+  ],
+  "ignoreExportsUsedInFile": true,
+  "ignoreBinaries": [
+    "playwright",
+    "bddgen",
+    "agent-harness",
+    "prek",
+    "hadolint",
+    "conftest"
+  ]
+}

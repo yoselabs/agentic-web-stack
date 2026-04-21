@@ -1,0 +1,12 @@
+{
+  "rules": {
+    "model-name-pascal-case": ["error"],
+    "field-name-camel-case": ["error"],
+    "require-field": [
+      "error",
+      {
+        "require": ["createdAt", "updatedAt"]
+      }
+    ]
+  }
+}

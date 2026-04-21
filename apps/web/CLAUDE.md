@@ -229,7 +229,7 @@ Never call `navigate()` during render — use `useEffect`.
 - Use `getServerSideProps`, `"use server"`, or Next.js patterns
 - Create `QueryClient` as a module-level singleton — use `getQueryClient()` pattern
 - Import `appRouter` value (only `import type { AppRouter }`)
-- **Never import from `@project/env` without a subpath.** The env package exposes `/server` and `/client` only; there is no barrel. Web code imports from `@project/env/client` exclusively. A barrel import would transitively pull server-only vars (DATABASE_URL, BETTER_AUTH_SECRET) into the client bundle. Same class of bug as `import { appRouter }` — see root CLAUDE.md.
+- **Never import from `@project/env` without a subpath.** The env package exposes `/server` and `/client` only; there is no barrel (enforced by `scripts/check-no-barrel.ts`). Web code imports from `@project/env/client` exclusively. A barrel would transitively pull server-only vars (DATABASE_URL, BETTER_AUTH_SECRET) into the client bundle.
 - **Make HTTP calls directly with `fetch()`.** All server calls from the web app MUST go through `apiClient` (`apps/web/src/shared/api-client.ts`). `apiClient.fetch(path, init)` prepends the base URL and sets cookie-auth credentials. This keeps the base URL in a single place and prevents scattered `fetch(`http://...`)` calls.
 - Put `verbatimModuleSyntax: true` in tsconfig — breaks TanStack Start
 - Add `credentials: "include"` — already configured in the tRPC httpBatchLink

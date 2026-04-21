@@ -13,38 +13,80 @@
 //
 // Exits 1 on any match; prints file:line for every hit.
 
-import { execSync } from "node:child_process";
+import { readdirSync, readFileSync, statSync } from "node:fs";
+import { extname, join, relative } from "node:path";
+import { type CheckResult, timeCheck } from "./checks-types.ts";
 
-type Rule = { pattern: string; message: string };
+type Rule = { regex: RegExp; message: string };
 
 const rules: Rule[] = [
   {
-    pattern: "createTRPCReact",
+    regex: /createTRPCReact/g,
     message:
       "Use createTRPCOptionsProxy from @trpc/tanstack-react-query. See apps/web/CLAUDE.md.",
   },
   {
-    pattern:
-      "trpc(\\.[A-Za-z_][A-Za-z0-9_]*)+\\.(useMutation|useQuery|useSubscription)\\(",
+    regex:
+      /trpc(?:\.[A-Za-z_][A-Za-z0-9_]*)+\.(?:useMutation|useQuery|useSubscription)\(/g,
     message:
       "Use useMutation(trpc.x.mutationOptions(...)) / useQuery(trpc.x.queryOptions(...)) / useSubscription(trpc.x.subscriptionOptions(...)).",
   },
 ];
 
-let failed = false;
-for (const rule of rules) {
-  const out = execSync(
-    `grep -rEn --include='*.ts' --include='*.tsx' ${JSON.stringify(rule.pattern)} apps/web/src || true`,
-    { encoding: "utf8" },
-  ).trim();
-  if (out) {
-    console.error(`\n[check-trpc-patterns] forbidden pattern matched:\n`);
-    console.error(`  ${rule.message}\n`);
-    console.error(out);
-    console.error("");
-    failed = true;
-  }
+const SCAN_EXTENSIONS = new Set([".ts", ".tsx"]);
+const IGNORE_DIRS = new Set(["node_modules", "dist", ".output", ".tanstack"]);
+
+export function checkTrpcPatterns(): Promise<CheckResult> {
+  return timeCheck("check-trpc-patterns", () => {
+    const root = process.cwd();
+    const scanRoot = join(root, "apps/web/src");
+    const errors: string[] = [];
+
+    function walk(dir: string): void {
+      let entries: string[];
+      try {
+        entries = readdirSync(dir);
+      } catch {
+        return;
+      }
+      for (const entry of entries) {
+        if (IGNORE_DIRS.has(entry)) continue;
+        const full = join(dir, entry);
+        let st: ReturnType<typeof statSync>;
+        try {
+          st = statSync(full);
+        } catch {
+          continue;
+        }
+        if (st.isDirectory()) walk(full);
+        else if (SCAN_EXTENSIONS.has(extname(entry))) scanFile(full);
+      }
+    }
+
+    function scanFile(file: string): void {
+      const src = readFileSync(file, "utf8");
+      const rel = relative(root, file);
+      for (const rule of rules) {
+        rule.regex.lastIndex = 0;
+        let m: RegExpExecArray | null;
+        // biome-ignore lint/suspicious/noAssignInExpressions: canonical regex loop
+        while ((m = rule.regex.exec(src))) {
+          const line = src.slice(0, m.index).split("\n").length;
+          errors.push(`${rel}:${line}: ${m[0]} — ${rule.message}`);
+        }
+      }
+    }
+
+    walk(scanRoot);
+    return errors;
+  });
 }
 
-if (failed) process.exit(1);
-console.log("[check-trpc-patterns] OK");
+if (import.meta.main) {
+  const result = await checkTrpcPatterns();
+  if (!result.ok) {
+    for (const e of result.errors) console.error(`[check-trpc-patterns] ${e}`);
+    process.exit(1);
+  }
+  console.log("[check-trpc-patterns] OK");
+}

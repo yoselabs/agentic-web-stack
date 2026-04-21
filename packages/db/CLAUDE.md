@@ -62,19 +62,29 @@ model User {
 
 ## Load-Bearing `postinstall`
 
-`package.json` has `"postinstall": "prisma generate"`. This is load-bearing:
+`package.json` has `"postinstall": "bun run scripts/generate.ts"` (invokes
+the `prisma-client` generator that emits to `src/generated/`). This is
+load-bearing:
 
 - `make clean` wipes `node_modules`. `pnpm install` alone does NOT regenerate the Prisma client.
 - `scripts/test-db.ts` passes `--skip-generate` to keep test runs fast, so the test path also doesn't generate.
-- Without this hook, `make clean && pnpm install && make test-unit` would fail with `Cannot find module '.prisma/client/default'`.
+- Without this hook, `make clean && pnpm install && make test-unit` would fail to resolve `./generated/client`.
 
 Do not remove this hook.
 
 ## Prisma Client Export
 
-`src/index.ts` exports a singleton `db` with globalThis caching for dev hot-reload, plus a wildcard re-export of `@prisma/client` (all generated types, enums, `Prisma` namespace, `PrismaClient`).
+Using the new `prisma-client` generator (output: `src/generated/client/`).
+`src/index.ts` exports a singleton `db` with globalThis caching for dev
+hot-reload, plus a wildcard re-export of `./generated/client` (all types,
+enums, `Prisma` namespace, `PrismaClient`). `src/index.ts` is the only
+barrel in the package — `noBarrelFile` is explicitly disabled for it in
+`biome.json` and the file is excluded from the no-barrel-imports Grit
+rule.
 
-Import as: `import { db, Prisma, MyEnum } from "@project/db"` — never import directly from `@prisma/client`
+Import as: `import { db, Prisma, MyEnum } from "@project/db"` — consumers
+never reach into `generated/` directly and never import from
+`@prisma/client`.
 
 ## Do Not
 

@@ -10,6 +10,7 @@
 
 import { readdirSync, readFileSync } from "node:fs";
 import path from "node:path";
+import { type CheckResult, timeCheck } from "../../scripts/checks-types.ts";
 
 const FEATURES_DIR = path.resolve(import.meta.dirname, "../features");
 
@@ -19,86 +20,95 @@ const BACKGROUND_RE = /^\s*Background:/;
 
 type ScenarioRef = { file: string; line: number; title: string };
 
-const emailToScenarios = new Map<string, ScenarioRef[]>();
+export function checkFeatureEmails(): Promise<CheckResult> {
+  return timeCheck("check-feature-emails", () => {
+    const errors: string[] = [];
+    const emailToScenarios = new Map<string, ScenarioRef[]>();
 
-const allEntries = readdirSync(FEATURES_DIR, { recursive: true }) as string[];
-const featureFiles = allEntries
-  .filter((entry) => entry.endsWith(".feature"))
-  .sort();
-
-for (const file of featureFiles) {
-  const content = readFileSync(path.join(FEATURES_DIR, file), "utf8");
-  const lines = content.split("\n");
-
-  let currentScenario: ScenarioRef | null = null;
-  let inBackground = false;
-  const scenarioEmails = new Set<string>();
-
-  for (let i = 0; i < lines.length; i++) {
-    const line = lines[i] ?? "";
-
-    if (BACKGROUND_RE.test(line)) {
-      inBackground = true;
-      currentScenario = null;
-      continue;
+    let featureFiles: string[];
+    try {
+      const allEntries = readdirSync(FEATURES_DIR, {
+        recursive: true,
+      }) as string[];
+      featureFiles = allEntries
+        .filter((entry) => entry.endsWith(".feature"))
+        .sort();
+    } catch {
+      return [];
     }
 
-    const scenarioMatch = line.match(SCENARIO_RE);
-    if (scenarioMatch) {
-      inBackground = false;
-      currentScenario = {
-        file,
-        line: i + 1,
-        title: scenarioMatch[1] ?? "",
-      };
-      scenarioEmails.clear();
-      continue;
-    }
+    for (const file of featureFiles) {
+      const content = readFileSync(path.join(FEATURES_DIR, file), "utf8");
+      const lines = content.split("\n");
 
-    // Emails in a Background apply to every scenario in the file — that's
-    // cross-scenario collision by definition. Fail loudly rather than trying
-    // to track them per-sibling-scenario.
-    if (inBackground) {
-      const match = line.match(EMAIL_RE);
-      if (match) {
-        console.error(
-          `FAIL: email literal "${match[0]}" used in Background at ${file}:${i + 1}. Background emails collide across every sibling scenario — put the email in each scenario's Given step instead.`,
-        );
-        process.exit(1);
+      let currentScenario: ScenarioRef | null = null;
+      let inBackground = false;
+      const scenarioEmails = new Set<string>();
+
+      for (let i = 0; i < lines.length; i++) {
+        const line = lines[i] ?? "";
+
+        if (BACKGROUND_RE.test(line)) {
+          inBackground = true;
+          currentScenario = null;
+          continue;
+        }
+
+        const scenarioMatch = line.match(SCENARIO_RE);
+        if (scenarioMatch) {
+          inBackground = false;
+          currentScenario = {
+            file,
+            line: i + 1,
+            title: scenarioMatch[1] ?? "",
+          };
+          scenarioEmails.clear();
+          continue;
+        }
+
+        if (inBackground) {
+          const match = line.match(EMAIL_RE);
+          if (match) {
+            errors.push(
+              `${file}:${i + 1}: email literal ${match[0]} used in Background — Background emails collide across every sibling scenario. Put the email in each scenario's Given step instead.`,
+            );
+          }
+        }
+
+        if (!currentScenario) continue;
+
+        for (const match of line.matchAll(EMAIL_RE)) {
+          const email = match[1];
+          if (!email || scenarioEmails.has(email)) continue;
+          scenarioEmails.add(email);
+          const list = emailToScenarios.get(email) ?? [];
+          list.push(currentScenario);
+          emailToScenarios.set(email, list);
+        }
       }
     }
 
-    if (!currentScenario) continue;
-
-    for (const match of line.matchAll(EMAIL_RE)) {
-      const email = match[1];
-      if (!email || scenarioEmails.has(email)) continue;
-      scenarioEmails.add(email);
-      const list = emailToScenarios.get(email) ?? [];
-      list.push(currentScenario);
-      emailToScenarios.set(email, list);
+    const duplicates = [...emailToScenarios.entries()].filter(
+      ([, refs]) => refs.length > 1,
+    );
+    for (const [email, refs] of duplicates) {
+      const refsStr = refs
+        .map((r) => `${r.file}:${r.line} "${r.title}"`)
+        .join(", ");
+      errors.push(
+        `email "${email}" used in ${refs.length} scenarios: ${refsStr}. Give each scenario a unique email — parallel workers sharing a user ID race on DB state.`,
+      );
     }
+    return errors;
+  });
+}
+
+if (import.meta.main) {
+  const result = await checkFeatureEmails();
+  if (!result.ok) {
+    console.error(`FAIL: ${result.errors.length} email collision(s).`);
+    for (const e of result.errors) console.error(`  ${e}`);
+    process.exit(1);
   }
+  console.log(`OK: feature-file emails unique per scenario.`);
 }
-
-const duplicates = [...emailToScenarios.entries()].filter(
-  ([, refs]) => refs.length > 1,
-);
-
-if (duplicates.length === 0) {
-  console.log(
-    `OK: ${emailToScenarios.size} emails, each used in exactly one scenario.`,
-  );
-  process.exit(0);
-}
-
-console.error(
-  `FAIL: ${duplicates.length} email(s) used in multiple scenarios. Parallel workers sharing a user ID race on DB state — give each scenario a unique email.`,
-);
-for (const [email, refs] of duplicates) {
-  console.error(`\n  "${email}" used in:`);
-  for (const r of refs) {
-    console.error(`    ${r.file}:${r.line}  ${r.title}`);
-  }
-}
-process.exit(1);

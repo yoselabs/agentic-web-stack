@@ -19,6 +19,11 @@ const PACKAGE_ROOT = path.resolve(import.meta.dirname, "..");
 const REPO_ROOT = path.resolve(PACKAGE_ROOT, "../..");
 const SCHEMA_DIR = path.join(PACKAGE_ROOT, "prisma/schema");
 const CONFIG_FILE = path.join(PACKAGE_ROOT, "prisma.config.ts");
+// New `prisma-client` generator emits into the package at this path
+// (configured in prisma/schema/base.prisma). If the directory is missing,
+// force regenerate regardless of hash — a fresh `make clean` / new checkout
+// needs to produce it.
+const GENERATED_DIR = path.join(PACKAGE_ROOT, "src/generated");
 const HASH_DIR = path.join(REPO_ROOT, "node_modules/.cache");
 const HASH_FILE = path.join(HASH_DIR, "prisma-generate.hash");
 const LOCK_FILE = path.join(HASH_DIR, "prisma-generate.lock");
@@ -41,7 +46,7 @@ function readStoredHash(): string {
   return existsSync(HASH_FILE) ? readFileSync(HASH_FILE, "utf8").trim() : "";
 }
 
-if (current === readStoredHash()) {
+if (current === readStoredHash() && existsSync(GENERATED_DIR)) {
   console.log("prisma: schema + CLI unchanged, skipping generate");
   process.exit(0);
 }
@@ -75,7 +80,7 @@ while (lockFd === null) {
 }
 
 try {
-  if (current === readStoredHash()) {
+  if (current === readStoredHash() && existsSync(GENERATED_DIR)) {
     console.log(
       "prisma: sibling process just regenerated, skipping duplicate work",
     );

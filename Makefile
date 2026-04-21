@@ -1,4 +1,4 @@
-.PHONY: help setup dev db db-push db-generate db-studio db-seed check lint fix test test-all test-ui test-unit clean routes
+.PHONY: help setup dev db db-push db-generate db-studio db-seed check lint lint-verbose lint-force fix test test-all test-ui test-unit test-checks smoke similar clean routes
 
 .DEFAULT_GOAL := help
 
@@ -45,14 +45,32 @@ db-seed:
 	pnpm -w run db:seed
 
 # Quality gates
+#
+# `make lint` → turbo orchestrator. Parallel by default, per-task input-hash
+# caching (subsequent runs on unchanged files = instant). Silent on success
+# to keep AI/CI logs tight; full logs only on failure.
+#
+# Root-only tasks (no per-package lint scripts — adding a new package
+# requires zero lint setup; adding a new linter = one task in turbo.json
+# + one root script in package.json).
+#
+# Escape hatches:
+#   make lint-verbose — full output even for cached/successful tasks
+#   make lint-force   — bypass cache, force fresh run
+#
+# `make fix` is SEPARATE — lint is read-only (reports what's wrong);
+# fix is the explicit transform step (auto-formatters, import sorters).
+# Never run auto-fix as part of lint.
+TURBO_LINT_TASKS = lint:biome lint:tsc lint:prisma lint:knip lint:jscpd lint:sherif lint:publint lint:depcruise lint:secretlint lint:actionlint lint:check:no-barrel lint:check:server-bind lint:check:domain-names lint:check:trpc-patterns lint:check:test-infra-integrity lint:check:feature-emails lint:check:duplicate-names
+
 check: lint ## Alias for lint — full quality gate
-lint: db-generate ## Run agent-harness + tsc + email-uniqueness + test-infra integrity + tRPC pattern guard
-	@agent-harness lint
-	pnpm -w run typecheck
-	@bun e2e/scripts/check-feature-emails.ts
-	@bun scripts/check-test-infra-integrity.ts
-	@bun scripts/check-trpc-patterns.ts
-	@bun scripts/check-domain-names.ts
+lint: db-generate ## Full lint gate (turbo-cached; silent on success, errors only)
+	@pnpm exec turbo run $(TURBO_LINT_TASKS) --output-logs=errors-only --log-order=grouped
+lint-verbose: db-generate ## Lint with full output (for debugging)
+	@pnpm exec turbo run $(TURBO_LINT_TASKS) --log-order=grouped
+lint-force: db-generate ## Bypass turbo cache, force a fresh run
+	@pnpm exec turbo run $(TURBO_LINT_TASKS) --output-logs=errors-only --log-order=grouped --force
+
 fix: db-generate ## Auto-fix lint issues + typecheck
 	@agent-harness fix
 	pnpm -w run typecheck
@@ -61,8 +79,12 @@ fix: db-generate ## Auto-fix lint issues + typecheck
 test-unit: db-generate ## Unit / integration tests via bun test (isolated unit-suite DB)
 	pnpm --filter @project/api test
 
+# Unit tests for the custom-check modules themselves (bun test).
+test-checks: ## Unit tests for scripts/check-*.ts modules
+	@bun test scripts/__tests__/
+
 # Run both test suites sequentially. Useful for pre-merge confidence runs.
-test-all: test-unit test ## Run unit + BDD suites (pre-merge confidence check)
+test-all: test-unit test-checks test ## Run unit + checks + BDD suites (pre-merge confidence check)
 
 # BDD Tests (separate test database, dynamic port per suite via scripts/test-db.ts)
 #
@@ -77,6 +99,22 @@ test: db-generate ## BDD tests (isolated test DB, builds web app). ARGS forwarde
 test-ui: db-generate ## BDD tests in Playwright interactive UI mode
 	@bun scripts/kill-ports.ts --suite=e2e
 	cd e2e && pnpm exec bddgen && pnpm exec playwright test --ui $(ARGS)
+
+# Smoke subset — scenarios tagged @smoke in Gherkin. Runs against whatever
+# target BASE_URL points at (local dev by default, deployed env when set in
+# CI). Not hermetic — expects a populated target — so it does NOT spin up
+# the test DB harness. Use `make test` for the hermetic full suite.
+#
+# Usage:
+#   make smoke                                    # local target, default BASE_URL
+#   BASE_URL=https://staging.example.com make smoke
+smoke: ## Run @smoke-tagged BDD scenarios against BASE_URL (local by default)
+	cd e2e && pnpm exec bddgen && pnpm exec playwright test --grep @smoke $(ARGS)
+
+# Advisory reuse-finder. Writes markdown to stdout + .similar-report.json.
+# Before creating a new function/component, check for existing reuse options.
+similar: ## Report similarly-named functions/components/hooks/types (advisory)
+	@bun scripts/find-similar.ts
 
 # Cleanup
 clean:

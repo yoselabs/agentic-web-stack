@@ -18,6 +18,7 @@ import { WebSocketServer } from "ws";
 import { createBullBoardAdapter } from "./admin/bull-board.js";
 import { requireAdmin } from "./admin/middleware.js";
 import { logger } from "./logger.js";
+import { exampleWebhookRouter } from "./webhooks/example.js";
 
 const app = new Hono();
 
@@ -103,6 +104,10 @@ app.use("/api/auth/*", (c) => {
 // Todo file I/O — domain-owned Hono sub-app.
 app.route("/api/todos", todoHttpRouter);
 
+// Reference webhook route — rate-limited by client IP.
+// See apps/server/src/webhooks/example.ts for the pattern.
+app.route("/webhooks", exampleWebhookRouter);
+
 // tRPC handler — pass session into context.
 // NOTE: "/trpc" is inlined by design — ≤2 call sites and no library
 // coupling. See docs/superpowers/specs/2026-04-18-zero-conf-architecture-design.md §D3.
@@ -126,9 +131,16 @@ app.use("/admin/*", requireAdmin(auth));
 const bullBoardAdapter = createBullBoardAdapter();
 app.route("/admin/queues", bullBoardAdapter.registerPlugin());
 
-const httpServer = serve({ fetch: app.fetch, port: env.PORT }, (info) => {
-  logger.info(`Server running at http://localhost:${info.port}`);
-});
+// hostname "0.0.0.0" is mandatory for container runtimes — binding to the
+// default (localhost/::1) leaves the server unreachable from Traefik, Docker
+// networks, or any host that isn't the container itself. Enforced by
+// scripts/check-server-bind.ts.
+const httpServer = serve(
+  { fetch: app.fetch, port: env.PORT, hostname: "0.0.0.0" },
+  (info) => {
+    logger.info(`Server running at http://localhost:${info.port}`);
+  },
+);
 
 // WebSocket server for tRPC subscriptions.
 // Piggybacks on the same port as the HTTP server — the Node http.Server

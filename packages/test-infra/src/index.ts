@@ -134,6 +134,12 @@ export function envForSubprocess(
     BETTER_AUTH_SECRET: `test-secret-key-for-${suite}-tests-only-32chars`,
     CORS_ORIGIN: webUrl,
     WEB_URL: webUrl,
+    // Signals "this process is running under the test harness" without
+    // overloading NODE_ENV (which Vite's SSR build switches jsxDEV imports
+    // on — setting NODE_ENV=test breaks the built web bundle used by e2e).
+    // Read via `env.IS_TEST` in @project/env/server. See
+    // docs/conventions.md "Test-mode detection".
+    TEST_MODE: "1",
   };
   for (const [svc, cfg] of Object.entries(CONTAINER_SERVICES)) {
     const base = profile[svc];

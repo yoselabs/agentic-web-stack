@@ -163,7 +163,7 @@ given("I have a post {string}", async ({ page }, title: string) => {
 make test   # runs Gherkin → Playwright, clean DB each time
 ```
 
-Tests run in parallel (7 workers, ~24 seconds for 10 scenarios) with a dedicated test database on a hash-derived port per worktree (tmpfs — wiped each run, isolated per suite — see `scripts/test-db.ts`).
+Tests run in parallel (7 workers, ~24 seconds for 10 scenarios) with a dedicated test database on a hash-derived port per worktree (tmpfs — wiped each run, isolated per suite — see `packages/test-infra`).
 
 ## AI Agent Features
 

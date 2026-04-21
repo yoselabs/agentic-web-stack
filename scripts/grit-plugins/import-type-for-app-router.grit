@@ -1,0 +1,13 @@
+// AppRouter is a type-only export — importing it as a value bundles the
+// entire server into the client. Always `import type { AppRouter } from ...`.
+
+language js
+
+`import { $names } from "@project/api/router"` as $imp where {
+  $names <: contains `AppRouter`,
+  register_diagnostic(
+    span = $imp,
+    message = "AppRouter must be a type-only import. Use `import type { AppRouter } from \"@project/api/router\"` — value imports bundle the server into the client.",
+    severity = "error"
+  )
+}

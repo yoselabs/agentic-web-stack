@@ -4,9 +4,9 @@
 
 import { subject } from "@casl/ability";
 
-export function asSubject<T extends object>(
-  name: string,
+export function asSubject<N extends string, T extends object>(
+  name: N,
   row: T,
-): T & { __caslSubjectType__: string } {
-  return subject(name, row) as T & { __caslSubjectType__: string };
+): T & { __caslSubjectType__: N } {
+  return subject(name, row) as T & { __caslSubjectType__: N };
 }

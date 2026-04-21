@@ -1,6 +1,7 @@
 {
   "$schema": "https://biomejs.dev/schemas/2.4.12/schema.json",
   "assist": { "actions": { "source": { "organizeImports": "on" } } },
+  "plugins": ["./scripts/grit-plugins/import-type-for-app-router.grit"],
   "linter": {
     "enabled": true,
     "rules": {
@@ -40,9 +41,12 @@
       "!**/.output",
       "!**/.vinxi",
       "!**/prisma/generated",
+      "!**/src/generated",
       "!**/routeTree.gen.ts",
       "!**/.features-gen",
-      "!**/test-results"
+      "!**/test-results",
+      "!**/*.grit",
+      "!.claude/worktrees"
     ]
   },
   "overrides": [

@@ -35,7 +35,12 @@ domains/todo/
   tuple in `events.ts` (convention:
   [`docs/conventions.md#event-kinds-ssot`](../../docs/conventions.md#event-kinds-ssot)).
   Backend unit tests inject `MemoryChannelFactory` and assert publish
-  (see `todo-service-publishes.test.ts`).
+  (see `todo-service-publishes.test.ts`). Cross-feature notifications
+  (sidebar counters, access grants) publish to the user-inbox channel —
+  see `domains/todo-list/user-inbox-publishers.ts` and [ADR-001](../../docs/adrs/0001-realtime-architecture.md).
+- **Rate limiting.** Sensitive mutations can be gated with the middleware
+  in `src/rate-limit-middleware.ts`. Reference consumer: `todo-list`
+  create. The limiter is constructed via `@project/rate-limit/factory`.
 
 ### Example: Add a posts feature
 

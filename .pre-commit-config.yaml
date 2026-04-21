@@ -2,17 +2,13 @@ repos:
   - repo: local
     hooks:
       # Pre-commit — read-only checks only. Fail fast, never rewrite.
-      - id: harness-lint
-        name: agent-harness lint
-        entry: agent-harness lint
-        language: system
-        pass_filenames: false
-        always_run: true
-        stages: [pre-commit]
-
-      - id: typecheck
-        name: typecheck
-        entry: pnpm -w run typecheck
+      # Routes through `make lint` (turbo-cached) so commits after a small
+      # change typically hit the cache and complete in <1s while still
+      # enforcing the SAME quality gate as `make lint` / CI. No subset,
+      # no skip, no divergence from the inner-loop / CI gate.
+      - id: lint
+        name: make lint (turbo-cached)
+        entry: make lint
         language: system
         pass_filenames: false
         always_run: true
@@ -20,25 +16,17 @@ repos:
 
       # Pre-push — belt-and-braces. Run fix, then re-lint, and fail
       # if fix produced any diff (someone pushed without formatting).
-      - id: harness-fix-prepush
-        name: agent-harness fix (pre-push)
-        entry: agent-harness fix
+      - id: fix-prepush
+        name: make fix (pre-push)
+        entry: make fix
         language: system
         pass_filenames: false
         always_run: true
         stages: [pre-push]
 
-      - id: harness-lint-prepush
-        name: agent-harness lint (pre-push)
-        entry: agent-harness lint
-        language: system
-        pass_filenames: false
-        always_run: true
-        stages: [pre-push]
-
-      - id: typecheck-prepush
-        name: typecheck (pre-push)
-        entry: pnpm -w run typecheck
+      - id: lint-prepush
+        name: make lint (pre-push)
+        entry: make lint
         language: system
         pass_filenames: false
         always_run: true
@@ -49,7 +37,7 @@ repos:
         entry: |
           bash -c 'git diff --exit-code || {
             echo;
-            echo "⚠ Format drift detected — agent-harness fix made changes that were not committed.";
+            echo "⚠ Format drift detected — make fix made changes that were not committed.";
             echo "  Remediation:";
             echo "    make fix && git add -u && git commit -m style-format-fixes && git push";
             exit 1;

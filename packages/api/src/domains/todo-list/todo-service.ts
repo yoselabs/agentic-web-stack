@@ -293,3 +293,20 @@ export async function exportTodosAsCSV(
     todos.map((t) => ({ title: t.title, completed: t.completed })),
   );
 }
+
+// Purges Todos that have been completed and untouched for at least
+// `olderThanDays` days. `updatedAt` is Prisma-managed and changes whenever
+// the row is toggled/edited, so it is a reasonable proxy for "long completed".
+// Mirrors deleteExpiredInvites (service.ts) — cutoff window, transactional,
+// returns row count.
+export async function purgeStaleCompletedTodos(
+  tx: Prisma.TransactionClient,
+  options: { olderThanDays: number; nowMs?: number },
+) {
+  const now = new Date(options.nowMs ?? Date.now());
+  const cutoff = new Date(now.getTime() - options.olderThanDays * 86_400_000);
+  const result = await tx.todo.deleteMany({
+    where: { completed: true, updatedAt: { lt: cutoff } },
+  });
+  return result.count;
+}

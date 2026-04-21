@@ -17,8 +17,8 @@
     "nodemailer": "catalog:"
   },
   "devDependencies": {
-    "@types/nodemailer": "catalog:",
     "@types/node": "catalog:",
+    "@types/nodemailer": "catalog:",
     "typescript": "catalog:"
   }
 }

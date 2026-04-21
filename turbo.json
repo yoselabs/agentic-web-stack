@@ -1,0 +1,198 @@
+{
+  "$schema": "https://turbo.build/schema.json",
+  "globalDependencies": [
+    "biome.json",
+    "tsconfig.base.json",
+    "pnpm-workspace.yaml",
+    ".jscpd.json",
+    ".dependency-cruiser.cjs",
+    ".prismalintrc.json",
+    ".secretlintrc.json",
+    ".secretlintignore",
+    "knip.json"
+  ],
+  "tasks": {
+    "db-generate": {
+      "inputs": ["prisma/**", "scripts/generate.ts"],
+      "outputs": ["src/generated/**"]
+    },
+    "test": {
+      "dependsOn": ["^db-generate"],
+      "inputs": ["src/**", "__tests__/**", "scripts/**", "package.json"],
+      "outputs": []
+    },
+    "//#lint:biome": {
+      "inputs": [
+        "**/*.{ts,tsx,js,jsx,json,css,md}",
+        "biome.json",
+        "!**/node_modules/**",
+        "!**/dist/**",
+        "!**/.output/**",
+        "!**/generated/**",
+        "!**/routeTree.gen.ts",
+        "!**/.features-gen/**",
+        "!.turbo/**"
+      ],
+      "outputs": []
+    },
+    "//#lint:tsc": {
+      "dependsOn": ["@project/db#db-generate"],
+      "inputs": [
+        "**/*.{ts,tsx}",
+        "**/tsconfig.json",
+        "tsconfig.base.json",
+        "!**/node_modules/**",
+        "!**/.output/**",
+        "!**/dist/**",
+        "!**/generated/**"
+      ],
+      "outputs": ["**/*.tsbuildinfo"]
+    },
+    "//#lint:check:no-barrel": {
+      "inputs": [
+        "scripts/check-no-barrel.ts",
+        "scripts/checks-types.ts",
+        "packages/*/package.json",
+        "apps/*/src/**/*.{ts,tsx,mts,cts,js,mjs}",
+        "packages/*/src/**/*.{ts,tsx,mts,cts,js,mjs}",
+        "e2e/**/*.{ts,tsx}",
+        "scripts/**/*.{ts,tsx}",
+        "!**/generated/**",
+        "!**/__tests__/**"
+      ],
+      "outputs": []
+    },
+    "//#lint:check:server-bind": {
+      "inputs": [
+        "scripts/check-server-bind.ts",
+        "scripts/checks-types.ts",
+        "apps/server/src/index.ts"
+      ],
+      "outputs": []
+    },
+    "//#lint:check:domain-names": {
+      "inputs": [
+        "scripts/check-domain-names.ts",
+        "scripts/checks-types.ts",
+        "apps/web/src/features/**",
+        "packages/api/src/domains/**",
+        "e2e/features/**",
+        "e2e/steps/**"
+      ],
+      "outputs": []
+    },
+    "//#lint:check:trpc-patterns": {
+      "inputs": [
+        "scripts/check-trpc-patterns.ts",
+        "scripts/checks-types.ts",
+        "apps/web/src/**/*.{ts,tsx}",
+        "!**/routeTree.gen.ts"
+      ],
+      "outputs": []
+    },
+    "//#lint:check:test-infra-integrity": {
+      "inputs": [
+        "scripts/check-test-infra-integrity.ts",
+        "scripts/checks-types.ts",
+        "packages/test-infra/src/**",
+        "packages/env/src/server.ts",
+        "docker-compose.test.yml"
+      ],
+      "outputs": []
+    },
+    "//#lint:check:feature-emails": {
+      "inputs": [
+        "e2e/scripts/check-feature-emails.ts",
+        "scripts/checks-types.ts",
+        "e2e/features/**/*.feature"
+      ],
+      "outputs": []
+    },
+    "//#lint:check:duplicate-names": {
+      "inputs": [
+        "scripts/check-duplicate-names.ts",
+        "scripts/checks-types.ts",
+        ".duplicate-names-allow.json",
+        "apps/*/src/**/*.{ts,tsx}",
+        "packages/*/src/**/*.{ts,tsx}",
+        "!**/__tests__/**",
+        "!**/*.test.{ts,tsx}",
+        "!apps/web/src/routes/**",
+        "!**/generated/**",
+        "!**/*.gen.{ts,tsx}"
+      ],
+      "outputs": []
+    },
+    "//#lint:prisma": {
+      "inputs": ["packages/db/prisma/schema/**", ".prismalintrc.json"],
+      "outputs": []
+    },
+    "//#lint:knip": {
+      "inputs": [
+        "**/*.{ts,tsx}",
+        "**/package.json",
+        "pnpm-workspace.yaml",
+        "knip.json",
+        "!**/node_modules/**",
+        "!**/.output/**",
+        "!**/dist/**",
+        "!**/generated/**"
+      ],
+      "outputs": []
+    },
+    "//#lint:jscpd": {
+      "inputs": [
+        "**/*.{ts,tsx,js,jsx}",
+        ".jscpd.json",
+        "!**/node_modules/**",
+        "!**/__tests__/**",
+        "!**/*.test.{ts,tsx}",
+        "!**/dist/**",
+        "!**/.output/**",
+        "!**/generated/**",
+        "!.claude/**"
+      ],
+      "outputs": []
+    },
+    "//#lint:sherif": {
+      "inputs": [
+        "**/package.json",
+        "pnpm-workspace.yaml",
+        "!**/node_modules/**"
+      ],
+      "outputs": []
+    },
+    "//#lint:publint": {
+      "inputs": ["**/package.json", "!**/node_modules/**"],
+      "outputs": []
+    },
+    "//#lint:depcruise": {
+      "inputs": [
+        "**/*.{ts,tsx}",
+        ".dependency-cruiser.cjs",
+        "!**/node_modules/**",
+        "!**/.output/**",
+        "!**/generated/**"
+      ],
+      "outputs": []
+    },
+    "//#lint:secretlint": {
+      "inputs": [
+        "**/*",
+        ".secretlintrc.json",
+        ".secretlintignore",
+        "!**/node_modules/**",
+        "!**/.output/**",
+        "!**/dist/**",
+        "!**/generated/**",
+        "!.claude/**",
+        "!.turbo/**"
+      ],
+      "outputs": []
+    },
+    "//#lint:actionlint": {
+      "inputs": [".github/workflows/**"],
+      "outputs": []
+    }
+  }
+}

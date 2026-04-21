@@ -1,0 +1,45 @@
+{
+  "// ": "Allowlist for check-duplicate-names.ts. Every entry MUST include a `reason` (>=10 chars) explaining why the similarity is intentional — the forced justification is the point of this file.",
+  "allow": [
+    {
+      "names": ["todoRouter", "todoListRouter"],
+      "reason": "Two distinct tRPC sub-routers for the todo-list domain: todoRouter exposes per-todo operations, todoListRouter exposes list-level operations. Both canonical."
+    },
+    {
+      "names": ["todoRouter", "todoHttpRouter"],
+      "reason": "todoRouter is the tRPC sub-router; todoHttpRouter is a Hono sub-app for raw HTTP endpoints (file upload, import). Different transports for the same domain."
+    },
+    {
+      "names": ["inviteCollaborator", "inviteCollaboratorTemplate"],
+      "reason": "inviteCollaborator is the service function that creates the invite row; inviteCollaboratorTemplate renders the email body. Service vs template-renderer — different layers."
+    },
+    {
+      "names": ["applyTodoRules", "applyAdminRules"],
+      "reason": "Canonical CASL-rules convention: every domain exports applyXRules(({can, cannot}), user). Consistent signature by design."
+    },
+    {
+      "names": ["createTodo", "createTodoList"],
+      "reason": "Parent/child CRUD in the todo-list domain: TodoList is the container, Todo is the item. Same CRUD verbs apply to both; the names correctly distinguish which entity is being operated on."
+    },
+    {
+      "names": ["deleteTodo", "deleteTodoList"],
+      "reason": "Parent/child CRUD — see createTodo/createTodoList."
+    },
+    {
+      "names": ["listTodos", "listTodoLists"],
+      "reason": "Parent/child CRUD — see createTodo/createTodoList."
+    },
+    {
+      "names": ["useTodos", "useTodoLists"],
+      "reason": "Parent/child orchestration hooks: useTodoLists drives list-level UI, useTodos drives item-level UI within a selected list."
+    },
+    {
+      "names": ["SignInForm", "SignUpForm"],
+      "reason": "Auth UI pair — sign-in form and sign-up form are conventionally paired components."
+    },
+    {
+      "names": ["useTodoLists", "useTodoListLiveUpdates"],
+      "reason": "Orthogonal hooks on the same domain: useTodoLists is the CRUD orchestrator; useTodoListLiveUpdates wires realtime subscription fan-out. Different responsibilities within one feature."
+    }
+  ]
+}

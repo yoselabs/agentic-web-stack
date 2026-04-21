@@ -5,11 +5,17 @@ Monorepo: TanStack Start (frontend) + Hono (API server) + tRPC + Prisma + Postgr
 ## Structure
 
 - `apps/web/` — TanStack Start (Vite SSR) on port 3000
-- `apps/server/` — Hono API server on port 3001
+- `apps/server/` — Hono API server on port 3001 (binds `0.0.0.0`)
+- `apps/worker/` — BullMQ worker + cron handlers (email, todo-purge, maintenance)
 - `packages/api/` — tRPC router + context (shared types)
 - `packages/auth/` — Better-Auth config
-- `packages/db/` — Prisma schema + client
+- `packages/db/` — Prisma schema + client (prisma-client generator → `src/generated/`)
+- `packages/email/` — email templates + send adapter
 - `packages/env/` — @t3-oss/env-core validated env vars
+- `packages/jobs/` — BullMQ queue definitions
+- `packages/rate-limit/` — rate-limiter-flexible wrappers (Redis + memory)
+- `packages/realtime/` — Channel abstraction (MemoryChannel + RedisChannel)
+- `packages/test-infra/` — test-harness env / ports / docker helpers (Node-only)
 - `packages/ui/` — shadcn/ui components
 - `e2e/` — playwright-bdd (Gherkin specs + step definitions)
 
@@ -29,21 +35,47 @@ the relevant section before writing code that touches the area.
 - `make setup` — zero-conf: installs deps, starts Postgres, pushes schema, installs pre-commit hooks
 - `make dev` — start both web and server
 - `make check` — alias for `make lint`
-- `make lint` — full quality gate (MUST pass before claiming done): `agent-harness lint` + `tsc -b`
-- `make fix` — auto-fix lint issues + typecheck
-- `make test` — BDD tests (isolated e2e-suite Postgres, dynamic port per worktree — see `scripts/test-db.ts`). Pass filters via `ARGS`:
+- `make lint` — full quality gate (MUST pass before claiming done). Orchestrated by turbo (`turbo run lint:*` with input-hash caching). Silent on success, errors only — keeps logs tight. Warm runs hit cache and finish in <1s.
+- `make lint-verbose` — same as `make lint` but with full per-task output (debugging).
+- `make lint-force` — bypass turbo cache, force a fresh run.
+- `make fix` — auto-fix lint issues + typecheck. **Separate from `make lint`.** Lint is read-only (reports what's wrong); fix is the explicit transform step. The `Stop` / `SubagentStop` hooks run `make fix` at turn end automatically.
+- `make test` — BDD tests (isolated e2e-suite Postgres, dynamic port per worktree — see `packages/test-infra`). Pass filters via `ARGS`:
   - `make test ARGS="--grep 'Create a todo'"` — scenarios matching a title regex
   - `make test ARGS="--grep Authentication"` — all scenarios in a feature
   - `make test ARGS="--project desktop"` — skip the mobile viewport (faster inner loop)
   - `make test ARGS="--headed"` — watch the browser drive the test
   - ARGS is forwarded to `playwright test` verbatim; see `e2e/CLAUDE.md`.
-- `make test-unit` — unit/integration tests (isolated unit-suite Postgres, dynamic port per worktree — see `scripts/test-db.ts`)
+- `make test-unit` — unit/integration tests (isolated unit-suite Postgres, dynamic port per worktree — see `packages/test-infra`)
+- `make smoke` — `@smoke`-tagged BDD subset against `BASE_URL` (non-hermetic; for deployed-env sanity checks)
 - `make routes` — regenerate TanStack Router route tree without starting dev server
 - `make db-push` — push Prisma schema to database
 - `make db-generate` — regenerate Prisma client
+- `make similar` — advisory reuse-finder: reports similarly-named functions / components / hooks / types with signatures + paths. **Before creating a new function/component, run `make similar` (or read `.similar-report.json`) to check for existing reuse opportunities.**
 
-Pre-commit hooks run `agent-harness fix`, `agent-harness lint`, then `tsc -b` automatically.
+**Pre-commit** (read-only): routes through `make lint` (turbo-cached, same quality gate as CI — no divergence). Most commits hit cache and complete in <1s while still enforcing the full gate. **Pre-push** (belt-and-braces): `make fix` → `make lint`, failing if fix produced a diff.
 Never truncate lint or test output — read the full error.
+
+## Adding a linter / adding a package — the zero-drift rules
+
+**Adding a new linter (external tool):**
+1. One entry in `turbo.json` under `tasks` (as `//#lint:<name>`) with `inputs` globs scoped to what the tool reads.
+2. One root `lint:<name>` script in `package.json`.
+3. Append `lint:<name>` to `TURBO_LINT_TASKS` in `Makefile`.
+
+**Adding a new custom check** (in `scripts/check-*.ts`):
+1. Create `scripts/check-<name>.ts`:
+   - Export `check<Name>(): Promise<CheckResult>` using `timeCheck()` from `scripts/checks-types.ts`.
+   - Add `if (import.meta.main) { ... process.exit(result.ok ? 0 : 1) }` for standalone runs.
+2. Append `"lint:check:<name>": "bun scripts/check-<name>.ts"` to root `package.json` scripts.
+3. Add `//#lint:check:<name>` turbo task in `turbo.json` with **narrow** `inputs` — only the files this check actually scans. Per-check granularity means only that one check reruns when its scope changes.
+4. Append `lint:check:<name>` to `TURBO_LINT_TASKS` in `Makefile`.
+5. Optional: add fixture test in `scripts/__tests__/check-<name>.test.ts`.
+
+No per-package edits, no per-package script duplication.
+
+**Adding a new workspace package:** zero lint setup required. The root-level linters already scan the whole repo; the new package is covered automatically. The only per-package scripts packages may need are the genuinely divergent ones — `test` (different runners per package), `build` (where it produces output), `db-generate` (only `packages/db`).
+
+**Why this works:** linters in this repo are uniform — `biome check .` / `tsc -b` / `knip` / etc. all operate on the whole tree. Root-only orchestration + input-hash caching gives plug-and-play scaling.
 
 ## Development Workflow (BDD-first, Vertical Slices)
 
@@ -84,11 +116,11 @@ A new capability lands under the same `<name>` in every layer it touches.
 ## Critical Rules
 
 - **Single source of truth (SSOT) — where it matters.** Values that genuinely change (domain rules, Zod schemas, Prisma types) live in exactly one place and are imported everywhere. Values that are constants-forever (dev ports, local DB creds) are literals duplicated across the 3-4 infra files that need them — SSOT prevents drift, which requires change, and these values don't change.
-  - **No barrel files** — `@project/env`, `@project/api`, `@project/auth` expose named subpaths only (e.g., `@project/env/server`, `@project/api/domains/todo-list/todo-service`, `@project/auth/constants`). Barrels break native Node ESM resolution, hurt tree-shaking, and can pull server code into client bundles.
+  - **No barrel imports for `@project/env` and `@project/api`** — must use explicit subpaths (`@project/env/server`, `@project/api/domains/todo-list/todo-service`). Enforced by `scripts/check-no-barrel.ts`. Barrels would pull server-only env / tRPC server code into client bundles. `@project/auth` and `@project/db` **do** expose a `.` entry (auth re-exports the Better-Auth `auth` instance server-side; db re-exports the generated PrismaClient) and are deliberately excluded from the Grit rule.
   - **Runtime env vars** → `@project/env` (the only module that reads `process.env`; `/server` and `/client` subpaths). Zod defaults provide dev values so zero-conf boot works without a `.env` file.
   - **Domain constants** (upload limits, password rules, status enums) → a `constants.ts` inside the owning domain (e.g., `packages/api/src/domains/todo-list/todo-constants.ts`, `packages/auth/src/constants.ts`). Client imports via the domain's subpath export.
-  - **Infra constants** (dev ports `3000`/`3001`/`5432`, DB name `"app"`, user `"postgres"`) → literal in `docker-compose.yml`, `Makefile`, `.github/workflows/ci.yml`, and Zod defaults in `packages/env/src/server.ts`. Not in a shared package.
-  - **Test infrastructure** (dynamic test DB/web/API ports per worktree) → `scripts/test-db.ts`. Consumers import `testDbEnv()`. Not in `@project/env`.
+  - **Infra constants** (dev ports `3000`/`3001`/`5432`, DB name `"app"`, user `"postgres"`) → literal in `docker-compose.yml`, `Makefile`, `.github/workflows/ci.yml`, and Zod defaults in `packages/env/src/server.ts`. Not in a shared package. Rationale: [ADR-002](docs/adrs/0002-configuration-patterns.md).
+  - **Test infrastructure** (dynamic test DB/web/API ports per worktree) → `packages/test-infra`. Consumers import `testDbEnv()`. Not in `@project/env`.
   - **Type definitions** → infer from Prisma (`@project/db`) or tRPC (`inferRouterOutputs<AppRouter>`); never redeclare a shape that already exists.
   - **Validation rules** → one Zod schema, used by both server routers and client forms.
   - **Dependency versions** → `catalog:` in `pnpm-workspace.yaml`.
@@ -101,7 +133,7 @@ A new capability lands under the same `<name>` in every layer it touches.
 - **TanStack Start is NOT Next.js** — use `createServerFn`, not `getServerSideProps` or `"use server"`
 - **Run `make lint` before claiming work is done** — runs both `agent-harness lint` and `tsc -b`
 - **Never use `--no-verify` on commits or pushes.** The pre-commit hook is now read-only (lint + tsc, no fix) — if it fails, fix the underlying issue. Bypassing it is blocked by `.claude/settings.json` permissions.deny and will surface as a tool-call rejection.
-- **Don't run `make fix` mid-task unless you're recovering from a commit rejection.** The Claude Code `Stop` / `SubagentStop` hooks run `agent-harness fix` at turn end automatically. If you do run fix during a turn (e.g., after a commit failed on formatting), re-Read every file you plan to edit next before editing — the fixer may have rewritten content.
+- **Don't run `make fix` mid-task unless you're recovering from a commit rejection.** The Claude Code `Stop` / `SubagentStop` hooks run `make fix` at turn end automatically. If you do run fix during a turn (e.g., after a commit failed on formatting), re-Read every file you plan to edit next before editing — the fixer may have rewritten content.
 - **When dispatching subagents via the Agent tool, include this tool-use discipline in the prompt:**
   - Use the **Grep tool** for pattern search, not `bash grep -rn`. Use **Glob**, not `find`. Use **Read**, not `cat`. They're cached, faster, and don't spawn a process.
   - If making multiple edits to one file, batch them into a **single MultiEdit** call. Don't chain individual Edits with verification calls (`make lint`, tests) between them — saves ~10 tool calls per iteration on heavily-edited files.
@@ -132,7 +164,7 @@ A new capability lands under the same `<name>` in every layer it touches.
 | Use `PointerSensor` for DnD touch support | `PointerSensor` consumes Chrome DevTools simulated touch events, blocking `TouchSensor` | Use `MouseSensor` + `TouchSensor` instead of `PointerSensor` + `TouchSensor`, add `touch-action: none` to draggable items |
 | Run `agent-harness lint` directly instead of `make lint` | `agent-harness lint` alone passes but `tsc -b` catches implicit `any`, missing imports, type mismatches | Use `make lint` (runs both `agent-harness lint` + `tsc -b`). Pre-commit hook also enforces this |
 | Read `process.env.X` outside `packages/env/` | Bypasses Zod validation; env schema changes don't propagate; caught by `make lint` grep check | Import `env` from `@project/env/server` (or `/client` for web) and read `env.X` |
-| Import from `@project/env`, `@project/api`, or `@project/auth` without a subpath | There is no barrel export; the top-level path doesn't resolve. Same class of bug as `import { appRouter }` | Use subpath: `@project/env/server`, `@project/api/domains/todo-list/todo-service`, `@project/auth/constants`, etc. |
+| Import from `@project/env` or `@project/api` without a subpath | No barrel export; the top-level path doesn't resolve. Enforced by `scripts/check-no-barrel.ts`. Same class of bug as `import { appRouter }` | Use subpath: `@project/env/server`, `@project/api/domains/todo-list/todo-service`. (`@project/auth` / `@project/db` barrel imports are allowed — they're excluded from the Grit rule.) |
 | Create `.env` for dev before running `make dev` | Zero-conf: `@project/env` has Zod defaults for every var. A `.env` is for *overriding* defaults, not required to boot | Just run `make setup && make dev` — no `.env` needed |
 | Add a shared `@project/config`-like package for dev ports | SSOT drift prevention only pays off when values change. Dev ports don't | Hardcode literals in Makefile / compose / CI + Zod default in env |
 

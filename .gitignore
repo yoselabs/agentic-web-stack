@@ -10,6 +10,7 @@ dist/
 routeTree.gen.ts
 *.tsbuildinfo
 .tanstack/
+packages/db/src/generated/
 
 # Environment
 .env
@@ -32,6 +33,14 @@ npm-debug.log*
 
 # Worktrees
 .worktrees/
+.claude/worktrees/
+.claude/scheduled_tasks.lock
+
+# Advisory reports
+.similar-report.json
+
+# Turbo cache
+.turbo/
 
 # Testing
 test-results/

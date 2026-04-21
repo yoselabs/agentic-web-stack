@@ -43,6 +43,7 @@
 
 import { readdirSync, statSync } from "node:fs";
 import { join } from "node:path";
+import { type CheckResult, timeCheck } from "./checks-types.ts";
 
 const ROOT = process.cwd();
 
@@ -59,11 +60,6 @@ function listSubdirs(rel: string): string[] {
 
 type Layer = "frontend" | "backend" | "e2e-feat" | "e2e-steps";
 
-const frontend = new Set(listSubdirs("apps/web/src/features"));
-const backend = new Set(listSubdirs("packages/api/src/domains"));
-const e2eFeat = new Set(listSubdirs("e2e/features"));
-const e2eSteps = new Set(listSubdirs("e2e/steps"));
-
 const ALLOWLIST: Record<string, Set<Layer>> = {
   auth: new Set(["backend"]),
   admin: new Set(["frontend", "backend"]),
@@ -77,37 +73,46 @@ const layerPath: Record<Layer, string> = {
   "e2e-feat": "e2e/features",
   "e2e-steps": "e2e/steps",
 };
-const layerSets: Record<Layer, Set<string>> = {
-  frontend,
-  backend,
-  "e2e-feat": e2eFeat,
-  "e2e-steps": e2eSteps,
-};
 
-const allNames = new Set<string>([
-  ...frontend,
-  ...backend,
-  ...e2eFeat,
-  ...e2eSteps,
-]);
-
-let failed = false;
-for (const name of [...allNames].sort()) {
-  const allowedMissing = ALLOWLIST[name] ?? new Set<Layer>();
-  const layers: Layer[] = ["frontend", "backend", "e2e-feat", "e2e-steps"];
-  for (const layer of layers) {
-    if (!layerSets[layer].has(name) && !allowedMissing.has(layer)) {
-      console.error(
-        `[check-domain-names] "${name}" missing from ${layer} (expected at ${layerPath[layer]}/${name}/).`,
-      );
-      console.error(
-        `  If this asymmetry is intentional, add "${name}" to the ALLOWLIST in scripts/check-domain-names.ts.`,
-      );
-      console.error("");
-      failed = true;
+export function checkDomainNames(): Promise<CheckResult> {
+  return timeCheck("check-domain-names", () => {
+    const frontend = new Set(listSubdirs("apps/web/src/features"));
+    const backend = new Set(listSubdirs("packages/api/src/domains"));
+    const e2eFeat = new Set(listSubdirs("e2e/features"));
+    const e2eSteps = new Set(listSubdirs("e2e/steps"));
+    const layerSets: Record<Layer, Set<string>> = {
+      frontend,
+      backend,
+      "e2e-feat": e2eFeat,
+      "e2e-steps": e2eSteps,
+    };
+    const allNames = new Set<string>([
+      ...frontend,
+      ...backend,
+      ...e2eFeat,
+      ...e2eSteps,
+    ]);
+    const errors: string[] = [];
+    for (const name of [...allNames].sort()) {
+      const allowedMissing = ALLOWLIST[name] ?? new Set<Layer>();
+      const layers: Layer[] = ["frontend", "backend", "e2e-feat", "e2e-steps"];
+      for (const layer of layers) {
+        if (!layerSets[layer].has(name) && !allowedMissing.has(layer)) {
+          errors.push(
+            `"${name}" missing from ${layer} (expected at ${layerPath[layer]}/${name}/). If intentional, add to ALLOWLIST in scripts/check-domain-names.ts.`,
+          );
+        }
+      }
     }
-  }
+    return errors;
+  });
 }
 
-if (failed) process.exit(1);
-console.log("[check-domain-names] OK");
+if (import.meta.main) {
+  const result = await checkDomainNames();
+  if (!result.ok) {
+    for (const e of result.errors) console.error(`[check-domain-names] ${e}`);
+    process.exit(1);
+  }
+  console.log("[check-domain-names] OK");
+}

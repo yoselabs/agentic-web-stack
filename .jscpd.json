@@ -1,0 +1,30 @@
+{
+  "$schema": "https://unpkg.com/jscpd@latest/schemas/jscpd.json",
+  "threshold": 6,
+  "reporters": ["console"],
+  "absolute": false,
+  "gitignore": true,
+  "ignore": [
+    ".claude/**",
+    "**/.claude/**",
+    "**/node_modules/**",
+    "**/dist/**",
+    "**/.output/**",
+    "**/.vinxi/**",
+    "**/.features-gen/**",
+    "**/test-results/**",
+    "**/playwright-report/**",
+    "**/routeTree.gen.ts",
+    "**/src/generated/**",
+    "**/prisma/generated/**",
+    "**/*.test.ts",
+    "**/*.test.tsx",
+    "**/__tests__/**",
+    "**/pnpm-lock.yaml",
+    "**/CLAUDE.md",
+    "**/docs/**"
+  ],
+  "format": ["typescript", "tsx", "jsx", "javascript"],
+  "min-tokens": 70,
+  "min-lines": 8
+}

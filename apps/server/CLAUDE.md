@@ -2,21 +2,31 @@
 
 ## Architecture
 
-Hono server on port 3001 with three responsibilities:
-1. **Better-Auth handler** at `/api/auth/**` — handles sign-up, sign-in, session management
-2. **tRPC handler** at `/trpc/*` — all application API routes
-3. **CORS** — configured via `CORS_ORIGIN` env var
+Hono server on port 3001, bound to `0.0.0.0` (container runtimes can't reach
+`127.0.0.1` from another container). Enforced by `scripts/check-server-bind.ts`
+via `make lint`.
+
+Responsibilities:
+1. **Better-Auth handler** at `/api/auth/**` — sign-up, sign-in, session
+2. **tRPC handler** at `/trpc/*` — all application API routes (WS + HTTP)
+3. **Bull-Board** at `/admin/queues` (admin-gated) — BullMQ dashboard
+4. **Direct webhooks** under `src/webhooks/` — reference: `webhooks/example.ts`
+   (uses `@project/rate-limit` factory)
+5. **CORS + `secureHeaders`** — configured from `CORS_ORIGIN`
 
 ## Adding a New Hono Route
 
 Most routes should be tRPC procedures in `packages/api/`. Only add direct Hono routes for:
-- Webhook endpoints (need raw request body)
+- Webhook endpoints (need raw request body; see `src/webhooks/example.ts`)
 - File upload endpoints
 - Health checks
 
 ```typescript
 app.get("/health", (c) => c.json({ status: "ok" }));
 ```
+
+For rate-limited webhooks, import a limiter from `@project/rate-limit/factory`
+(Redis when `REDIS_URL` reachable, in-memory fallback otherwise).
 
 ## Auth Flow
 

@@ -131,3 +131,35 @@ rest are discipline + code review.
 registry other features will plug into — add a row to this table in the
 same commit that introduces it. This keeps the list authoritative and
 prevents silent plug-in points from accumulating.
+
+## Test-mode detection
+
+Runtime code that needs to branch on "am I running under the test
+harness?" reads `env.IS_TEST` from `@project/env/server`. Never read
+`process.env.NODE_ENV`, `process.env.VITEST`, or `process.env.TEST_MODE`
+directly — `@project/env` is the only module allowed to touch
+`process.env` (enforced by `make lint`).
+
+`env.IS_TEST` is a derived boolean. It's true when either of:
+
+1. `process.env.VITEST === "true"` — set natively by Vitest / `bun test`.
+   Primary signal for unit/integration runs. The runner sets this; the
+   test harness does not.
+2. `process.env.TEST_MODE === "1"` — set ONLY by the Playwright harness
+   when spawning the web + API servers under test. Wired through
+   `envForSubprocess(suite, role?)` in `@project/test-infra`, which
+   Playwright's `webServer` env blocks and any test-side subprocess
+   launcher spread into the child process env.
+
+**Why not overload `NODE_ENV=test`?** Vite's SSR build flips `jsxDEV`
+imports on `NODE_ENV`. Setting it to `"test"` breaks the built web
+bundle that the e2e suite serves via Nitro. The split — `VITEST` for
+Vitest, `TEST_MODE` for e2e, `NODE_ENV` only for dev/prod — keeps the
+build graph consistent while still giving runtime code a single boolean
+to branch on.
+
+**`NODE_ENV=test` is a hard error.** The Zod schema in
+`packages/env/src/server.ts` accepts only `"development" | "production"`.
+Anyone setting `NODE_ENV=test` gets a loud boot-time failure instead of
+a silent test-mode flip. Client-side / Vite SSR code should never reach
+`env.IS_TEST` either; test-mode branching is a server-only concern.

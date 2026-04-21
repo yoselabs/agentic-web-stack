@@ -6,11 +6,12 @@ How this template tests. What kind of test goes where, and why.
 
 | Type | Runner | Command | Scope | When to use |
 |---|---|---|---|---|
-| Unit / integration | Vitest | `make test-unit` | Services, pure logic, tRPC router procedures via `createCaller` | Business logic, validation, authz guards, anything testable without a browser |
+| Unit / integration | `bun test` (vitest-compatible surface) | `make test-unit` | Services, pure logic, tRPC router procedures via `createCaller` | Business logic, validation, authz guards, anything testable without a browser |
 | BDD end-to-end | Playwright-BDD | `make test` | Full stack: browser → web app → HTTP/WS → API → DB | User-facing flows, real-time features, anything whose contract is "the user sees X" |
+| Smoke (optional) | Playwright-BDD | `make smoke` | `@smoke`-tagged scenarios against `BASE_URL` | Post-deploy sanity on a populated target (non-hermetic) |
 
 Both test types run against isolated Postgres containers with dynamic ports
-per worktree (see `scripts/test-db.ts`). Schema is force-reset at the start
+per worktree (see `packages/test-infra`). Schema is force-reset at the start
 of each run; per-test cleanup is the test's responsibility.
 
 ## What NOT to Test
@@ -167,7 +168,7 @@ Tests are responsible for:
 - Not sharing state across scenarios unless a `Background` stage makes it
   explicit
 
-See `scripts/test-db.ts` for the details.
+See `packages/test-infra` for the details.
 
 ## Common Gotchas
 

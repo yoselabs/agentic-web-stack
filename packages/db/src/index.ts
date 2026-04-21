@@ -1,5 +1,5 @@
-import { PrismaClient } from "@prisma/client";
 import { env } from "@project/env/server";
+import { PrismaClient } from "./generated/client";
 
 const globalForPrisma = globalThis as unknown as {
   prisma: PrismaClient | undefined;
@@ -20,5 +20,7 @@ if (env.NODE_ENV !== "production") {
 }
 
 // Re-export all generated types (enums, input types, Prisma namespace, PrismaClient, etc.)
-// so consumers can `import { Prisma, MyEnum } from "@project/db"` without reaching into @prisma/client
-export * from "@prisma/client";
+// so consumers can `import { Prisma, MyEnum } from "@project/db"` without reaching into
+// the generated output. The new `prisma-client` generator emits a standalone ESM client
+// under src/generated/ — the output path is internal; consumers always go through @project/db.
+export * from "./generated/client";

@@ -1,0 +1,154 @@
+# Production reference stack — platform-agnostic.
+#
+# Copy to docker-compose.prod.yml (or translate to your orchestrator:
+# Kubernetes, Dokploy, Coolify, Railway, Fly.io, ECS). Values are NEVER
+# inlined here — every secret/URL is a ${VAR} reference resolved from your
+# environment / secret manager. See DEPLOYMENT.md for the full env table.
+#
+# This file does NOT ship a reverse proxy. TLS termination, routing labels
+# (Traefik / Caddy / nginx / ALB), and certificate management are the
+# operator's job. Attach labels to the `server` and `web` services at the
+# marked spots below.
+#
+# For the local demo stack (postgres + migrate + server + web, zero-conf
+# evaluator experience) see docker-compose.yml.
+
+name: agentic-web-stack
+
+# Shared env across migrate, server, web. YAML anchor so one edit propagates.
+# All values resolve from the host env — nothing is defaulted in this file.
+x-app-env: &app-env
+  DATABASE_URL: ${DATABASE_URL}
+  REDIS_URL: ${REDIS_URL}
+  BETTER_AUTH_SECRET: ${BETTER_AUTH_SECRET}
+  BETTER_AUTH_URL: ${BETTER_AUTH_URL}   # API origin (e.g. https://api.example.com)
+  WEB_URL: ${WEB_URL}                    # UI origin (e.g. https://app.example.com)
+  CORS_ORIGIN: ${CORS_ORIGIN}            # typically == WEB_URL
+  SSR_API_URL: ${SSR_API_URL}            # container-internal API URL, e.g. http://server:3001
+  AUTH_COOKIE_DOMAIN: ${AUTH_COOKIE_DOMAIN:-}  # optional; ".example.com" for cross-subdomain
+  SMTP_URL: ${SMTP_URL}
+  NODE_ENV: production
+  LOG_LEVEL: ${LOG_LEVEL:-info}
+
+services:
+  db:
+    image: postgres:17-alpine
+    restart: unless-stopped
+    environment:
+      POSTGRES_USER: ${POSTGRES_USER}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD}
+      POSTGRES_DB: ${POSTGRES_DB}
+    volumes:
+      - postgres-data:/var/lib/postgresql/data
+    networks:
+      - app-internal
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER} -d ${POSTGRES_DB}"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  redis:
+    image: redis:7-alpine
+    restart: unless-stopped
+    volumes:
+      - redis-data:/data
+    networks:
+      - app-internal
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  # All app containers share one image. Build it in CI and push to a registry,
+  # then reference the tag here (e.g. ghcr.io/you/agentic-web-stack:SHA).
+  # VITE_API_URL is baked at build time — produce one image per target env,
+  # or parameterize your CI build with --build-arg VITE_API_URL=...
+  migrate:
+    image: &app-image ${APP_IMAGE}
+    restart: "no"  # one-shot sidecar
+    # `pnpm exec prisma`, NOT `npx prisma` — npx hits DNS (EAI_AGAIN) on
+    # locked-down internal networks and is flaky even when it resolves.
+    command:
+      - "sh"
+      - "-c"
+      - "pnpm --filter @project/db exec prisma db push --skip-generate"
+    environment:
+      <<: *app-env
+    healthcheck:
+      disable: true
+    networks:
+      - app-internal
+    depends_on:
+      db:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+
+  server:
+    image: *app-image
+    restart: unless-stopped
+    # The server entrypoint MUST bind 0.0.0.0 (not 127.0.0.1) — enforced by
+    # scripts/check-server-bind.ts at lint time. Without it the container is
+    # silently unreachable from siblings and the reverse proxy.
+    command: ["bun", "/app/apps/server/src/index.ts"]
+    environment:
+      <<: *app-env
+      PORT: "3001"
+    networks:
+      - app-internal
+      - app-external   # reachable by reverse proxy
+    # Healthcheck uses the existing bun script from the Dockerfile HEALTHCHECK.
+    # Do NOT switch to curl/wget — the node:24-slim base does not ship them.
+    healthcheck:
+      test: ["CMD", "bun", "/app/scripts/healthcheck.ts", "http://127.0.0.1:3001/health"]
+      interval: 30s
+      timeout: 5s
+      retries: 3
+      start_period: 30s
+    depends_on:
+      migrate:
+        condition: service_completed_successfully
+    # --- Reverse proxy labels go here (Traefik / Caddy / nginx-proxy / etc.) ---
+    # labels:
+    #   - "traefik.http.routers.api.rule=Host(`api.example.com`)"
+    #   - "traefik.http.services.api.loadbalancer.server.port=3001"
+
+  web:
+    image: *app-image
+    restart: unless-stopped
+    command: ["bun", "/app/apps/web/.output/server/index.mjs"]
+    environment:
+      <<: *app-env
+      PORT: "3000"
+    networks:
+      - app-internal
+      - app-external
+    healthcheck:
+      test: ["CMD", "bun", "/app/scripts/healthcheck.ts", "http://127.0.0.1:3000/health"]
+      interval: 30s
+      timeout: 5s
+      retries: 3
+      start_period: 30s
+    depends_on:
+      migrate:
+        condition: service_completed_successfully
+    # --- Reverse proxy labels go here ---
+    # labels:
+    #   - "traefik.http.routers.web.rule=Host(`app.example.com`)"
+    #   - "traefik.http.services.web.loadbalancer.server.port=3000"
+
+networks:
+  # Closed network: db + redis never leave this.
+  app-internal:
+    driver: bridge
+    internal: true
+  # Attached to the reverse proxy's network in real deployments
+  # (e.g. `external: true` + a shared proxy network).
+  app-external:
+    driver: bridge
+
+volumes:
+  postgres-data:
+  redis-data:

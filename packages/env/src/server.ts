@@ -8,7 +8,7 @@ import { z } from "zod";
 // NEVER add client-safe vars here. Those belong in client.ts.
 // NEVER read process.env outside this module (enforced by `make lint` grep).
 
-export const env = createEnv({
+const parsedEnv = createEnv({
   server: {
     DATABASE_URL: z
       .string()
@@ -44,9 +44,7 @@ export const env = createEnv({
     // allowed cross-origin policy) — even when they coincide in dev,
     // separating them keeps the intent explicit.
     WEB_URL: z.string().url().default("http://localhost:3000"),
-    NODE_ENV: z
-      .enum(["development", "production", "test"])
-      .default("development"),
+    NODE_ENV: z.enum(["development", "production"]).default("development"),
     PORT: z.coerce.number().default(3001),
     LOG_LEVEL: z
       .enum(["fatal", "error", "warn", "info", "debug", "trace"])
@@ -55,3 +53,36 @@ export const env = createEnv({
   runtimeEnv: process.env,
   emptyStringAsUndefined: true,
 });
+
+// Derived test-mode flag. Centralized here so runtime code never has to
+// juggle the sources itself — consumers just read `env.IS_TEST`.
+//
+// Two sources:
+//   1. `process.env.VITEST === "true"` — set natively by Vitest / bun test.
+//      Primary signal for unit/integration test runs.
+//   2. `process.env.TEST_MODE === "1"` — set ONLY by the Playwright harness
+//      (via @project/test-infra's `envForSubprocess`) when spawning the
+//      web + API servers under test. Distinct from VITEST because the
+//      e2e web server is a built Nitro bundle, not a Vitest process, and
+//      Vite flips `jsxDEV` imports on NODE_ENV — so we can't overload
+//      NODE_ENV=test without breaking the e2e web build.
+//
+// `NODE_ENV` is deliberately restricted to "development" | "production" in
+// the Zod schema above. Setting `NODE_ENV=test` is a hard error — that's a
+// louder failure than silently flipping IS_TEST. See docs/conventions.md
+// "Test-mode detection".
+const IS_TEST = process.env.VITEST === "true" || process.env.TEST_MODE === "1";
+
+// Wrap parsedEnv in a Proxy that intercepts only IS_TEST and delegates
+// everything else to t3-env's Proxy. Spreading parsedEnv would bypass
+// its unknown-key guard (the Proxy throws on access to keys not in the
+// schema), which is a load-bearing dev-ergonomics feature of t3-env.
+export const env: typeof parsedEnv & { readonly IS_TEST: boolean } = new Proxy(
+  parsedEnv as typeof parsedEnv & { readonly IS_TEST: boolean },
+  {
+    get(target, prop, receiver) {
+      if (prop === "IS_TEST") return IS_TEST;
+      return Reflect.get(target, prop, receiver);
+    },
+  },
+);

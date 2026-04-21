@@ -24,7 +24,16 @@
 import { afterAll, beforeAll, describe, expect, it } from "bun:test";
 import { EMAIL_JOB_DEFAULTS } from "@project/jobs/queues";
 import { createRedis } from "@project/jobs/redis";
-import { Queue, Worker } from "bullmq";
+import { type Job, Queue, Worker } from "bullmq";
+
+// BullMQ types `Job.id` as `string | undefined` because the field only
+// materializes once Redis has assigned an ID. For jobs returned by
+// `queue.add()` the ID is always set; this helper narrows the type
+// without a non-null assertion.
+function requireJobId(job: Job): string {
+  if (!job.id) throw new Error("BullMQ did not assign a job id");
+  return job.id;
+}
 
 const TEST_QUEUE = `email-retry-test-${process.pid}-${Date.now()}`;
 
@@ -92,7 +101,7 @@ describe("BullMQ retry wiring", () => {
       { attempts: 2, backoff: { type: "fixed", delay: 50 } },
     );
 
-    const failed = await waitForJobState(job.id!, "failed", 5000);
+    const failed = await waitForJobState(requireJobId(job), "failed", 5000);
     expect(failed.attemptsMade).toBe(2);
     expect(failed.failedReason).toContain("ECONNREFUSED");
   });
@@ -104,7 +113,8 @@ describe("BullMQ retry wiring", () => {
       { attempts: 1, backoff: { type: "fixed", delay: 0 } },
     );
 
-    const failed = await waitForJobState(job.id!, "failed", 5000);
+    const jobId = requireJobId(job);
+    const failed = await waitForJobState(jobId, "failed", 5000);
     expect(failed.failedReason).toContain("ECONNREFUSED");
 
     // This is the operation Bull Board's "Retry" button performs — same
@@ -112,7 +122,7 @@ describe("BullMQ retry wiring", () => {
     // depends on, not Bull Board itself.
     await failed.retry();
 
-    const completed = await waitForJobState(job.id!, "completed", 5000);
+    const completed = await waitForJobState(jobId, "completed", 5000);
     expect(completed.returnvalue).toEqual({ ok: true });
     expect(calls["test-retry"]).toBe(2);
   });
