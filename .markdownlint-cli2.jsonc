@@ -1,0 +1,58 @@
+{
+  // markdownlint-cli2 config for agentic-web-stack.
+  // Tuned for engineering docs: wide tables, ADRs, specs, CLAUDE.md files.
+  //
+  // Disabled rules are stylistic preferences that conflict with this repo's
+  // established doc style (compact tables, inline code-fence placement next to
+  // prose, etc.). Kept rules catch genuine issues: broken link refs, duplicate
+  // H1, unclosed fences, etc.
+  "config": {
+    "default": true,
+    // Line length — docs include wide tables and inline code.
+    "MD013": false,
+    // Allow inline HTML.
+    "MD033": false,
+    // Allow bare URLs.
+    "MD034": false,
+    // First line doesn't need to be H1 (front-matter present in specs).
+    "MD041": false,
+    // Allow duplicate headings under different parents.
+    "MD024": { "siblings_only": true },
+    // Don't require blank line around headings (we use compact layout).
+    "MD022": false,
+    // Don't require blank line around lists / fences (same).
+    "MD031": false,
+    "MD032": false,
+    // Fence language not mandatory (many snippets are plain shell output).
+    "MD040": false,
+    // Table pipe-spacing: we use compact style intentionally.
+    "MD060": false,
+    // Emphasis-as-heading: used stylistically.
+    "MD036": false,
+    // Trailing punctuation in headings.
+    "MD026": false,
+    // Hard tabs — allowed (code blocks may use tabs).
+    "MD010": false,
+    // Multiple H1 — specs have front-matter + H1 title.
+    "MD025": false,
+    // Spaces inside code spans — intentional for readability sometimes.
+    "MD038": false,
+    // List style (dash/plus/asterisk) — not enforced.
+    "MD004": false,
+    // Heading increment — superpowers plans use H1 → H3 jumps as structure.
+    "MD001": false,
+    // Single trailing newline — file-level thing, let formatter handle it.
+    "MD047": false
+  },
+  "ignores": [
+    "**/node_modules/**",
+    "**/dist/**",
+    "**/.output/**",
+    "**/.features-gen/**",
+    "**/generated/**",
+    "**/CHANGELOG.md",
+    ".claude/worktrees/**",
+    ".turbo/**"
+  ],
+  "globs": ["**/*.md"]
+}

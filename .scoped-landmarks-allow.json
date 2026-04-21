@@ -1,0 +1,53 @@
+{
+  "_comment": "Ratchet for scripts/check-scoped-landmarks.ts. Pre-existing step files using bare `page.getBy*` are grandfathered here; new files are blocked by the check. Scope bare queries to a landmark (e.g. page.getByRole('navigation').getByTestId(...)) or mark a call with `// placement-agnostic: <reason>` on the preceding line when the whole-page semantic is intentional, then remove the file from this list.",
+  "allow": [
+    {
+      "path": "e2e/steps/auth/auth.ts",
+      "reason": "Pre-existing step file; landed before scoped-landmark rule. Refactor when touching."
+    },
+    {
+      "path": "e2e/steps/auth/homepage.ts",
+      "reason": "Pre-existing step file; landed before scoped-landmark rule. Refactor when touching."
+    },
+    {
+      "path": "e2e/steps/auth/signin-form.ts",
+      "reason": "Pre-existing step file; landed before scoped-landmark rule. Refactor when touching."
+    },
+    {
+      "path": "e2e/steps/mobile-nav/mobile-nav.ts",
+      "reason": "Pre-existing step file; landed before scoped-landmark rule. Refactor when touching."
+    },
+    {
+      "path": "e2e/steps/todo-list/collaborator-realtime-todos.ts",
+      "reason": "Pre-existing step file; landed before scoped-landmark rule. Refactor when touching."
+    },
+    {
+      "path": "e2e/steps/todo-list/collaborators-visibility.ts",
+      "reason": "Pre-existing step file; landed before scoped-landmark rule. Refactor when touching."
+    },
+    {
+      "path": "e2e/steps/todo-list/collaborators.ts",
+      "reason": "Pre-existing step file; landed before scoped-landmark rule. Refactor when touching."
+    },
+    {
+      "path": "e2e/steps/todo-list/invitations.ts",
+      "reason": "Pre-existing step file; landed before scoped-landmark rule. Refactor when touching."
+    },
+    {
+      "path": "e2e/steps/todo-list/lists.ts",
+      "reason": "Pre-existing step file; landed before scoped-landmark rule. Refactor when touching."
+    },
+    {
+      "path": "e2e/steps/todo-list/realtime-dashboard.ts",
+      "reason": "Pre-existing step file; landed before scoped-landmark rule. Refactor when touching."
+    },
+    {
+      "path": "e2e/steps/todo-list/realtime-navigate-back.ts",
+      "reason": "Pre-existing step file; landed before scoped-landmark rule. Refactor when touching."
+    },
+    {
+      "path": "e2e/steps/todo-list/todos.ts",
+      "reason": "Pre-existing step file; landed before scoped-landmark rule. Refactor when touching."
+    }
+  ]
+}

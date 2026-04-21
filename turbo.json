@@ -233,6 +233,108 @@
     "//#lint:actionlint": {
       "inputs": [".github/workflows/**"],
       "outputs": []
+    },
+    "//#lint:markdown": {
+      "inputs": [
+        "**/*.md",
+        ".markdownlint-cli2.jsonc",
+        "!**/node_modules/**",
+        "!**/dist/**",
+        "!**/.output/**",
+        "!**/.features-gen/**",
+        "!**/generated/**",
+        "!**/CHANGELOG.md",
+        "!.claude/worktrees/**",
+        "!.turbo/**"
+      ],
+      "outputs": []
+    },
+    "//#lint:links": {
+      "inputs": [
+        "**/*.md",
+        ".lychee.toml",
+        "scripts/run-lychee.sh",
+        "!**/node_modules/**",
+        "!**/dist/**",
+        "!**/.output/**",
+        "!**/.features-gen/**",
+        "!**/generated/**",
+        "!.claude/worktrees/**",
+        "!.turbo/**"
+      ],
+      "outputs": []
+    },
+    "//#lint:spell": {
+      "inputs": [
+        "**/*.{md,ts,tsx}",
+        ".cspell.json",
+        ".cspell/**",
+        "!**/node_modules/**",
+        "!**/dist/**",
+        "!**/.output/**",
+        "!**/generated/**",
+        "!**/routeTree.gen.ts",
+        "!**/.features-gen/**",
+        "!.claude/worktrees/**",
+        "!.turbo/**"
+      ],
+      "outputs": []
+    },
+    "//#lint:shell": {
+      "inputs": ["**/*.sh", "scripts/run-shellcheck.sh", "!**/node_modules/**"],
+      "outputs": []
+    },
+    "//#lint:check:adrs": {
+      "inputs": [
+        "scripts/check-adrs.ts",
+        "scripts/checks-types.ts",
+        "docs/adrs/**/*.md",
+        "apps/**/*.{ts,tsx}",
+        "packages/**/*.{ts,tsx}",
+        "scripts/**/*.{ts,tsx}",
+        "docs/**/*.md",
+        "!**/generated/**",
+        "!**/node_modules/**"
+      ],
+      "outputs": []
+    },
+    "//#lint:check:state-machines": {
+      "inputs": [
+        "scripts/lint-state-machines.ts",
+        "scripts/checks-types.ts",
+        "e2e/features/**/*.feature"
+      ],
+      "outputs": []
+    },
+    "//#lint:check:pitch-coverage": {
+      "inputs": [
+        "scripts/check-pitch-coverage.ts",
+        "scripts/checks-types.ts",
+        "docs/requirements/pitches/**/*.md",
+        "e2e/features/**/*.feature"
+      ],
+      "outputs": []
+    },
+    "//#lint:check:scoped-landmarks": {
+      "inputs": [
+        "scripts/check-scoped-landmarks.ts",
+        "scripts/checks-types.ts",
+        ".scoped-landmarks-allow.json",
+        "e2e/steps/**/*.ts"
+      ],
+      "outputs": []
+    },
+    "//#lint:check:perspective-boundary": {
+      "inputs": [
+        "scripts/check-perspective-boundary.ts",
+        "scripts/checks-types.ts",
+        ".perspective-boundary.json",
+        "apps/**/*.{ts,tsx}",
+        "packages/**/*.{ts,tsx}",
+        "!**/generated/**",
+        "!**/node_modules/**"
+      ],
+      "outputs": []
     }
   }
 }

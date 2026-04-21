@@ -1,0 +1,6 @@
+{
+  "$schema": "https://json.schemastore.org/base.json",
+  "_comment": "Config for scripts/check-perspective-boundary.ts. Opt-in per project. 'fields' lists property names that must NOT be accessed as `<row>.<field>` in most code; 'ownerFiles' lists the files that legitimately read them. Empty = no-op on this template.",
+  "fields": [],
+  "ownerFiles": []
+}
