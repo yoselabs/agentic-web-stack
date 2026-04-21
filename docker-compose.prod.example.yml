@@ -107,13 +107,13 @@ services:
       timeout: 5s
       retries: 3
       start_period: 30s
-    depends_on:
-      migrate:
-        condition: service_completed_successfully
     # --- Reverse proxy labels go here (Traefik / Caddy / nginx-proxy / etc.) ---
     # labels:
     #   - "traefik.http.routers.api.rule=Host(`api.example.com`)"
     #   - "traefik.http.services.api.loadbalancer.server.port=3001"
+    depends_on:
+      migrate:
+        condition: service_completed_successfully
 
   web:
     image: *app-image
@@ -131,13 +131,13 @@ services:
       timeout: 5s
       retries: 3
       start_period: 30s
-    depends_on:
-      migrate:
-        condition: service_completed_successfully
     # --- Reverse proxy labels go here ---
     # labels:
     #   - "traefik.http.routers.web.rule=Host(`app.example.com`)"
     #   - "traefik.http.services.web.loadbalancer.server.port=3000"
+    depends_on:
+      migrate:
+        condition: service_completed_successfully
 
 networks:
   # Closed network: db + redis never leave this.
