@@ -10,13 +10,20 @@ const viteEnv = (
   import.meta as unknown as { env?: Record<string, string | undefined> }
 ).env;
 
+// Browser-safe `process.env` access. `process` is undefined in Vitest
+// browser-mode (real Chromium) and any plain-browser consumer; guarding
+// lets this module import cleanly in every environment.
+// biome-ignore lint/suspicious/noExplicitAny: structural probe across runtimes
+const nodeEnv: Record<string, string | undefined> | undefined =
+  typeof globalThis !== "undefined" && (globalThis as any).process?.env;
+
 export const env = createEnv({
   clientPrefix: "VITE_",
   client: {
     VITE_API_URL: z.string().url().default("http://localhost:3001"),
   },
   runtimeEnv: {
-    VITE_API_URL: viteEnv?.VITE_API_URL ?? process.env.VITE_API_URL,
+    VITE_API_URL: viteEnv?.VITE_API_URL ?? nodeEnv?.VITE_API_URL,
   },
   emptyStringAsUndefined: true,
 });

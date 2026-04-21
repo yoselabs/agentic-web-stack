@@ -2,29 +2,19 @@ import type { Meta, StoryObj } from "@storybook/react-vite";
 
 /**
  * `AppNavbar` is the session-aware composition that feeds the slot-typed
- * `Navbar` shell. Unlike `Navbar` itself (which is pure/slot-driven and
- * enumerated exhaustively in `navbar.stories.tsx`), `AppNavbar` reads
- * Better-Auth's `useSession()` + the env-provided `VITE_API_URL`.
+ * `Navbar` shell. Unlike `Navbar` itself (pure/slot-driven, enumerated
+ * exhaustively in `navbar.stories.tsx`), `AppNavbar` reads Better-Auth's
+ * `useSession()`.
  *
- * Stories are NOT included in the Vitest addon-vitest run (`no-test`
- * tag — excluded in `vitest.config.ts`):
- *
- * - `@project/env/client` touches `process.env` at module init, which
- *   crashes in the browser-mode Vitest worker.
- * - Better-Auth's `useSession()` reaches into a session store that
- *   isn't meaningfully mockable without a full auth decorator we don't
- *   ship yet.
- *
- * The meaningful state-space enumeration (LoggedOut / LoggedInBasic /
- * LoggedInAdmin / WithAdminActions) is covered exhaustively by
- * `navbar.stories.tsx` through the slot contract. This file exists to
- * satisfy `check-stories-siblings` and give humans a live preview of
- * the composed navbar under the real Better-Auth hook once it's loaded
- * lazily via `import()`. Promote a story to the default tag only once
- * a proper auth-session decorator lands.
- *
- * The component reference below is a string rather than an import so
- * the Vitest collector never evaluates `AppNavbar` at file load.
+ * Stories are tagged `no-test` (excluded in `vitest.config.ts`) because
+ * `useSession()` reaches into a session store that isn't meaningfully
+ * mockable without a full auth decorator we don't ship yet. The
+ * state-space enumeration (LoggedOut / LoggedInBasic / LoggedInAdmin /
+ * WithAdminActions) is covered through the slot contract in
+ * `navbar.stories.tsx`. This file exists to satisfy
+ * `check-stories-siblings` and give humans a live preview in the
+ * Storybook dev server. Promote to the default tag once a session
+ * decorator lands.
  */
 const meta = {
   title: "widgets/AppNavbar",
