@@ -25,12 +25,16 @@
     "apps/web": {
       "entry": [
         "vite.config.ts",
+        "vitest.config.ts",
+        "test/**/*.{ts,tsx}",
         "src/router.tsx",
         "src/routes/**/*.{ts,tsx}",
-        "src/routeTree.gen.ts"
+        "src/routeTree.gen.ts",
+        "src/**/*.test.{ts,tsx}"
       ],
-      "project": ["src/**/*.{ts,tsx}"],
-      "ignore": ["src/routeTree.gen.ts"]
+      "project": ["src/**/*.{ts,tsx}", "test/**/*.{ts,tsx}"],
+      "ignore": ["src/routeTree.gen.ts"],
+      "ignoreDependencies": ["@testing-library/user-event"]
     },
     "apps/server": {
       "entry": ["src/index.ts"],
