@@ -62,6 +62,8 @@ Never truncate lint or test output — read the full error.
 2. One root `lint:<name>` script in `package.json`.
 3. Append `lint:<name>` to `TURBO_LINT_TASKS` in `Makefile`.
 
+**Shell-wrapper pattern for optional binaries.** When a linter depends on a binary that may not be installed locally or in CI (e.g. `lychee`, `shellcheck`, `actionlint`), wrap it in `scripts/run-<name>.sh` that checks `command -v <tool>` and prints a `[lint:<name>] <tool> not installed — skipping` line + `exit 0` when absent. Root script points at the wrapper (`"lint:<name>": "./scripts/run-<name>.sh"`). This keeps `make lint` green on fresh machines while still enforcing the check where the binary is present (devs with brew, CI job with the tool installed). See `scripts/run-actionlint.sh` / `scripts/run-lychee.sh` / `scripts/run-shellcheck.sh` for the canonical form.
+
 **Adding a new custom check** (in `scripts/check-*.ts`):
 1. Create `scripts/check-<name>.ts`:
    - Export `check<Name>(): Promise<CheckResult>` using `timeCheck()` from `scripts/checks-types.ts`.
