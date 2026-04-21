@@ -2,6 +2,10 @@
 title: "ADR-001 — Realtime architecture: user inbox channel + Live+Snapshot reconciliation"
 status: Accepted
 applies-to: packages/api/src/domains/user, packages/api/src/domains/todo-list, packages/realtime, apps/web/src/features/user, apps/web/src/features/todo-list
+verified_by:
+  - packages/realtime/src/user-inbox.ts
+  - packages/api/src/domains/user/user-events.ts
+  - apps/web/src/features/user/use-user-inbox.ts
 ---
 
 # ADR-001 — User Inbox Channel + Live+Snapshot Reconciliation

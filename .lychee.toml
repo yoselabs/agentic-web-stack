@@ -1,0 +1,10 @@
+# lychee — link checker for markdown docs.
+# Invoked via scripts/run-lychee.sh, which gracefully skips if the binary is
+# missing (CI-optional).
+cache = true
+max_concurrency = 8
+accept = ["200..=299", "403", "429"]
+exclude = [
+  "^https?://localhost",
+  "^file://",
+]

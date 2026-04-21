@@ -2,6 +2,8 @@
 title: "ADR-002 — Configuration patterns"
 status: Accepted
 applies-to: packages/env, packages/api, packages/auth, apps/*, scripts
+verified_by:
+  - CLAUDE.md
 ---
 
 # ADR-002 — Configuration Patterns
