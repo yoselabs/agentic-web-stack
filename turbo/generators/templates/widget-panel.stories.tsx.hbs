@@ -1,0 +1,32 @@
+/**
+ * Storybook stories for {{pascalCase name}}Panel. Satisfies
+ * `check-stories-siblings` (WS1): every widget file has a sibling story.
+ *
+ * Full Storybook infra lands in WS5. Until then, this file declares the
+ * stories as plain data so it compiles without depending on
+ * `@storybook/react`. Once WS5 wires Storybook, swap the local `Meta` /
+ * `StoryObj` types for imports from `@storybook/react`.
+ */
+import { {{pascalCase name}}Panel } from "./{{name}}-panel";
+
+type Meta<T> = {
+  component: T;
+  title: string;
+};
+
+type StoryObj<T> = {
+  args?: T extends (props: infer P) => unknown ? Partial<P> : never;
+};
+
+const meta: Meta<typeof {{pascalCase name}}Panel> = {
+  component: {{pascalCase name}}Panel,
+  title: "widgets/{{pascalCase name}}Panel",
+};
+
+export default meta;
+
+export const Default: StoryObj<typeof {{pascalCase name}}Panel> = {
+  args: {
+    title: "{{pascalCase name}}",
+  },
+};

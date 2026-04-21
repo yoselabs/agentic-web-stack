@@ -18,9 +18,10 @@
         "e2e/scripts/**/*.ts",
         "e2e/steps/**/*.ts",
         "e2e/fixtures/**/*.ts",
-        "e2e/helpers/**/*.ts"
+        "e2e/helpers/**/*.ts",
+        "turbo/generators/config.ts"
       ],
-      "project": ["scripts/**/*.ts"]
+      "project": ["scripts/**/*.ts", "turbo/generators/**/*.ts"]
     },
     "apps/web": {
       "entry": [

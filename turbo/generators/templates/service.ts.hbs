@@ -1,0 +1,53 @@
+/**
+ * {{name}} domain service.
+ *
+ * @adr NNNN — replace with the ADR that governs this domain's design
+ *             once one is written. The `check-adrs` linter (WS1) will
+ *             resolve this citation against `docs/adrs/`.
+ *
+ * Conventions:
+ *   - Reads accept `DbClient` (PrismaClient | Prisma.TransactionClient).
+ *   - Mutations accept `Prisma.TransactionClient` ONLY; the router MUST
+ *     wrap mutation calls in `ctx.db.$transaction((tx) => ...)`.
+ *   - See packages/api/CLAUDE.md § "Transaction Rules".
+ *
+ * Imports use the subpath `@project/db` (which DOES expose a `.` export —
+ * see root CLAUDE.md no-barrel carve-out). For typed env, import from
+ * `@project/env/server` — NEVER the bare `@project/env`.
+ */
+import type { Prisma, PrismaClient } from "@project/db";
+
+type DbClient = PrismaClient | Prisma.TransactionClient;
+
+export type {{pascalCase name}}Summary = {
+  name: string;
+  ownerId: string;
+};
+
+/**
+ * Example read. Replace with `db.<model>.findMany(...)` once the Prisma
+ * schema for this domain lands.
+ */
+export async function list{{pascalCase name}}s(
+  db: DbClient,
+  userId: string,
+): Promise<{{pascalCase name}}Summary[]> {
+  // Reference `db` so linters don't flag it unused before the real query
+  // is filled in. `$queryRaw\`SELECT 1\`` is a no-op validation ping.
+  await db.$queryRaw`SELECT 1`;
+  return [{ name: "{{name}}", ownerId: userId }];
+}
+
+/**
+ * Example mutation. Accepts `tx: Prisma.TransactionClient` per the
+ * transaction-discipline convention; the router MUST call this inside
+ * `ctx.db.$transaction((tx) => create{{pascalCase name}}(tx, ...))`.
+ */
+export async function create{{pascalCase name}}(
+  tx: Prisma.TransactionClient,
+  userId: string,
+  name: string,
+): Promise<{{pascalCase name}}Summary> {
+  await tx.$queryRaw`SELECT 1`;
+  return { name, ownerId: userId };
+}
