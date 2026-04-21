@@ -29,6 +29,7 @@ the relevant section before writing code that touches the area.
 - **Realtime event naming** — domain-prefixed event kinds. See [docs/conventions.md#realtime-event-naming](docs/conventions.md#realtime-event-naming).
 - **Event shape — payload vs notification** — pick one shape per kind; don't mix. See [docs/conventions.md#event-shape--payload-vs-notification](docs/conventions.md#event-shape--payload-vs-notification).
 - **Event kinds SSOT** — const tuple → derived type, never the reverse. See [docs/conventions.md#event-kinds-ssot](docs/conventions.md#event-kinds-ssot).
+- **Web app Vitest project selection** — `*.test.tsx` → unit (happy-dom); `*.stories.tsx` → storybook (chromium); `*.browser.test.tsx` → browser (chromium, opt-in for jsdom-invisible bugs). See [docs/conventions.md#web-app-vitest-project-selection](docs/conventions.md#web-app-vitest-project-selection) and `docs/qa-strategy.md` §3.4.
 
 ## Commands
 
@@ -46,6 +47,7 @@ the relevant section before writing code that touches the area.
   - `make test ARGS="--headed"` — watch the browser drive the test
   - ARGS is forwarded to `playwright test` verbatim; see `e2e/CLAUDE.md`.
 - `make test-unit` — unit/integration tests (isolated unit-suite Postgres, dynamic port per worktree — see `packages/test-infra`)
+- `make test-browser` — real-Chromium component tests (`*.browser.test.tsx`). Opt-in for bugs jsdom can't see — image `naturalWidth`, CSS layout, clipboard. See ADR-0007.
 - `make smoke` — `@smoke`-tagged BDD subset against `BASE_URL` (non-hermetic; for deployed-env sanity checks)
 - `make routes` — regenerate TanStack Router route tree without starting dev server
 - `make db-push` — push Prisma schema to database

@@ -51,6 +51,9 @@ playwright-report/
 apps/web/storybook-static/
 apps/web/.lost-pixel/
 
+# Vitest browser mode failure screenshots
+**/__screenshots__/
+
 # macOS (added by agent-harness)
 .AppleDB
 .AppleDesktop

@@ -1,4 +1,4 @@
-.PHONY: help setup dev db db-push db-generate db-studio db-seed check lint lint-verbose lint-force fix test test-all test-ui test-unit test-checks smoke similar clean routes storybook build-storybook visual-regression
+.PHONY: help setup dev db db-push db-generate db-studio db-seed check lint lint-verbose lint-force fix test test-all test-ui test-unit test-browser test-checks smoke similar clean routes storybook build-storybook visual-regression
 
 .DEFAULT_GOAL := help
 
@@ -82,12 +82,20 @@ fix: db-generate ## Auto-fix lint issues + typecheck
 test-unit: db-generate ## Unit tests: @project/api (Bun) + @project/web (Vitest) in parallel
 	pnpm exec turbo run test --filter=@project/api --filter=@project/web --log-order=grouped
 
+# Real-Chromium component tests. Opt-in per component via the
+# `*.browser.test.tsx` suffix. Separate from `make test-unit` — real
+# Chromium is seconds-per-test, too slow for the edit loop. Runs
+# alongside BDD in the pre-merge lane. See ADR-0007 +
+# docs/qa-strategy.md §3.4.
+test-browser: db-generate ## Real-Chromium component tests (*.browser.test.tsx)
+	pnpm --filter @project/web exec vitest run --project browser
+
 # Unit tests for the custom-check modules themselves (bun test).
 test-checks: ## Unit tests for scripts/check-*.ts modules
 	@bun test scripts/__tests__/
 
-# Run both test suites sequentially. Useful for pre-merge confidence runs.
-test-all: test-unit test-checks test ## Run unit + checks + BDD suites (pre-merge confidence check)
+# Run all test suites sequentially. Useful for pre-merge confidence runs.
+test-all: test-unit test-browser test-checks test ## Run unit + browser + checks + BDD suites (pre-merge confidence check)
 
 # BDD Tests (separate test database, dynamic port per suite via scripts/test-db.ts)
 #
