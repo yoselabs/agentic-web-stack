@@ -6,7 +6,7 @@
 // app should consume a derived `{ self, others }` shape instead.
 //
 // This check is opt-in: ships with an empty config on this template. Add
-// entries to `.perspective-boundary.json` when a domain introduces such a
+// entries to `.config/allowlists/perspective-boundary.json` when a domain introduces such a
 // field.
 //
 // Config schema:
@@ -26,7 +26,7 @@ import { join } from "node:path";
 import { type CheckResult, timeCheck } from "./checks-types.ts";
 
 const DEFAULT_ROOT = process.cwd();
-const CONFIG_FILE = ".perspective-boundary.json";
+const CONFIG_FILE = ".config/allowlists/perspective-boundary.json";
 const SCAN_ROOTS = ["apps/", "packages/"];
 
 type Config = {

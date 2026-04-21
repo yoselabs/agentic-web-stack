@@ -1,5 +1,5 @@
 // Every `apps/web/src/**/use-*.ts(x)` must have a sibling `.test.ts(x)`.
-// Ratcheted via `.test-siblings-allow.json` — pre-existing misses
+// Ratcheted via `.config/allowlists/test-siblings.json` — pre-existing misses
 // grandfathered; new hooks blocked.
 
 import { execSync } from "node:child_process";
@@ -10,7 +10,7 @@ import { type CheckResult, timeCheck } from "./checks-types.ts";
 const DEFAULT_ROOT = process.cwd();
 const HOOK_PREFIX = "use-";
 const SCAN_ROOT = "apps/web/src/";
-const ALLOWLIST = ".test-siblings-allow.json";
+const ALLOWLIST = ".config/allowlists/test-siblings.json";
 
 function loadAllowlist(root: string): Set<string> {
   const file = join(root, ALLOWLIST);

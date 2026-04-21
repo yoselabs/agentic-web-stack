@@ -16,8 +16,9 @@ function makeWorkspace(config?: { fields?: string[]; ownerFiles?: string[] }) {
   execSync("git config user.email test@example.com", { cwd: root });
   execSync("git config user.name test", { cwd: root });
   if (config) {
+    mkdirSync(join(root, ".config/allowlists"), { recursive: true });
     writeFileSync(
-      join(root, ".perspective-boundary.json"),
+      join(root, ".config/allowlists/perspective-boundary.json"),
       JSON.stringify(config),
     );
   }

@@ -4,10 +4,10 @@
     "biome.json",
     "tsconfig.base.json",
     "pnpm-workspace.yaml",
-    ".jscpd.json",
-    ".dependency-cruiser.cjs",
-    ".prismalintrc.json",
-    ".secretlintrc.json",
+    ".config/jscpd.json",
+    ".config/dependency-cruiser.cjs",
+    ".config/prismalint.json",
+    ".config/secretlint.json",
     ".secretlintignore",
     "knip.json"
   ],
@@ -112,7 +112,7 @@
       "inputs": [
         "scripts/check-duplicate-names.ts",
         "scripts/checks-types.ts",
-        ".duplicate-names-allow.json",
+        ".config/allowlists/duplicate-names.json",
         "apps/*/src/**/*.{ts,tsx}",
         "packages/*/src/**/*.{ts,tsx}",
         "!**/__tests__/**",
@@ -140,7 +140,7 @@
       "inputs": [
         "scripts/check-test-siblings.ts",
         "scripts/checks-types.ts",
-        ".test-siblings-allow.json",
+        ".config/allowlists/test-siblings.json",
         "apps/web/src/**/use-*.{ts,tsx}"
       ],
       "outputs": []
@@ -164,7 +164,7 @@
       "outputs": []
     },
     "//#lint:prisma": {
-      "inputs": ["packages/db/prisma/schema/**", ".prismalintrc.json"],
+      "inputs": ["packages/db/prisma/schema/**", ".config/prismalint.json"],
       "outputs": []
     },
     "//#lint:knip": {
@@ -183,7 +183,7 @@
     "//#lint:jscpd": {
       "inputs": [
         "**/*.{ts,tsx,js,jsx}",
-        ".jscpd.json",
+        ".config/jscpd.json",
         "!**/node_modules/**",
         "!**/__tests__/**",
         "!**/*.test.{ts,tsx}",
@@ -209,7 +209,7 @@
     "//#lint:depcruise": {
       "inputs": [
         "**/*.{ts,tsx}",
-        ".dependency-cruiser.cjs",
+        ".config/dependency-cruiser.cjs",
         "!**/node_modules/**",
         "!**/.output/**",
         "!**/generated/**"
@@ -219,7 +219,7 @@
     "//#lint:secretlint": {
       "inputs": [
         "**/*",
-        ".secretlintrc.json",
+        ".config/secretlint.json",
         ".secretlintignore",
         "!**/node_modules/**",
         "!**/.output/**",
@@ -237,7 +237,7 @@
     "//#lint:markdown": {
       "inputs": [
         "**/*.md",
-        ".markdownlint-cli2.jsonc",
+        ".config/markdownlint.jsonc",
         "!**/node_modules/**",
         "!**/dist/**",
         "!**/.output/**",
@@ -252,7 +252,7 @@
     "//#lint:links": {
       "inputs": [
         "**/*.md",
-        ".lychee.toml",
+        ".config/lychee.toml",
         "scripts/run-lychee.sh",
         "!**/node_modules/**",
         "!**/dist/**",
@@ -267,8 +267,8 @@
     "//#lint:spell": {
       "inputs": [
         "**/*.{md,ts,tsx}",
-        ".cspell.json",
-        ".cspell/**",
+        ".config/cspell.json",
+        ".config/cspell/**",
         "!**/node_modules/**",
         "!**/dist/**",
         "!**/.output/**",
@@ -319,7 +319,7 @@
       "inputs": [
         "scripts/check-scoped-landmarks.ts",
         "scripts/checks-types.ts",
-        ".scoped-landmarks-allow.json",
+        ".config/allowlists/scoped-landmarks.json",
         "e2e/steps/**/*.ts"
       ],
       "outputs": []
@@ -328,7 +328,7 @@
       "inputs": [
         "scripts/check-perspective-boundary.ts",
         "scripts/checks-types.ts",
-        ".perspective-boundary.json",
+        ".config/allowlists/perspective-boundary.json",
         "apps/**/*.{ts,tsx}",
         "packages/**/*.{ts,tsx}",
         "!**/generated/**",

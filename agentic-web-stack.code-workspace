@@ -46,7 +46,7 @@
     "explorer.fileNesting.enabled": true,
     "explorer.fileNesting.expand": false,
     "explorer.fileNesting.patterns": {
-      "package.json": "pnpm-lock.yaml, pnpm-workspace*.yaml, .npmrc, .nvmrc, .node-version, .pre-commit-config.yaml, .agent-harness.yml, turbo.json, knip.json, biome.json, .cspell.json, .cspell, .markdownlint*, .lychee.toml, .jscpd.json, .dependency-cruiser.cjs, .prismalintrc.json, .secretlintrc.json, .secretlintignore, .yamllint.yml, .duplicate-names-allow.json, .test-siblings-allow.json, .scoped-landmarks-allow.json, .perspective-boundary.json, .gitignore, .dockerignore, Makefile",
+      "package.json": "pnpm-lock.yaml, pnpm-workspace*.yaml, .npmrc, .nvmrc, .node-version, .pre-commit-config.yaml, .agent-harness.yml, turbo.json, knip.json, biome.json, .gitignore, .dockerignore, Makefile",
       "tsconfig.json": "tsconfig.*.json, tsconfig.tsbuildinfo",
       "Dockerfile": "docker-compose*.yml, .dockerignore",
       ".env": ".env.*",
@@ -173,7 +173,7 @@
     "cSpell.customDictionaries": {
       "project-words": {
         "name": "project-words",
-        "path": "${workspaceFolder:🏠 root}/.cspell/custom-words.txt",
+        "path": "${workspaceFolder:🏠 root}/.config/cspell/custom-words.txt",
         "addWords": true,
         "scope": "workspace"
       }
@@ -192,7 +192,8 @@
     // ─────────────────────────────────────────────────────────────
     "workbench.tree.indent": 12,
     "workbench.editor.labelFormat": "short",
-    "explorer.sortOrder": "type"
+    "explorer.sortOrder": "type",
+    "testing.automaticallyOpenTestResults": "neverOpen"
   },
 
   "extensions": {

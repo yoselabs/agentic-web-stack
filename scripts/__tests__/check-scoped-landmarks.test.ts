@@ -55,8 +55,9 @@ describe("runScopedLandmarks", () => {
   it("respects allowlist entry", () => {
     makeWorkspace();
     writeStep("e2e/steps/foo/foo.ts", "page.getByTestId('x');\n");
+    mkdirSync(join(root, ".config/allowlists"), { recursive: true });
     writeFileSync(
-      join(root, ".scoped-landmarks-allow.json"),
+      join(root, ".config/allowlists/scoped-landmarks.json"),
       JSON.stringify({
         allow: [
           {

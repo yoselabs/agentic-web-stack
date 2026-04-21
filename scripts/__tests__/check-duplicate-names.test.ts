@@ -73,7 +73,7 @@ describe("runDuplicateNames", () => {
     writeFile("packages/a/src/hooks.ts", "export function useTodoList() {}\n");
     writeFile("packages/b/src/hooks.ts", "export function useTodoLists() {}\n");
     writeFile(
-      ".duplicate-names-allow.json",
+      ".config/allowlists/duplicate-names.json",
       JSON.stringify({
         allow: [
           {
@@ -135,7 +135,7 @@ describe("runDuplicateNames", () => {
     root = initRepo();
     writeFile("packages/a/src/one.ts", "export function foo() {}\n");
     writeFile(
-      ".duplicate-names-allow.json",
+      ".config/allowlists/duplicate-names.json",
       JSON.stringify({ allow: [{ names: ["foo", "bar"], reason: "short" }] }),
     );
     gitAddAll();
