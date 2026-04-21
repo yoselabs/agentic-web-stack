@@ -107,6 +107,38 @@ export const appRouter = router({
 
 When a service uses `include` (e.g., `listTodoLists` with `_count`), the type flows correctly through `inferRouterOutputs`. The issue arises in `setQueryData` callbacks — see `apps/web/CLAUDE.md` for the workaround.
 
+## Parent/Child Entities in One Domain
+
+When a user-facing capability owns an aggregate + child entities (list + items,
+board + cards), keep both under one `domains/<name>/` folder and prefix each
+file with its entity name. Splitting into two domain folders fragments imports
+and cascades through every test and BDD scenario.
+
+Canonical example — `domains/todo-list/`:
+
+```
+domains/todo-list/
+  todo-list-router.ts        todo-router.ts        events.ts
+  todo-list-service.ts       todo-service.ts       authz.ts
+  todo-list-constants.ts     todo-constants.ts     user-inbox-publishers.ts
+  todo-list-http.ts          __tests__/
+```
+
+Rules:
+- Folder name matches the user-visible feature (the aggregate).
+- Prefix each file with the entity name (`todo-list-*` for the aggregate,
+  `todo-*` for children) so path + filename uniquely identify the entity.
+- Register the aggregate router in `src/router.ts` (`todoList`); child procedures
+  either live on the aggregate router or get their own (`todo: todoRouter`)
+  depending on URL shape. Append-alpha applies either way.
+- Cross-entity authz, events, user-inbox publishers live at the folder root —
+  they span both entities.
+
+This pattern stays cleanly expressible in one domain until the child entity
+grows its own lifecycle (separate CRUD UI, separate authz surface). When that
+happens, promote the child to its own `domains/<child>/` and add it to
+`check-domain-names.ts` — not before.
+
 ## Transaction Rules
 
 - **All mutations (including read-then-write):** service function is typed `Prisma.TransactionClient`. Router wraps in `db.$transaction((tx) => ...)`. The tx type documents the requirement and surfaces it in hover tooltips + code review, but **it is NOT a compile-time guarantee** — TypeScript's structural subtyping makes `PrismaClient` assignable to `Prisma.TransactionClient` (since `TransactionClient = Omit<PrismaClient, ...>`, PrismaClient has a superset of its methods). So `createTodo(ctx.db, ...)` without a `$transaction` wrap compiles. Enforcement is by convention + code review, same as before the narrow.

@@ -262,7 +262,7 @@ When an AI agent writes Gherkin or step definitions:
 
 ## Auth in Tests
 
-**Precondition auth goes through the HTTP API, not the UI.** `Given I am signed in as "X"` and `Given a user exists with email "X" and password "Y"` call Better-Auth directly (see `createUserViaApi` / `signInViaApi` in `e2e/auth-client.ts`), landing the session cookie on `page.context()`. Skipping the sign-up form is ~20× faster and immune to form-field changes (adding a username, password policy, etc.).
+**Precondition auth goes through the HTTP API, not the UI.** `Given I am signed in as "X"` and `Given a user exists with email "X" and password "Y"` call Better-Auth directly (see `createUserViaApi` / `signInViaApi` in `e2e/helpers/auth-client.ts`), landing the session cookie on `page.context()`. Skipping the sign-up form is ~20× faster and immune to form-field changes (adding a username, password policy, etc.).
 
 **Subject-under-test auth uses the real UI.** The scenarios in `auth.feature` — Sign Up, Sign In, Wrong Password, Protected Route, Sign Out — exercise the actual login form via When/Then steps. Don't move those to the API path; they're the tests that would catch a broken form.
 

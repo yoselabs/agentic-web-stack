@@ -21,6 +21,14 @@ Monorepo: TanStack Start (frontend) + Hono (API server) + tRPC + Prisma + Postgr
 
 Each directory with a CLAUDE.md has area-specific guidance. Read it before working there.
 
+## Where Does Code Go?
+
+Before writing new code, check [docs/package-taxonomy.md](docs/package-taxonomy.md)
+— a decision tree mapping "kind of code → canonical home" for every layer
+(runtime primitives, domain code, anticipated future package slots). If
+your concern isn't listed, pick the closest match and extend that package's
+README growth path rather than inventing a new home.
+
 ## Conventions
 
 Canonical cross-cutting conventions live in `docs/conventions.md`. Read

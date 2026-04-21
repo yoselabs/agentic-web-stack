@@ -13,7 +13,7 @@ import {
 import type { TRPCOptionsProxy } from "@trpc/tanstack-react-query";
 import { type ReactNode, useEffect } from "react";
 import { Toaster } from "sonner";
-import { getSession, type SessionData } from "#/shared/session";
+import { getSession, type SessionData } from "#/features/auth/session";
 import { AppNavbar } from "#/widgets/app-navbar";
 import { AppShell } from "#/widgets/app-shell";
 

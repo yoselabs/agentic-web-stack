@@ -6,7 +6,7 @@ import { env } from "@project/env/client";
 // lint error.
 //
 // This module imports env.VITE_API_URL from @project/env/client ONLY
-// — never from @project/env/server. Any file under apps/web/ that
+// — never from @project/env/server. Any consumer under apps/web/ that
 // imports from @project/env/server is a build-breaking mistake (see
 // root CLAUDE.md: SSOT + split-brain env + no-barrel rule).
 

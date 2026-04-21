@@ -1,6 +1,6 @@
 import type { TodoHttpRouter } from "@project/api/domains/todo-list/todo-http";
+import { apiClient } from "@project/http/client";
 import { hc } from "hono/client";
-import { apiClient } from "./api-client";
 
 // `apiClient.baseUrl` is the bare origin (no trailing slash, no path) per
 // `api-client.ts`. hc's first arg is the path prefix for this router and

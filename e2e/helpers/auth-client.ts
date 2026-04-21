@@ -11,7 +11,7 @@
 // exist to verify.
 
 import type { Page } from "@playwright/test";
-import { TEST_API_PORT } from "./test-env.ts";
+import { TEST_API_PORT } from "../test-env.ts";
 
 const API_URL = `http://localhost:${TEST_API_PORT}`;
 

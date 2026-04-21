@@ -3,7 +3,7 @@ import { fileURLToPath } from "node:url";
 import { expect } from "@playwright/test";
 import { createBdd } from "playwright-bdd";
 import { SHARED_PASSWORD } from "../../fixtures/credentials.ts";
-import { waitForHydration } from "../../waits.ts";
+import { waitForHydration } from "../../helpers/waits.ts";
 
 const { Given: given, When: when, Then: then } = createBdd();
 

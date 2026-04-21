@@ -34,6 +34,13 @@
 //                todo-list e2e scenarios, not a dedicated user/ e2e
 //                folder
 //                → allowed-missing: e2e-feat, e2e-steps
+//   - dashboard  frontend-only page composing auth + todo-list concerns;
+//                no backend domain, coverage lives in the domain e2e
+//                folders it composes
+//                → allowed-missing: backend, e2e-feat, e2e-steps
+//   - landing    frontend-only public landing page; no backend, no
+//                dedicated e2e (smoke-tested alongside auth)
+//                → allowed-missing: backend, e2e-feat, e2e-steps
 //
 // Rule:
 //   For each name present in any layer, it must also appear in every other
@@ -65,6 +72,8 @@ const ALLOWLIST: Record<string, Set<Layer>> = {
   admin: new Set(["frontend", "backend"]),
   "mobile-nav": new Set(["frontend", "backend"]),
   user: new Set(["e2e-feat", "e2e-steps"]),
+  dashboard: new Set(["backend", "e2e-feat", "e2e-steps"]),
+  landing: new Set(["backend", "e2e-feat", "e2e-steps"]),
 };
 
 const layerPath: Record<Layer, string> = {

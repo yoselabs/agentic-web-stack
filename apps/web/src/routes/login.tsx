@@ -1,12 +1,5 @@
-import {
-  Card,
-  CardContent,
-  CardDescription,
-  CardHeader,
-  CardTitle,
-} from "@project/ui/components/card";
-import { createFileRoute, Link, redirect } from "@tanstack/react-router";
-import { SignInForm } from "#/features/auth/sign-in-form";
+import { createFileRoute, redirect } from "@tanstack/react-router";
+import { LoginPage } from "#/features/auth/login-page";
 
 export const Route = createFileRoute("/login")({
   beforeLoad: ({ context }) => {
@@ -14,38 +7,3 @@ export const Route = createFileRoute("/login")({
   },
   component: LoginPage,
 });
-
-function LoginPage() {
-  return (
-    <main className="flex min-h-screen items-center justify-center px-4">
-      <Card className="w-full max-w-sm">
-        <CardHeader className="text-center">
-          <CardTitle className="text-2xl">Sign In</CardTitle>
-          <CardDescription>Enter your credentials to sign in</CardDescription>
-        </CardHeader>
-        <CardContent>
-          <SignInForm />
-
-          <p className="mt-4 text-center text-sm text-muted-foreground">
-            <Link
-              to={"/forgot-password" as string}
-              className="text-foreground underline underline-offset-4 hover:text-primary"
-            >
-              Forgot password?
-            </Link>
-          </p>
-
-          <p className="mt-4 text-center text-sm text-muted-foreground">
-            Don't have an account?{" "}
-            <Link
-              to="/signup"
-              className="text-foreground underline underline-offset-4 hover:text-primary"
-            >
-              Sign Up
-            </Link>
-          </p>
-        </CardContent>
-      </Card>
-    </main>
-  );
-}

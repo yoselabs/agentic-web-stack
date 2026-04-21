@@ -13,9 +13,9 @@
 
 import { describe, expect, it } from "bun:test";
 import {
+  createDerivedSource,
   type DerivedCompute,
   MockDerivedSource,
-  createDerivedSource,
 } from "../derived.js";
 
 type Status = "online" | "afk" | "offline";

@@ -35,7 +35,7 @@
       ],
       "project": ["src/**/*.{ts,tsx}", "test/**/*.{ts,tsx}"],
       "ignore": ["src/routeTree.gen.ts"],
-      "ignoreDependencies": ["@testing-library/user-event"]
+      "ignoreDependencies": ["@testing-library/user-event", "@project/query"]
     },
     "apps/server": {
       "entry": ["src/index.ts"],
@@ -71,15 +71,14 @@
         "helpers/**/*.ts",
         "steps/**/*.ts",
         "scripts/**/*.ts",
-        "test-env.ts",
-        "auth-client.ts"
+        "test-env.ts"
       ],
       "project": ["**/*.ts"],
       "ignore": [".features-gen/**", "test-results/**", "playwright-report/**"]
     }
   },
   "ignore": [
-    "apps/web/src/shared/use-optimistic-mutation.ts",
+    "packages/query/src/use-optimistic-mutation.ts",
     "packages/email/src/index.ts",
     "packages/env/src/index.ts",
     "packages/jobs/src/index.ts"
