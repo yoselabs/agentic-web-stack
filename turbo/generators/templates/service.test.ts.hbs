@@ -1,0 +1,25 @@
+/**
+ * Smoke test for the {{name}} service. Executed by `bun test` via
+ * `make test-unit` (packages/api's test runner).
+ *
+ * The scaffold asserts the module loads and the service functions are
+ * exported as callables — real behavior tests should use the shared
+ * `db` client from `@project/db` against the test-suite Postgres (see
+ * packages/api/CLAUDE.md § "Testing"). Replace this file wholesale as
+ * soon as the domain has real behavior to verify.
+ */
+import { describe, expect, it } from "bun:test";
+import {
+  create{{pascalCase name}},
+  list{{pascalCase name}}s,
+} from "../{{name}}-service.js";
+
+describe("{{name}} service (scaffold)", () => {
+  it("exports list{{pascalCase name}}s", () => {
+    expect(typeof list{{pascalCase name}}s).toBe("function");
+  });
+
+  it("exports create{{pascalCase name}}", () => {
+    expect(typeof create{{pascalCase name}}).toBe("function");
+  });
+});

@@ -1,0 +1,22 @@
+/**
+ * {{name}} domain router. Thin wiring only — Zod validation,
+ * `protectedProcedure`, and `$transaction` wraps around mutations.
+ * Business logic lives in `{{name}}-service.ts`. See
+ * packages/api/CLAUDE.md § "Architecture: Router -> Service -> Prisma".
+ */
+import { z } from "zod";
+import { protectedProcedure, router } from "../../trpc.js";
+import { create{{pascalCase name}}, list{{pascalCase name}}s } from "./{{name}}-service.js";
+
+export const {{camelCase name}}Router = router({
+  list: protectedProcedure.query(({ ctx }) => {
+    return list{{pascalCase name}}s(ctx.db, ctx.session.user.id);
+  }),
+  create: protectedProcedure
+    .input(z.object({ name: z.string().min(1) }))
+    .mutation(({ ctx, input }) => {
+      return ctx.db.$transaction((tx) =>
+        create{{pascalCase name}}(tx, ctx.session.user.id, input.name),
+      );
+    }),
+});

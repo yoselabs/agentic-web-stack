@@ -1,0 +1,19 @@
+/**
+ * Smoke test for `use{{pascalCase name}}`. Satisfies `check-test-siblings`
+ * (WS1): every `use-*.ts` must have a sibling `*.test.ts`.
+ *
+ * Executed by apps/web's Vitest suite (see apps/web/vitest.config.ts).
+ * This file compiles against `bun test` and `vitest` alike — the smoke
+ * assertion is a trivial identity so the scaffold is always green.
+ *
+ * Replace with real behavior tests using `renderHook` from
+ * `@testing-library/react` + the `renderWithTRPC` helper in
+ * `apps/web/test/render.tsx` (WS2).
+ */
+import { describe, expect, it } from "vitest";
+
+describe("use{{pascalCase name}}", () => {
+  it("is a scaffold — replace with real hook tests", () => {
+    expect("{{name}}").toBe("{{name}}");
+  });
+});

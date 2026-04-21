@@ -1,0 +1,50 @@
+/**
+ * {{pascalCase name}} feature orchestration hook.
+ *
+ * @adr NNNN — replace with the ADR that governs this feature's design
+ *             once one is written. The `check-adrs` linter (WS1) will
+ *             resolve this citation against `docs/adrs/`.
+ *
+ * Pattern: see `apps/web/CLAUDE.md` § "Hook Extraction Pattern". When this
+ * feature gains 2+ mutations or 5+ return properties, this hook becomes
+ * the orchestration seam between the route and the widgets.
+ *
+ * NOTE: imports use the `@project/api/router` subpath — NEVER the bare
+ * `@project/api` barrel (blocked by `scripts/check-no-barrel.ts`).
+ */
+import type { AppRouter } from "@project/api/router";
+import type { QueryClient } from "@tanstack/react-query";
+import type { TRPCOptionsProxy } from "@trpc/tanstack-react-query";
+import { useState } from "react";
+
+export type Use{{pascalCase name}}Result = {
+  name: string;
+  isEnabled: boolean;
+  enable: () => void;
+  disable: () => void;
+};
+
+/**
+ * Stub orchestration hook. Receives `trpc` + `queryClient` per the
+ * apps/web hook-extraction convention so the route can pass them down
+ * after calling `Route.useRouteContext()`.
+ *
+ * The parameters are currently unused — replace with real tRPC
+ * query/mutation wiring once the backend exposes procedures.
+ */
+export function use{{pascalCase name}}(
+  trpc: TRPCOptionsProxy<AppRouter>,
+  queryClient: QueryClient,
+): Use{{pascalCase name}}Result {
+  const [isEnabled, setEnabled] = useState(false);
+  // Reference the tRPC/queryClient args so `noUnusedParameters` passes.
+  // Replace with real `useQuery(trpc.{{camelCase name}}.list.queryOptions())` etc.
+  void trpc;
+  void queryClient;
+  return {
+    name: "{{name}}",
+    isEnabled,
+    enable: () => setEnabled(true),
+    disable: () => setEnabled(false),
+  };
+}
