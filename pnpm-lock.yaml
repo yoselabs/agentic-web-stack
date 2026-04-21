@@ -93,6 +93,9 @@ catalogs:
     vitest:
       specifier: ^3.2.0
       version: 3.2.4
+    vitest-browser-react:
+      specifier: ^1.0.1
+      version: 1.0.1
     ws:
       specifier: ^8.18.0
       version: 8.20.0
@@ -364,6 +367,9 @@ importers:
       vitest:
         specifier: 'catalog:'
         version: 3.2.4(@types/debug@4.1.13)(@types/node@25.6.0)(@vitest/browser@3.2.4)(happy-dom@17.6.3)(jiti@2.6.1)(lightningcss@1.32.0)(tsx@4.21.0)(yaml@2.8.3)
+      vitest-browser-react:
+        specifier: 'catalog:'
+        version: 1.0.1(@types/react-dom@19.2.3(@types/react@19.2.14))(@types/react@19.2.14)(@vitest/browser@3.2.4)(react-dom@19.2.5(react@19.2.5))(react@19.2.5)(vitest@3.2.4)
 
   apps/worker:
     dependencies:
@@ -6348,6 +6354,22 @@ packages:
       vite:
         optional: true
 
+  vitest-browser-react@1.0.1:
+    resolution: {integrity: sha512-LqiGFCdknrbMoSDWXTCTrPsED3SvdIXIgYOOZyYUNj2dkJusW2eF6NENOlBlxwq+FBQqzNK1X59b+b03pXFpAQ==}
+    engines: {node: ^18.0.0 || ^20.0.0 || >=22.0.0}
+    peerDependencies:
+      '@types/react': ^18.0.0 || ^19.0.0
+      '@types/react-dom': ^18.0.0 || ^19.0.0
+      '@vitest/browser': ^2.1.0 || ^3.0.0 || ^4.0.0-0
+      react: ^18.0.0 || ^19.0.0
+      react-dom: ^18.0.0 || ^19.0.0
+      vitest: ^2.1.0 || ^3.0.0 || ^4.0.0-0
+    peerDependenciesMeta:
+      '@types/react':
+        optional: true
+      '@types/react-dom':
+        optional: true
+
   vitest@3.2.4:
     resolution: {integrity: sha512-LUCP5ev3GURDysTWiP47wRRUpLKMOfPh+yKTx3kVIEiu5KOMeqzpnYNsKyOoVrULivR8tLcks4+lga33Whn90A==}
     engines: {node: ^18.0.0 || ^20.0.0 || >=22.0.0}
@@ -12159,6 +12181,16 @@ snapshots:
     optionalDependencies:
       vite: 8.0.8(@types/node@25.6.0)(esbuild@0.27.7)(jiti@2.6.1)(tsx@4.21.0)(yaml@2.8.3)
     optional: true
+
+  vitest-browser-react@1.0.1(@types/react-dom@19.2.3(@types/react@19.2.14))(@types/react@19.2.14)(@vitest/browser@3.2.4)(react-dom@19.2.5(react@19.2.5))(react@19.2.5)(vitest@3.2.4):
+    dependencies:
+      '@vitest/browser': 3.2.4(playwright@1.59.1)(vite@8.0.8(@types/node@25.6.0)(esbuild@0.25.12)(jiti@2.6.1)(tsx@4.21.0)(yaml@2.8.3))(vitest@3.2.4)
+      react: 19.2.5
+      react-dom: 19.2.5(react@19.2.5)
+      vitest: 3.2.4(@types/debug@4.1.13)(@types/node@25.6.0)(@vitest/browser@3.2.4)(happy-dom@17.6.3)(jiti@2.6.1)(lightningcss@1.32.0)(tsx@4.21.0)(yaml@2.8.3)
+    optionalDependencies:
+      '@types/react': 19.2.14
+      '@types/react-dom': 19.2.3(@types/react@19.2.14)
 
   vitest@3.2.4(@types/debug@4.1.13)(@types/node@25.6.0)(@vitest/browser@3.2.4)(happy-dom@17.6.3)(jiti@2.6.1)(lightningcss@1.32.0)(tsx@4.21.0)(yaml@2.8.3):
     dependencies:

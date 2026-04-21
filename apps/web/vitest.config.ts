@@ -15,15 +15,26 @@ import { defineConfig } from "vitest/config";
 //
 // See docs/adrs/0003-web-test-runner.md.
 //
-// This config declares TWO test projects that run in the same Vitest
+// This config declares THREE test projects that run in the same Vitest
 // worker pool via `test.projects`:
 //
-// 1. `unit`    — jsdom-style unit tests (`src/**/*.test.{ts,tsx}`) under happy-dom.
+// 1. `unit`     — jsdom-style unit tests (`src/**/*.test.{ts,tsx}`) under happy-dom.
 // 2. `storybook` — Storybook 9 stories executed via `@storybook/addon-vitest`.
+// 3. `browser`  — opt-in real-Chromium component tests (`src/**/*.browser.test.tsx`).
 //
-// Both run in one `make test-unit` pass. See ADR-0006 for the rationale
-// (single worker pool avoids the duplicate-infra cost of the deprecated
-// `@storybook/test-runner`).
+// `unit` + `storybook` run in one `make test-unit` pass. See ADR-0006
+// for the rationale (single worker pool avoids the duplicate-infra
+// cost of the deprecated `@storybook/test-runner`).
+//
+// `browser` is scoped out of the edit loop and runs via
+// `make test-browser`. It shares the `@vitest/browser` + `playwright`
+// chromium provider already used by the `storybook` project (WS5), but
+// uses a different include glob and a different render helper
+// (`test/browser-render.tsx` on `vitest-browser-react`) because its
+// purpose is different: checking real-browser invariants
+// (`<img>` load / `naturalWidth`, real CSS layout, clipboard, CORS)
+// rather than enumerating story states. See @adr 0007 +
+// docs/qa-strategy.md §3.4.
 
 const require = createRequire(import.meta.url);
 const tslibEsm = require.resolve("tslib/tslib.es6.mjs");
@@ -97,6 +108,41 @@ export default defineConfig({
           },
           setupFiles: ["./.storybook/vitest.setup.ts"],
           globals: false,
+        },
+      },
+      {
+        extends: true,
+        test: {
+          name: "browser",
+          // Real-Chromium component tests. Opt-in per-component via
+          // the `.browser.test.tsx` suffix (NOT a blanket replacement
+          // for the `unit` project — jsdom stays the default).
+          //
+          // Shares the same `@vitest/browser` + `playwright` chromium
+          // setup as the `storybook` project. A fork adding a
+          // component that hits real-browser behaviour (image load,
+          // CSS layout, clipboard) drops a `foo.browser.test.tsx`
+          // sibling and it lands in this project automatically.
+          browser: {
+            enabled: true,
+            provider: "playwright",
+            headless: true,
+            // biome-ignore lint/suspicious/noExplicitAny: see note on
+            // the `storybook` project above — the `instances` type
+            // lags the runtime contract on the vitest re-export.
+            instances: [{ browser: "chromium" }] as any,
+          },
+          include: ["src/**/*.browser.test.tsx"],
+          // Reuse the jsdom setup file — jest-dom matchers + RTL
+          // cleanup are safe under browser mode too. The browser
+          // render helper (`test/browser-render.tsx`) uses
+          // `vitest-browser-react`, whose `render()` registers its
+          // own cleanup; the RTL `cleanup()` call in setup.ts is a
+          // no-op when there are no RTL-rendered trees, so sharing
+          // the file costs nothing.
+          setupFiles: ["./test/setup.ts"],
+          globals: false,
+          css: false,
         },
       },
     ],

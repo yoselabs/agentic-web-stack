@@ -40,6 +40,18 @@
     {
       "names": ["useTodoLists", "useTodoListLiveUpdates"],
       "reason": "Orthogonal hooks on the same domain: useTodoLists is the CRUD orchestrator; useTodoListLiveUpdates wires realtime subscription fan-out. Different responsibilities within one feature."
+    },
+    {
+      "names": ["renderWithTRPC"],
+      "reason": "Intentional cross-project parity: test/render.tsx (jsdom unit project) and test/browser-render.tsx (chromium browser project) expose the same signature so tests port cleanly between projects. Only the environment differs. See ADR-0007."
+    },
+    {
+      "names": ["createTestQueryClient"],
+      "reason": "Intentional cross-project parity: test/render.tsx and test/browser-render.tsx ship identical per-test QueryClient factories so components behave the same under happy-dom and Chromium. See ADR-0007."
+    },
+    {
+      "names": ["QuerySeed"],
+      "reason": "Intentional cross-project parity: test/render.tsx and test/browser-render.tsx share a seed shape for tRPC-cache seeding. Keeping both local (vs extracting to a shared module) avoids importing a happy-dom-only module into the browser project. See ADR-0007."
     }
   ]
 }
