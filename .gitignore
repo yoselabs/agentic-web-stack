@@ -47,6 +47,10 @@ test-results/
 playwright-report/
 .features-gen/
 
+# Storybook + Lost Pixel
+apps/web/storybook-static/
+apps/web/.lost-pixel/
+
 # macOS (added by agent-harness)
 .AppleDB
 .AppleDesktop
