@@ -1,4 +1,4 @@
-.PHONY: help setup dev db db-push db-generate db-studio db-seed check lint lint-verbose lint-force fix test test-all test-ui test-unit test-checks smoke similar clean routes
+.PHONY: help setup dev db db-push db-generate db-studio db-seed check lint lint-verbose lint-force fix test test-all test-ui test-unit test-checks smoke similar clean routes storybook build-storybook visual-regression
 
 .DEFAULT_GOAL := help
 
@@ -118,6 +118,21 @@ smoke: ## Run @smoke-tagged BDD scenarios against BASE_URL (local by default)
 # Before creating a new function/component, check for existing reuse options.
 similar: ## Report similarly-named functions/components/hooks/types (advisory)
 	@bun scripts/find-similar.ts
+
+# Storybook + visual regression
+#
+# `make test-unit` already runs the addon-vitest suite alongside the
+# jsdom unit tests (both are projects in `apps/web/vitest.config.ts`),
+# so no separate story-test target is needed for the edit loop.
+#
+# Visual regression is out of the edit loop — see docs/qa-strategy.md
+# §3.6 and ADR-0006.
+storybook: ## Start Storybook dev server on :6006
+	pnpm --filter @project/web run storybook
+build-storybook: ## Build the static Storybook bundle (apps/web/storybook-static)
+	pnpm --filter @project/web run build-storybook
+visual-regression: build-storybook ## Visual regression via Lost Pixel against the static Storybook build
+	pnpm --filter @project/web exec lost-pixel --config-file lostpixel.config.ts
 
 # Cleanup
 clean:

@@ -30,3 +30,8 @@ catalog:
   "@testing-library/user-event": ^14.5.0
   "@testing-library/jest-dom": ^6.6.0
   "happy-dom": ^17.0.0
+  storybook: ^9.0.0
+  "@storybook/react-vite": ^9.0.0
+  "@storybook/addon-vitest": ^9.0.0
+  "@storybook/addon-a11y": ^9.0.0
+  "lost-pixel": ^3.22.0
