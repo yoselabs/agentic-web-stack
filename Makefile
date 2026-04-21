@@ -25,11 +25,11 @@ setup: ## Zero-conf: deps + Postgres + schema + hooks (runs prereq checks)
 # Regenerate route tree (no dev server needed)
 routes: ## Regenerate TanStack router route tree
 	@echo "Generating route tree..."
-	@bun scripts/generate-routes.ts
+	@bun scripts/dev/generate-routes.ts
 
 # Start both web and server
 dev: db-generate ## Start web (3000) + server (3001) in watch mode
-	@bun scripts/kill-ports.ts 3000 3001
+	@bun scripts/dev/kill-ports.ts 3000 3001
 	pnpm -w run dev
 
 # Database
@@ -91,8 +91,8 @@ test-browser: db-generate ## Real-Chromium component tests (*.browser.test.tsx)
 	pnpm --filter @project/web exec vitest run --project browser
 
 # Unit tests for the custom-check modules themselves (bun test).
-test-checks: ## Unit tests for scripts/check-*.ts modules
-	@bun test scripts/__tests__/
+test-checks: ## Unit tests for scripts/checks/check-*.ts modules
+	@bun test scripts/checks/__tests__/
 
 # Run all test suites sequentially. Useful for pre-merge confidence runs.
 test-all: test-unit test-browser test-checks test ## Run unit + browser + checks + BDD suites (pre-merge confidence check)
@@ -105,10 +105,10 @@ test-all: test-unit test-browser test-checks test ## Run unit + browser + checks
 #                 make test ARGS="--headed"
 # ARGS forwarded to `playwright test` verbatim. See `playwright test --help`.
 test: db-generate ## BDD tests (isolated test DB, builds web app). ARGS forwarded to playwright.
-	@bun scripts/kill-ports.ts --suite=e2e
+	@bun scripts/dev/kill-ports.ts --suite=e2e
 	cd e2e && pnpm exec bddgen && pnpm exec playwright test $(ARGS)
 test-ui: db-generate ## BDD tests in Playwright interactive UI mode
-	@bun scripts/kill-ports.ts --suite=e2e
+	@bun scripts/dev/kill-ports.ts --suite=e2e
 	cd e2e && pnpm exec bddgen && pnpm exec playwright test --ui $(ARGS)
 
 # Smoke subset — scenarios tagged @smoke in Gherkin. Runs against whatever
@@ -125,7 +125,7 @@ smoke: ## Run @smoke-tagged BDD scenarios against BASE_URL (local by default)
 # Advisory reuse-finder. Writes markdown to stdout + .similar-report.json.
 # Before creating a new function/component, check for existing reuse options.
 similar: ## Report similarly-named functions/components/hooks/types (advisory)
-	@bun scripts/find-similar.ts
+	@bun scripts/dev/find-similar.ts
 
 # Storybook + visual regression
 #

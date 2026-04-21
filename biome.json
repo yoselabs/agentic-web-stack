@@ -1,7 +1,7 @@
 {
   "$schema": "https://biomejs.dev/schemas/2.4.12/schema.json",
   "assist": { "actions": { "source": { "organizeImports": "on" } } },
-  "plugins": ["./scripts/grit-plugins/import-type-for-app-router.grit"],
+  "plugins": ["./scripts/checks/grit-plugins/import-type-for-app-router.grit"],
   "linter": {
     "enabled": true,
     "rules": {

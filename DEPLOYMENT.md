@@ -31,8 +31,8 @@ Postgres image creds (`POSTGRES_USER` / `POSTGRES_PASSWORD` / `POSTGRES_DB`) are
 
 ## Landmines
 
-1. **Hono must bind `0.0.0.0`.** `@hono/node-server`'s `serve()` defaults to loopback; the container is then silently unreachable externally while internal healthchecks still pass. Enforced by `scripts/check-server-bind.ts` (runs in `make lint`) — do not disable.
-2. **No `wget` / `curl` in the runtime image.** The `node:24-slim` base doesn't ship them, and neither does the `oven/bun:1-slim` final stage. Healthchecks use `bun /app/scripts/healthcheck.ts <url>` — the Dockerfile `HEALTHCHECK` and the prod compose example both follow this. Don't change it to `curl -f` on a whim.
+1. **Hono must bind `0.0.0.0`.** `@hono/node-server`'s `serve()` defaults to loopback; the container is then silently unreachable externally while internal healthchecks still pass. Enforced by `scripts/checks/check-server-bind.ts` (runs in `make lint`) — do not disable.
+2. **No `wget` / `curl` in the runtime image.** The `node:24-slim` base doesn't ship them, and neither does the `oven/bun:1-slim` final stage. Healthchecks use `bun /app/scripts/dev/healthcheck.ts <url>` — the Dockerfile `HEALTHCHECK` and the prod compose example both follow this. Don't change it to `curl -f` on a whim.
 3. **Use `pnpm exec prisma`, not `npx prisma`.** `npx` resolves packages over the network and fails with `EAI_AGAIN` on locked-down internal networks (air-gapped prod, Kubernetes with restrictive egress). Even when it works it adds cold-start latency. The `migrate` sidecar calls `pnpm --filter @project/db exec prisma db push --skip-generate`.
 4. **Cross-subdomain sessions need `AUTH_COOKIE_DOMAIN`.** If `WEB_URL=https://app.example.com` and `BETTER_AUTH_URL=https://api.example.com`, set `AUTH_COOKIE_DOMAIN=.example.com` (leading dot). Leave unset when UI and API share a host — the host-only cookie is correct then.
 5. **`BETTER_AUTH_URL` ≠ `WEB_URL`.** `BETTER_AUTH_URL` is the API origin where Better-Auth handlers live. `WEB_URL` is the UI origin used to build user-facing links in outbound email/push. They coincide in dev, diverge in prod. Don't alias them.

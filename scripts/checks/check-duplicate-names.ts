@@ -21,7 +21,7 @@
 //       Every group in `allow` must have a `reason` string (enforced).
 //
 // This check runs on pure regex extraction (fast). For richer signature-level
-// reporting, see `scripts/find-similar.ts` (ts-morph, advisory `make similar`).
+// reporting, see `scripts/dev/find-similar.ts` (ts-morph, advisory `make similar`).
 
 import { execSync } from "node:child_process";
 import { existsSync, readFileSync } from "node:fs";

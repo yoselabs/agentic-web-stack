@@ -2,7 +2,7 @@
 
 Single source of truth for test-time values: dynamic ports, container
 names, the DB URL, auth/CORS env vars, process-role env vars. Consumed by
-`scripts/kill-ports.ts`, `packages/api/scripts/test-runner.ts`,
+`scripts/dev/kill-ports.ts`, `packages/api/scripts/test-runner.ts`,
 `e2e/global-setup.ts`, `e2e/test-env.ts`, and `e2e/playwright.config.ts`.
 
 Never imported by application code (`apps/*`, `packages/api` services,
@@ -41,7 +41,7 @@ to `docker compose` — it is Node-only test tooling, not runtime code.
 ## Adding a new container service (e.g. Redis)
 
 This is a multi-file change the integrity audit
-(`scripts/check-test-infra-integrity.ts`) backs up. Touch points:
+(`scripts/checks/check-test-infra-integrity.ts`) backs up. Touch points:
 
 1. **`src/index.ts`:**
    - Add `redis: 6300` to `PROFILES.e2e`, `redis: 6400` to `PROFILES.unit`.

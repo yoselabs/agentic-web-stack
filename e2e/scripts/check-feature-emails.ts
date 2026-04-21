@@ -10,7 +10,10 @@
 
 import { readdirSync, readFileSync } from "node:fs";
 import path from "node:path";
-import { type CheckResult, timeCheck } from "../../scripts/checks-types.ts";
+import {
+  type CheckResult,
+  timeCheck,
+} from "../../scripts/checks/checks-types.ts";
 
 const FEATURES_DIR = path.resolve(import.meta.dirname, "../features");
 

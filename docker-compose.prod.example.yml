@@ -102,7 +102,7 @@ services:
     # Healthcheck uses the existing bun script from the Dockerfile HEALTHCHECK.
     # Do NOT switch to curl/wget — the node:24-slim base does not ship them.
     healthcheck:
-      test: ["CMD", "bun", "/app/scripts/healthcheck.ts", "http://127.0.0.1:3001/health"]
+      test: ["CMD", "bun", "/app/scripts/dev/healthcheck.ts", "http://127.0.0.1:3001/health"]
       interval: 30s
       timeout: 5s
       retries: 3
@@ -126,7 +126,7 @@ services:
       - app-internal
       - app-external
     healthcheck:
-      test: ["CMD", "bun", "/app/scripts/healthcheck.ts", "http://127.0.0.1:3000/health"]
+      test: ["CMD", "bun", "/app/scripts/dev/healthcheck.ts", "http://127.0.0.1:3000/health"]
       interval: 30s
       timeout: 5s
       retries: 3

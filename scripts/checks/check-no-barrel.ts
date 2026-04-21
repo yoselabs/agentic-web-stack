@@ -77,9 +77,9 @@ export function runNoBarrel(root: string = DEFAULT_ROOT): {
 
   function scanFile(file: string): void {
     const rel = relative(root, file);
-    if (rel.startsWith("scripts/grit-plugins/")) return;
-    if (rel.startsWith("scripts/__tests__/")) return;
-    if (rel === "scripts/check-no-barrel.ts") return;
+    if (rel.startsWith("scripts/checks/grit-plugins/")) return;
+    if (rel.startsWith("scripts/checks/__tests__/")) return;
+    if (rel === "scripts/checks/check-no-barrel.ts") return;
 
     const src = readFileSync(file, "utf8");
     BARREL_IMPORT_RE.lastIndex = 0;
