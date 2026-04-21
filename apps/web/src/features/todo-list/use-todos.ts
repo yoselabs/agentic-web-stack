@@ -83,7 +83,7 @@ export function useTodos(
     }),
   );
 
-  const handleSubmit = (e: React.FormEvent) => {
+  const handleSubmit: React.SubmitEventHandler<HTMLFormElement> = (e) => {
     e.preventDefault();
     if (!newTitle.trim()) return;
     createTodo.mutate({ title: newTitle.trim(), todoListId });

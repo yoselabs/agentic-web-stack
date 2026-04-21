@@ -15,7 +15,7 @@ import { signIn } from "#/features/auth/auth-client";
 // on policy. Showing "min N characters" on signin is misleading because
 // the account's existing password may have been set under different rules.
 const signinSchema = z.object({
-  email: z.string().email(),
+  email: z.email(),
   password: z.string().min(1, "Password is required"),
 });
 

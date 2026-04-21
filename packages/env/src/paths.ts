@@ -35,6 +35,11 @@ export const REPO_ROOT = findRepoRoot(dirname(fileURLToPath(import.meta.url)));
  * Use for every filesystem-path env var (`STORAGE_ROOT`, `UPLOADS_TMP`, etc.).
  * Absolute inputs pass through unchanged; relative inputs resolve against
  * the workspace root, not `process.cwd()`.
+ *
+ * Return type is inferred — Zod 4 removed `ZodEffects` and the pipe-based
+ * replacement is long to spell out. Callers pass the schema into
+ * `createEnv({ server: { X: absPath() } })` which accepts any `ZodType`,
+ * so an explicit annotation buys nothing.
  */
-export const absPath = (): z.ZodEffects<z.ZodString, string, string> =>
+export const absPath = () =>
   z.string().transform((p) => (isAbsolute(p) ? p : resolve(REPO_ROOT, p)));

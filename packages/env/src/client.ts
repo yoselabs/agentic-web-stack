@@ -20,7 +20,7 @@ const nodeEnv: Record<string, string | undefined> | undefined =
 export const env = createEnv({
   clientPrefix: "VITE_",
   client: {
-    VITE_API_URL: z.string().url().default("http://localhost:3001"),
+    VITE_API_URL: z.url().default("http://localhost:3001"),
   },
   runtimeEnv: {
     VITE_API_URL: viteEnv?.VITE_API_URL ?? nodeEnv?.VITE_API_URL,

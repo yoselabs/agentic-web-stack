@@ -15,7 +15,7 @@ import { z } from "zod";
 import { signUp } from "#/features/auth/auth-client";
 
 const signupSchema = z.object({
-  email: z.string().email(),
+  email: z.email(),
   password: z
     .string()
     .min(MIN_PASSWORD_LENGTH, `Min ${MIN_PASSWORD_LENGTH} characters`),

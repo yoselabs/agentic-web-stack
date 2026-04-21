@@ -11,24 +11,23 @@ import { z } from "zod";
 const parsedEnv = createEnv({
   server: {
     DATABASE_URL: z
-      .string()
       .url()
       .default("postgresql://postgres:postgres@localhost:5432/app"),
-    REDIS_URL: z.string().url().default("redis://localhost:6379"),
-    SMTP_URL: z.string().url().default("smtp://localhost:1025"),
-    MAILPIT_API_URL: z.string().url().default("http://localhost:8025"),
-    CORS_ORIGIN: z.string().url().default("http://localhost:3000"),
+    REDIS_URL: z.url().default("redis://localhost:6379"),
+    SMTP_URL: z.url().default("smtp://localhost:1025"),
+    MAILPIT_API_URL: z.url().default("http://localhost:8025"),
+    CORS_ORIGIN: z.url().default("http://localhost:3000"),
     BETTER_AUTH_SECRET: z
       .string()
       .min(32)
       .default("change-me-to-a-random-32-char-secret-key"),
-    BETTER_AUTH_URL: z.string().url().default("http://localhost:3001"),
+    BETTER_AUTH_URL: z.url().default("http://localhost:3001"),
     // Container-internal URL of the API server, used by the web app's
     // SSR / server-fn runtime to reach the API. In single-host dev this
     // matches VITE_API_URL. In docker demo / prod, set it to the
     // compose service DNS (e.g., http://server:3001) because the web
     // container cannot route to its own "localhost:3001".
-    SSR_API_URL: z.string().url().default("http://localhost:3001"),
+    SSR_API_URL: z.url().default("http://localhost:3001"),
     // Optional: leading dot = cross-subdomain cookie scope (e.g. ".example.com"
     // lets app.example.com and api.example.com share the session cookie).
     // Leave unset for the default host-only cookie — correct when frontend
@@ -43,7 +42,7 @@ const parsedEnv = createEnv({
     // origin where Better-Auth handlers live) and CORS_ORIGIN (the
     // allowed cross-origin policy) — even when they coincide in dev,
     // separating them keeps the intent explicit.
-    WEB_URL: z.string().url().default("http://localhost:3000"),
+    WEB_URL: z.url().default("http://localhost:3000"),
     NODE_ENV: z.enum(["development", "production"]).default("development"),
     PORT: z.coerce.number().default(3001),
     LOG_LEVEL: z

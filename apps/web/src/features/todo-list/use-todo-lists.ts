@@ -62,7 +62,7 @@ export function useTodoLists(
     }),
   );
 
-  const handleSubmit = (e: React.FormEvent) => {
+  const handleSubmit: React.SubmitEventHandler<HTMLFormElement> = (e) => {
     e.preventDefault();
     if (!newName.trim()) return;
     createTodoList.mutate({ name: newName.trim() });

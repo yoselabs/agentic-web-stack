@@ -1,4 +1,4 @@
-.PHONY: help setup dev db db-push db-generate db-studio db-seed check lint lint-verbose lint-force fix test test-all test-ui test-unit test-browser test-checks smoke similar clean routes storybook build-storybook visual-regression
+.PHONY: help setup dev db db-push db-generate db-studio db-seed check lint lint-verbose lint-force lint-deep fix test test-all test-ui test-unit test-browser test-checks smoke similar clean routes storybook build-storybook visual-regression
 
 .DEFAULT_GOAL := help
 
@@ -70,6 +70,17 @@ lint-verbose: db-generate ## Lint with full output (for debugging)
 	@pnpm exec turbo run $(TURBO_LINT_TASKS) --log-order=grouped
 lint-force: db-generate ## Bypass turbo cache, force a fresh run
 	@pnpm exec turbo run $(TURBO_LINT_TASKS) --output-logs=errors-only --log-order=grouped --force
+
+# Deep-scan lint — typed-linting rules from ESLint / typescript-eslint that
+# Biome doesn't have parity for yet. Runs on-demand (not in make lint, not in
+# pre-commit); typed linting needs an 8GB heap and 15-20s on our tree.
+# Today's rule set:
+# - @typescript-eslint/no-deprecated — full coverage of deprecated call /
+#   member-access usage (Biome's noDeprecatedImports catches import sites only).
+# Add more cherry-picked typed rules in eslint.config.ts as future gaps
+# appear — this target is the carrier.
+lint-deep: db-generate ## Deep-scan lint (typed-linting; slower, on-demand)
+	@NODE_OPTIONS="--max-old-space-size=8192" pnpm exec eslint .
 
 fix: db-generate ## Auto-fix lint issues + typecheck
 	@agent-harness fix

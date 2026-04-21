@@ -4,7 +4,7 @@ import { z } from "zod";
 import { authClient } from "./auth-client";
 
 const forgotPasswordSchema = z.object({
-  email: z.string().email("Please enter a valid email"),
+  email: z.email("Please enter a valid email"),
 });
 
 export function useForgotPassword() {
