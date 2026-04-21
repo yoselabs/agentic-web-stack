@@ -3,7 +3,7 @@ title: "ADR-0003 — Web test runner"
 status: accepted
 date: 2026-04-21
 deciders: [denis]
-verified_by: [apps/web/src/harness.smoke.test.tsx]
+verified_by: [apps/web/test/harness.smoke.test.tsx]
 ---
 
 # ADR-0003 — Web Test Runner
@@ -121,6 +121,6 @@ benchmark numbers.
 - `apps/web/test/setup.ts` — RTL setup + cleanup.
 - `apps/web/test/render.tsx` — `renderWithTRPC` helper.
 - `apps/web/test/time.ts` — fake-timers harness.
-- `apps/web/src/harness.smoke.test.tsx` — verifies the harness loads
+- `apps/web/test/harness.smoke.test.tsx` — verifies the harness loads
   (the `verified_by` pointer above).
 - Spec: `docs/superpowers/specs/2026-04-21-template-prevention-foundation-design.md` §4 WS2.
