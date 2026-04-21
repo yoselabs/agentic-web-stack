@@ -123,6 +123,46 @@
       ],
       "outputs": []
     },
+    "//#lint:check:no-cwd": {
+      "inputs": [
+        "scripts/check-no-cwd.ts",
+        "scripts/checks-types.ts",
+        "apps/*/src/**/*.{ts,tsx}",
+        "packages/*/src/**/*.{ts,tsx}",
+        "e2e/**/*.{ts,tsx}",
+        "!**/__tests__/**",
+        "!**/*.test.{ts,tsx}",
+        "!**/generated/**"
+      ],
+      "outputs": []
+    },
+    "//#lint:check:test-siblings": {
+      "inputs": [
+        "scripts/check-test-siblings.ts",
+        "scripts/checks-types.ts",
+        ".test-siblings-allow.json",
+        "apps/web/src/**/use-*.{ts,tsx}"
+      ],
+      "outputs": []
+    },
+    "//#lint:check:stories-siblings": {
+      "inputs": [
+        "scripts/check-stories-siblings.ts",
+        "scripts/checks-types.ts",
+        "apps/web/src/widgets/**/*.tsx"
+      ],
+      "outputs": []
+    },
+    "//#lint:check:env-example": {
+      "inputs": [
+        "scripts/check-env-example.ts",
+        "scripts/checks-types.ts",
+        "packages/env/src/server.ts",
+        "packages/env/src/client.ts",
+        ".env.example"
+      ],
+      "outputs": []
+    },
     "//#lint:prisma": {
       "inputs": ["packages/db/prisma/schema/**", ".prismalintrc.json"],
       "outputs": []

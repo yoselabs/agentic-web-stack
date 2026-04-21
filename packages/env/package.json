@@ -9,6 +9,9 @@
     },
     "./client": {
       "default": "./src/client.ts"
+    },
+    "./paths": {
+      "default": "./src/paths.ts"
     }
   },
   "dependencies": {

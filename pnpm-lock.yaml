@@ -568,6 +568,9 @@ importers:
 
   packages/test-infra:
     devDependencies:
+      '@project/db':
+        specifier: workspace:*
+        version: link:../db
       '@types/node':
         specifier: 'catalog:'
         version: 25.6.0
