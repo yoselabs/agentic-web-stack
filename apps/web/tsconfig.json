@@ -5,7 +5,9 @@
   "compilerOptions": {
     "target": "ES2022",
     "jsx": "react-jsx",
-    "baseUrl": ".",
+    // `baseUrl` is deprecated in TS 6 and removed in TS 7. Dropping it —
+    // `paths` values are relative to the tsconfig's location, which gives
+    // the same resolution for our `#/*` alias.
     "paths": {
       "#/*": ["./src/*"]
     },
