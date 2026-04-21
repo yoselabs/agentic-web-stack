@@ -175,6 +175,7 @@ Workstreams
 XADD
 XRANGE
 XREAD
+evals
 lostpixel
 Storycap
 yamllint
