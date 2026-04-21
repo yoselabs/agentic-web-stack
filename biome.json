@@ -7,7 +7,16 @@
     "rules": {
       "recommended": true,
       "nursery": {
-        "noFloatingPromises": "error"
+        "noFloatingPromises": "error",
+        "useExhaustiveSwitchCases": "warn",
+        "useExplicitType": "warn",
+        "useSortedClasses": "warn"
+      },
+      "complexity": {
+        "noUselessUndefined": "warn"
+      },
+      "correctness": {
+        "noUnusedFunctionParameters": "warn"
       },
       "performance": {
         "noBarrelFile": "error",
