@@ -38,6 +38,24 @@ Turn the prevention-stack handover (18 decisions from `a2sdlc-demo3`) into one i
 | 2 | `derived.ts` client primitive | stub + document | `packages/realtime/src/derived.ts` with unit tests; no call sites |
 | 16 | Signed-URL attachments | document | `DEPLOYMENT.md` + `docs/conventions.md` |
 
+### 2.1 Additional linters (net-new; not in handover)
+
+Surveyed gaps in current linter coverage. Each fits Pattern A (one root script + one turbo task with narrow inputs + Makefile token; zero per-package edits).
+
+| Area | Tool | Verdict | Mechanism |
+|---|---|---|---|
+| Markdown (CLAUDE.md × 7, ADRs, specs, DEPLOYMENT.md, README) | `markdownlint-cli2` | ship | `//#lint:markdown` turbo task, narrow inputs `**/*.md` |
+| Link rot across docs | `lychee` | ship | `//#lint:links` turbo task, inputs `**/*.md` |
+| Spelling in docs + identifiers | `cspell` | ship | `//#lint:spell` turbo task; repo custom-words dict under `.cspell/` |
+| Shell scripts | `shellcheck` | ship | `//#lint:shell` turbo task; inputs `**/*.sh`; WS3 `turbo gen` templates will multiply .sh surface |
+| `.env.example` / Zod schema drift | custom script | ship | `scripts/check-env-example.ts` parses Zod object in `packages/env/src/server.ts`, diffs against `.env.example` |
+| Biome nursery rule expansion | config-only | ship | enable `useExhaustiveSwitchCases`, `useExplicitType`, `useSortedClasses`, `noUselessUndefined`, `noUnusedFunctionParameters`. No new task, tightens existing `lint:biome` |
+| Type coverage % | — | **skip** | Biome `noExplicitAny` (recommended) + `useExplicitType` (nursery) + strict `tsc` already give the ratchet. `type-coverage` only helps when `any` is tolerated. |
+| Tailwind CSS class linting | — | **skip** | Biome v2 `tailwindDirectives: true` parser + `useSortedClasses` nursery rule cover the Prettier-tailwindcss use case. Stylelint redundant unless CSS grows beyond utility classes. |
+| Commit message format | — | **skip** | Overhead for a template without a release-notes pipeline. |
+| Bundle size / size-limit | — | **skip** | Meaningful for a deployed app, not a template. |
+| License compliance | — | **skip** | No third-party SaaS ship story for this template. |
+
 **Biome translation rule (applies to #9, #15):** attempt the rule as a Biome Grit plugin under `scripts/grit-plugins/*.grit`. If Grit cannot express the pattern (e.g., cross-statement context, whole-file absence checks), fall back to a `scripts/check-*.ts` with narrow turbo inputs. Both mechanisms already have CI wiring and fixture-test patterns in this repo.
 
 ## 3. Architecture — where things land
@@ -72,8 +90,15 @@ scripts/
   lint-state-machines.ts                # WS1
   check-pitch-coverage.ts               # WS1
   check-no-cwd.ts                       # WS1
+  check-env-example.ts                  # WS1  (Zod schema ↔ .env.example drift)
   check-scoped-landmarks.ts             # WS1  (only if Grit falls back)
   check-perspective-boundary.ts         # WS1  (only if Grit falls back)
+
+.cspell/
+  custom-words.txt                      # WS1  (seeded dictionary)
+.cspell.json                            # WS1
+.markdownlint-cli2.jsonc                # WS1
+.lychee.toml                            # WS1
   grit-plugins/
     scoped-landmark-queries.grit        # WS1  (primary)
     perspective-boundary.grit           # WS1  (primary)
@@ -105,7 +130,7 @@ One subagent per check, all parallel. Each check follows the same template (see 
 
 **Checks:**
 
-- **`absPath()` + `process.cwd()` ban (#18)** — `packages/env/src/paths.ts` exports `absPath()` Zod helper that resolves relative paths against the nearest `pnpm-workspace.yaml` (discovered once at import time). Existing path-valued env vars in `packages/env/src/server.ts` migrate to `absPath()`. `scripts/check-no-cwd.ts` greps for `process.cwd()` in non-`scripts/` source and fails. Exempt paths: `scripts/**`, `packages/env/src/paths.ts` itself.
+- **`absPath()` + `process.cwd()` ban (#18)** — `packages/env/src/paths.ts` exports `absPath()` Zod helper. Semantics: `.transform((p) => isAbsolute(p) ? p : resolve(REPO_ROOT, p))` only. **No `.refine(existsSync)` at parse time** — env validation must be pure (no filesystem I/O); a missing directory is an application-level concern surfaced on first use, not a boot-time validation error. `REPO_ROOT` is discovered once at module load via `packageDirectorySync({ cwd: import.meta.dirname })`. Existing path-valued env vars in `packages/env/src/server.ts` migrate to `absPath()`. `scripts/check-no-cwd.ts` greps for `process.cwd()` in non-`scripts/` source and fails. Exempt paths: `scripts/**`, `packages/env/src/paths.ts` itself.
 - **`check-test-siblings` (#10a)** — every `apps/web/src/**/use-*.ts(x)` (excluding `.test.*`, `.stories.*`) must have a sibling `.test.ts(x)`. Turbo inputs: `apps/web/src/**/use-*.{ts,tsx}`.
 - **`check-stories-siblings` (#10b)** — every `apps/web/src/widgets/**/[name].tsx` (excluding index/test/story) must have a sibling `[name].stories.tsx`. Turbo inputs: `apps/web/src/widgets/**/*.{ts,tsx}`. Check is inert until WS5 lands (no widgets break today); ships ready to fire.
 - **`check-adrs` (#11)** — MADR front-matter parser. For each `docs/adrs/*.md` with `status: accepted`: require ≥1 `verified_by:` file; each file must exist AND contain `ADR-NNNN` or `@adr NNNN`. Bidirectional: every `@adr NNNN` in source must resolve to an existing ADR. Uses `gray-matter`.
@@ -114,6 +139,15 @@ One subagent per check, all parallel. Each check follows the same template (see 
 - **`test-infra/fixtures` subpath (#6)** — add `./fixtures` subpath to `packages/test-infra/package.json` exports. Seed with `users.ts` (one `seedUser(db, email)` helper). Document contract: fixtures take `db` as parameter, never read a module-level client. Not a barrel — subpath exports only.
 - **Grit: `perspective-boundary.grit` (#9)** — Grit pattern flagging `$row.$field` accesses where `$field` is configurable per-project. Ships unconfigured in this template (no domain has a "self-varying" field yet); the plugin is wired with an empty ruleset, and the companion doc in `docs/conventions.md` explains how to opt in. If Grit cannot express per-file exemption cleanly, ship `scripts/check-perspective-boundary.ts` instead, reading config from `.perspective-boundary.json`.
 - **Grit: `scoped-landmark-queries.grit` (#15)** — Grit pattern flagging `page.getByTestId(...)`, `page.getByText(...)`, `page.getByRole(...)` at the top level of `e2e/steps/**/*.ts`, exempted by a preceding line `// placement-agnostic:`. If Grit cannot match the "preceding comment" exemption or "top-level call" context, fall back to `scripts/check-scoped-landmarks.ts` doing regex extraction with a 3-line-above comment scan.
+
+**New linters (§2.1):**
+
+- **`markdownlint-cli2`** — root config `.markdownlint-cli2.jsonc` tuned for this repo (allow long lines in tables, require blank-line-around-headings). Turbo task `//#lint:markdown` with inputs `**/*.md`.
+- **`lychee`** — root config `.lychee.toml` with `cache = true`, `max_concurrency = 8`, `exclude = ["^https://localhost"]`. CI-friendly (no GitHub rate-limit): pass `--github-token` from `GITHUB_TOKEN` env. Turbo task `//#lint:links`.
+- **`cspell`** — `.cspell.json` extends the default en_US dict + local `.cspell/custom-words.txt` (project-specific: `bullmq`, `dokploy`, `traefik`, `shadcn`, `tanstack`, `trpc`, etc.). Turbo task `//#lint:spell` with inputs `**/*.{md,ts,tsx}`.
+- **`shellcheck`** — turbo task `//#lint:shell` with inputs `**/*.sh`. Currently covers only `scripts/run-actionlint.sh`; WS3 templates will expand surface.
+- **`check-env-example.ts`** — parses the Zod object literal in `packages/env/src/server.ts` (AST via `ts-morph`, reuse of `scripts/find-similar.ts` pattern), enumerates its keys, diffs against `.env.example` keys. Fails on drift in either direction. Narrow inputs: the two files.
+- **Biome nursery rule expansion** — `biome.json` enables `useExhaustiveSwitchCases`, `useExplicitType`, `useSortedClasses`, `noUselessUndefined`, `noUnusedFunctionParameters`. Config-only; existing `//#lint:biome` task inherits. Ship with `suggestion` severity for one commit, then promote to `error` after fixing any incidental hits.
 
 **Grit probe step (must happen first in WS1):** before writing either plugin, a subagent builds a one-file Grit prototype for each rule and verifies it matches/misses the intended fixture. If the prototype fails, the workstream switches that item to a script. Document the decision in a short note appended to this spec.
 
@@ -198,6 +232,9 @@ After all seven workstreams land, these are true on `main`:
 14. `packages/realtime/src/derived.ts` has unit tests; no consumer wires it yet.
 15. `docs/conventions.md` has sections for perspective shape, client-derived state, cross-origin media, BDD placement scoping.
 16. Three new ADRs exist: web-test-runner (#3), ui-shell-slots (#13), env-path-anchoring (#18) — each with `verified_by:` populated.
+17. `make lint` fails on broken Markdown (markdownlint rules), broken links (lychee), unknown words outside the cspell dict, shellcheck violations in `*.sh`.
+18. `make lint` fails on `.env.example` keys that drift from the Zod schema in `packages/env/src/server.ts` (in either direction).
+19. Biome runs with the expanded nursery rule set (`useExhaustiveSwitchCases`, `useExplicitType`, `useSortedClasses`, `noUselessUndefined`, `noUnusedFunctionParameters`) at `error` severity.
 
 Each acceptance criterion maps to exactly one workstream (or to WS1 as a single unified "guards" workstream).
 
@@ -228,7 +265,7 @@ WS4 subagent brief: confined to `apps/web/src/widgets/{navbar,app-shell,sidebar}
 
 - WS5 / WS6 version compatibility: Storybook 9 + addon-vitest + Vitest 3 + React 19 — confirm the matrix at install time; downgrade one version if a peer-dep break surfaces. Default to the catalog versions in the handover.
 - Grit expressiveness for WS1's two Grit items: verified only at implementation time by the probe step. Spec permits fallback without re-review.
-- Should `check-stories-siblings` also cover `apps/web/src/features/**/*-panel.tsx`? Current scope: widgets only. Features can opt in later.
+- ~~Should `check-stories-siblings` also cover `apps/web/src/features/**/*-panel.tsx`?~~ **Decided: widgets only.** Feature files are often routes + hooks + wiring with no standalone rendered surface; forcing stories there generates low-signal noise. If a feature introduces a renderable panel, the convention is to extract it into `apps/web/src/widgets/<name>/` — which the check already covers. Revisit only if we see widgets under-used.
 
 ## 9. References
 

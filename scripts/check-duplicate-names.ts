@@ -118,10 +118,15 @@ function extractItems(path: string, src: string): Item[] {
     /\bexport\s+(?:async\s+)?function\s+([A-Za-z_$][\w$]*)/g,
     classifyName,
   );
+  pushMatch(
+    /\bexport\s+default\s+(?:async\s+)?function\s+([A-Za-z_$][\w$]*)/g,
+    classifyName,
+  );
   pushMatch(/\bexport\s+const\s+([A-Za-z_$][\w$]*)\s*=/g, classifyName);
   pushMatch(/\bexport\s+type\s+([A-Za-z_$][\w$]*)/g, () => "type");
   pushMatch(/\bexport\s+interface\s+([A-Za-z_$][\w$]*)/g, () => "type");
   pushMatch(/\bexport\s+class\s+([A-Za-z_$][\w$]*)/g, () => "class");
+  pushMatch(/\bexport\s+default\s+class\s+([A-Za-z_$][\w$]*)/g, () => "class");
   return out;
 }
 

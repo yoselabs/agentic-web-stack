@@ -121,6 +121,16 @@ describe("runDuplicateNames", () => {
     expect(res.hard).toEqual([]);
   });
 
+  it("detects `export default function` collisions across files", () => {
+    root = initRepo();
+    writeFile("packages/a/src/page.ts", "export default function Page() {}\n");
+    writeFile("packages/b/src/page.ts", "export default function Page() {}\n");
+    gitAddAll();
+    const res = runDuplicateNames(root);
+    expect(res.hard.length).toBe(1);
+    expect(res.hard[0]).toMatch(/EXACT-NAME COLLISION: "Page"/);
+  });
+
   it("throws if allowlist entry lacks a reason of >= 10 chars", () => {
     root = initRepo();
     writeFile("packages/a/src/one.ts", "export function foo() {}\n");
