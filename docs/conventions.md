@@ -167,7 +167,7 @@ per domain and commit.
 clients compute locally and the server must not return for self) is
 guarded by a Grit rule / `check-perspective-boundary.ts` fallback that
 flags `$row.$field` accesses outside the owning hook. Configure per
-domain via `.perspective-boundary.json` — see the next section.
+domain via `.config/allowlists/perspective-boundary.json` — see the next section.
 
 **Tradeoff.** List-rendering code must merge `self` back in for sorted
 display. Do it once per domain.
@@ -212,7 +212,7 @@ field in the repo-root config so the lint rule flags cross-boundary
 access:
 
 ```json
-// .perspective-boundary.json
+// .config/allowlists/perspective-boundary.json
 {
   "rules": [
     {

@@ -1,6 +1,6 @@
 // Test infrastructure: deterministic port/container derivation per worktree,
 // Docker Postgres lifecycle, Prisma schema push. Consumed by:
-// - scripts/kill-ports.ts (derives ports to kill before a test run)
+// - scripts/dev/kill-ports.ts (derives ports to kill before a test run)
 // - packages/api/scripts/test-runner.ts (boots unit suite DB + runs bun test)
 // - e2e/global-setup.ts (boots e2e suite DB before Playwright)
 // - e2e/test-env.ts (re-exports named fields for Playwright config)
@@ -65,7 +65,7 @@ const PROFILES = {
 //
 // Adding a new container service = one entry here + one column in PROFILES
 // above + compose blocks + Zod schema entry in @project/env/server. The
-// `scripts/check-test-infra-integrity.ts` audit cross-checks all three.
+// `packages/lint/src/check-test-infra-integrity.ts` audit cross-checks all three.
 export const CONTAINER_SERVICES = {
   db: {
     envVar: "DATABASE_URL",

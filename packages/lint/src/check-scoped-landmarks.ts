@@ -21,7 +21,7 @@ import { type CheckResult, timeCheck } from "./checks-types.ts";
 
 const DEFAULT_ROOT = process.cwd();
 const SCAN_GLOB = "e2e/steps/**/*.ts";
-const ALLOWLIST = ".scoped-landmarks-allow.json";
+const ALLOWLIST = ".config/allowlists/scoped-landmarks.json";
 
 type AllowEntry = { path: string; reason: string };
 

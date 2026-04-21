@@ -1,12 +1,12 @@
 // Promotes an existing user to role="admin" by email.
-// Usage: bun run scripts/seed-admin.ts admin@example.com
+// Usage: bun run scripts/seed/seed-admin.ts admin@example.com
 
 import { db } from "@project/db";
 
 async function main() {
   const email = process.argv[2];
   if (!email) {
-    console.error("Usage: bun run scripts/seed-admin.ts <email>");
+    console.error("Usage: bun run scripts/seed/seed-admin.ts <email>");
     process.exit(1);
   }
 

@@ -1,5 +1,5 @@
-// Ban `process.cwd()` outside `scripts/` and the two infra modules that
-// legitimately need it.
+// Ban `process.cwd()` outside `scripts/`, `packages/lint/` (the lint
+// tooling package), and the two infra modules that legitimately need it.
 //
 // Motivating bug (inherited from prevention-stack handover): env vars with
 // relative paths silently resolved against `process.cwd()`, which varied
@@ -15,6 +15,7 @@ const DEFAULT_ROOT = process.cwd();
 const SCAN_ROOTS = ["apps/", "packages/", "e2e/"];
 const EXEMPT_PATTERNS: RegExp[] = [
   /^scripts\//,
+  /^packages\/lint\//,
   /^packages\/env\/src\/paths\.ts$/,
   /^packages\/test-infra\//,
   /\/__tests__\//,

@@ -81,7 +81,7 @@ WORKDIR /app
 # Compose services set PORT only; shell-form CMD expands it at container runtime.
 HEALTHCHECK --interval=30s --timeout=5s --retries=3 \
             --start-period=30s --start-interval=1s \
-            CMD bun /app/scripts/healthcheck.ts "http://127.0.0.1:${PORT}/health"
+            CMD bun /app/scripts/dev/healthcheck.ts "http://127.0.0.1:${PORT}/health"
 
 # Start from the prod-only workspace (correct symlink tree, minimal deps).
 COPY --from=prod-deps /app ./

@@ -9,7 +9,7 @@
 //   - Markdown summary on stdout
 //   - .similar-report.json at repo root (gitignored)
 //
-// Invocation: `make similar` → `bun scripts/find-similar.ts`.
+// Invocation: `make similar` → `bun scripts/dev/find-similar.ts`.
 // Flags: --json (suppress markdown), --markdown (suppress json). Default: both.
 //
 // Advisory-only — always exits 0.

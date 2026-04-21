@@ -16,12 +16,12 @@
 //     - Similar type / interface clusters.
 //
 //   ESCAPE HATCH:
-//     - `.duplicate-names-allow.json` at repo root. Shape:
+//     - `.config/allowlists/duplicate-names.json` at repo root. Shape:
 //         { "allow": [ { "names": ["A","B"], "reason": "why this is OK" } ] }
 //       Every group in `allow` must have a `reason` string (enforced).
 //
 // This check runs on pure regex extraction (fast). For richer signature-level
-// reporting, see `scripts/find-similar.ts` (ts-morph, advisory `make similar`).
+// reporting, see `scripts/dev/find-similar.ts` (ts-morph, advisory `make similar`).
 
 import { execSync } from "node:child_process";
 import { existsSync, readFileSync } from "node:fs";
@@ -162,7 +162,7 @@ function loadAllFiles(root: string): Item[] {
 }
 
 function loadAllowlist(root: string): Set<string> {
-  const file = join(root, ".duplicate-names-allow.json");
+  const file = join(root, ".config/allowlists/duplicate-names.json");
   if (!existsSync(file)) return new Set();
   const raw = JSON.parse(readFileSync(file, "utf8")) as {
     allow?: AllowlistEntry[];
@@ -171,7 +171,7 @@ function loadAllowlist(root: string): Set<string> {
   for (const entry of raw.allow ?? []) {
     if (!entry.reason || entry.reason.trim().length < 10) {
       throw new Error(
-        `.duplicate-names-allow.json: every entry needs a \`reason\` of >= 10 chars. Offending entry: ${JSON.stringify(entry)}`,
+        `.config/allowlists/duplicate-names.json: every entry needs a \`reason\` of >= 10 chars. Offending entry: ${JSON.stringify(entry)}`,
       );
     }
     // Canonicalize as sorted-name set → one key per group.
@@ -211,7 +211,7 @@ export function runDuplicateNames(root: string = DEFAULT_ROOT): {
     const name = key.split("::")[1] ?? "";
     if (allowlist.has(groupKey([name]))) continue;
     hard.push(
-      `EXACT-NAME COLLISION: "${name}" (${items[0]?.kind}) declared in ${distinctFiles.size} files:\n    ${items.map((i) => `${i.path}:${i.line}`).join("\n    ")}\n  FIX: either rename one, consolidate the implementations, or add to .duplicate-names-allow.json with a reason.`,
+      `EXACT-NAME COLLISION: "${name}" (${items[0]?.kind}) declared in ${distinctFiles.size} files:\n    ${items.map((i) => `${i.path}:${i.line}`).join("\n    ")}\n  FIX: either rename one, consolidate the implementations, or add to .config/allowlists/duplicate-names.json with a reason.`,
     );
   }
 
@@ -246,7 +246,7 @@ export function runDuplicateNames(root: string = DEFAULT_ROOT): {
     if (seenGroups.has(gk)) continue;
     seenGroups.add(gk);
     if (allowlist.has(gk)) continue;
-    const message = `SIMILAR-NAME GROUP (${a.kind}, JW >= ${SIMILARITY_THRESHOLD}):\n    ${group.map((g) => `${g.name}  ${g.path}:${g.line}`).join("\n    ")}\n  FIX: rename to distinguish intent, or add to .duplicate-names-allow.json with a reason.`;
+    const message = `SIMILAR-NAME GROUP (${a.kind}, JW >= ${SIMILARITY_THRESHOLD}):\n    ${group.map((g) => `${g.name}  ${g.path}:${g.line}`).join("\n    ")}\n  FIX: rename to distinguish intent, or add to .config/allowlists/duplicate-names.json with a reason.`;
     if (a.kind === "type" || a.kind === "class") {
       soft.push(message);
     } else {

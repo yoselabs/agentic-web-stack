@@ -21,6 +21,12 @@ catalogs:
     '@casl/react':
       specifier: ^5.0.0
       version: 5.0.1
+    '@cucumber/gherkin':
+      specifier: ^39.0.0
+      version: 39.0.0
+    '@cucumber/messages':
+      specifier: ^32.3.1
+      version: 32.3.1
     '@hono/node-ws':
       specifier: ^1.1.1
       version: 1.3.0
@@ -63,6 +69,9 @@ catalogs:
     bullmq:
       specifier: ^5.28.0
       version: 5.74.1
+    gray-matter:
+      specifier: ^4.0.3
+      version: 4.0.3
     happy-dom:
       specifier: ^17.0.0
       version: 17.6.3
@@ -110,12 +119,6 @@ importers:
       '@biomejs/biome':
         specifier: ^2.4.12
         version: 2.4.12
-      '@cucumber/gherkin':
-        specifier: ^39.0.0
-        version: 39.0.0
-      '@cucumber/messages':
-        specifier: ^32.3.1
-        version: 32.3.1
       '@project/auth':
         specifier: workspace:*
         version: link:packages/auth
@@ -140,9 +143,6 @@ importers:
       dependency-cruiser:
         specifier: ^17.3.10
         version: 17.3.10
-      gray-matter:
-        specifier: ^4.0.3
-        version: 4.0.3
       jscpd:
         specifier: ^4.0.9
         version: 4.0.9
@@ -419,6 +419,9 @@ importers:
       '@playwright/test':
         specifier: ^1.52.0
         version: 1.59.1
+      '@project/lint':
+        specifier: workspace:*
+        version: link:../packages/lint
       '@project/test-infra':
         specifier: workspace:*
         version: link:../packages/test-infra
@@ -581,6 +584,28 @@ importers:
       ioredis:
         specifier: 'catalog:'
         version: 5.10.1
+    devDependencies:
+      '@types/node':
+        specifier: 'catalog:'
+        version: 25.6.0
+      typescript:
+        specifier: 'catalog:'
+        version: 5.9.3
+
+  packages/lint:
+    dependencies:
+      '@cucumber/gherkin':
+        specifier: 'catalog:'
+        version: 39.0.0
+      '@cucumber/messages':
+        specifier: 'catalog:'
+        version: 32.3.1
+      gray-matter:
+        specifier: 'catalog:'
+        version: 4.0.3
+      ts-morph:
+        specifier: 'catalog:'
+        version: 28.0.0
     devDependencies:
       '@types/node':
         specifier: 'catalog:'

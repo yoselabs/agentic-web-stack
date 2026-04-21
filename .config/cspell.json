@@ -5,7 +5,7 @@
   "dictionaryDefinitions": [
     {
       "name": "project-words",
-      "path": "./.cspell/custom-words.txt",
+      "path": "./cspell/custom-words.txt",
       "addWords": true
     }
   ],

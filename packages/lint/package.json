@@ -1,0 +1,72 @@
+{
+  "name": "@project/lint",
+  "version": "0.0.0",
+  "private": true,
+  "type": "module",
+  "exports": {
+    "./checks/adrs": {
+      "default": "./src/check-adrs.ts"
+    },
+    "./checks/domain-names": {
+      "default": "./src/check-domain-names.ts"
+    },
+    "./checks/duplicate-names": {
+      "default": "./src/check-duplicate-names.ts"
+    },
+    "./checks/env-example": {
+      "default": "./src/check-env-example.ts"
+    },
+    "./checks/no-barrel": {
+      "default": "./src/check-no-barrel.ts"
+    },
+    "./checks/no-cwd": {
+      "default": "./src/check-no-cwd.ts"
+    },
+    "./checks/perspective-boundary": {
+      "default": "./src/check-perspective-boundary.ts"
+    },
+    "./checks/pitch-coverage": {
+      "default": "./src/check-pitch-coverage.ts"
+    },
+    "./checks/scoped-landmarks": {
+      "default": "./src/check-scoped-landmarks.ts"
+    },
+    "./checks/server-bind": {
+      "default": "./src/check-server-bind.ts"
+    },
+    "./checks/stories-siblings": {
+      "default": "./src/check-stories-siblings.ts"
+    },
+    "./checks/test-infra-integrity": {
+      "default": "./src/check-test-infra-integrity.ts"
+    },
+    "./checks/test-siblings": {
+      "default": "./src/check-test-siblings.ts"
+    },
+    "./checks/trpc-patterns": {
+      "default": "./src/check-trpc-patterns.ts"
+    },
+    "./checks/state-machines": {
+      "default": "./src/lint-state-machines.ts"
+    },
+    "./checks-types": {
+      "default": "./src/checks-types.ts"
+    }
+  },
+  "bin": {
+    "lint-check": "./bin/lint.ts"
+  },
+  "scripts": {
+    "test": "bun test src/__tests__/"
+  },
+  "dependencies": {
+    "@cucumber/gherkin": "catalog:",
+    "@cucumber/messages": "catalog:",
+    "gray-matter": "catalog:",
+    "ts-morph": "catalog:"
+  },
+  "devDependencies": {
+    "@types/node": "catalog:",
+    "typescript": "catalog:"
+  }
+}

@@ -54,7 +54,7 @@ async function main() {
   console.log(`  Password: ${SEED_USER.password}`);
 }
 
-// Only run the seed when invoked as a script (`bun scripts/seed.ts`), not
+// Only run the seed when invoked as a script (`bun scripts/seed/seed.ts`), not
 // when imported as a module (e.g. e2e/fixtures/credentials.ts reaches in
 // for the constant exports above). import.meta.main is Bun-native.
 if (import.meta.main) {

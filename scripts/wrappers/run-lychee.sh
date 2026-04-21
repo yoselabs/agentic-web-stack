@@ -6,7 +6,7 @@
 #   brew install lychee                    # macOS
 #   cargo install lychee                   # from source
 #
-# See .lychee.toml for config.
+# See .config/lychee.toml for config.
 
 set -euo pipefail
 
@@ -19,7 +19,7 @@ if ! command -v lychee >/dev/null 2>&1; then
 fi
 
 # Pass a github-token if available, to avoid 403 rate-limits against github.com.
-ARGS=(--config .lychee.toml)
+ARGS=(--config .config/lychee.toml)
 if [ -n "${GITHUB_TOKEN:-}" ]; then
   ARGS+=(--github-token "$GITHUB_TOKEN")
 fi

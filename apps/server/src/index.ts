@@ -134,7 +134,7 @@ app.route("/admin/queues", bullBoardAdapter.registerPlugin());
 // hostname "0.0.0.0" is mandatory for container runtimes — binding to the
 // default (localhost/::1) leaves the server unreachable from Traefik, Docker
 // networks, or any host that isn't the container itself. Enforced by
-// scripts/check-server-bind.ts.
+// packages/lint/src/check-server-bind.ts.
 const httpServer = serve(
   { fetch: app.fetch, port: env.PORT, hostname: "0.0.0.0" },
   (info) => {
