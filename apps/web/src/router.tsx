@@ -74,7 +74,11 @@ export function getRouter() {
     defaultPreload: "intent",
     defaultPendingMs: 200,
     defaultPendingMinMs: 300,
-    context: { trpc, queryClient, session: null },
+    // `trpc` is the React Query adapter (queryOptions/mutationOptions).
+    // `trpcClient` is the raw client — used by route loaders that need to
+    // await a procedure directly without going through React Query (e.g.
+    // the invite-accept flow that redirects on settlement).
+    context: { trpc, trpcClient, queryClient, session: null },
   });
 
   return router;

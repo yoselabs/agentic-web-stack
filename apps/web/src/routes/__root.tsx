@@ -10,6 +10,7 @@ import {
   Scripts,
   useRouter,
 } from "@tanstack/react-router";
+import type { TRPCClient } from "@trpc/client";
 import type { TRPCOptionsProxy } from "@trpc/tanstack-react-query";
 import { type ReactNode, useEffect } from "react";
 import { Toaster } from "sonner";
@@ -21,6 +22,11 @@ import appCss from "../styles.css?url";
 
 export interface RouterContext {
   trpc: TRPCOptionsProxy<AppRouter>;
+  // Raw tRPC client — use in route loaders to `await` procedures without
+  // going through React Query (e.g. invite-accept flow that redirects on
+  // settlement). For normal component data, use `trpc.*.queryOptions()`
+  // with `useQuery` so cache + Suspense integration still applies.
+  trpcClient: TRPCClient<AppRouter>;
   queryClient: QueryClient;
   session: SessionData;
 }

@@ -9,7 +9,7 @@ import { Input } from "@project/ui/components/input";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { Link } from "@tanstack/react-router";
 import type { TRPCOptionsProxy } from "@trpc/tanstack-react-query";
-import { useEffect, useRef } from "react";
+import { useRef } from "react";
 import { AccessLostEmptyState } from "#/features/todo-list/access-lost-empty-state.js";
 import { CollaboratorList } from "#/features/todo-list/collaborator-list.js";
 import { CompletedTodoItem } from "#/features/todo-list/completed-todo-item.js";
@@ -31,19 +31,11 @@ export function TodoListDetailPage({
 
   useTodoListLiveUpdates(trpc, listId, currentUserId);
 
-  // Navigating dashboard → detail could render stale todos if a
-  // collaborator mutated while the page was unmounted and the live
-  // subscription was inactive. Force-refetch both the list and todo
-  // queries on mount; the subscription handles updates from here on.
-  useEffect(() => {
-    queryClient.invalidateQueries(
-      trpc.todoList.get.queryFilter({ id: listId }),
-    );
-    queryClient.invalidateQueries(
-      trpc.todo.list.queryFilter({ todoListId: listId }),
-    );
-  }, [queryClient, trpc, listId]);
-
+  // Data for these queries is pre-fetched by the route loader (see
+  // routes/_authenticated/todo-lists/$listId.tsx), which force-refetches
+  // both on every navigation. `useQuery` here just reads from the cache.
+  // `useTodoListLiveUpdates` keeps the cache fresh while the page is
+  // mounted.
   const listQuery = useQuery(trpc.todoList.get.queryOptions({ id: listId }));
   const {
     newTitle,
