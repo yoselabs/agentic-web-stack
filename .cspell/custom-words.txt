@@ -3,6 +3,10 @@ addgroup
 adduser
 adrs
 affordances
+catchable
+depcruise
+operationalizes
+secretleaks
 agentic
 aggre
 appendonly
