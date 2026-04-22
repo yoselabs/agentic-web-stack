@@ -71,7 +71,7 @@ const ALLOWLIST: Record<string, Set<Layer>> = {
   auth: new Set(["backend"]),
   admin: new Set(["frontend", "backend"]),
   "mobile-nav": new Set(["frontend", "backend"]),
-  "activity-feed": new Set(["frontend", "backend", "e2e-steps"]),
+  "activity-feed": new Set(["frontend", "e2e-steps"]),
   user: new Set(["e2e-feat", "e2e-steps"]),
   dashboard: new Set(["backend", "e2e-feat", "e2e-steps"]),
   landing: new Set(["backend", "e2e-feat", "e2e-steps"]),
