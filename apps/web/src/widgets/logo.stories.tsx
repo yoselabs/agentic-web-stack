@@ -1,5 +1,6 @@
 import type { Meta, StoryObj } from "@storybook/react-vite";
 import {
+  type AnyRouter,
   createRootRoute,
   createRouter,
   RouterProvider,
@@ -18,10 +19,11 @@ const router = createRouter({ routeTree: rootRoute });
 const meta = {
   title: "widgets/Logo",
   component: Logo,
-  // biome-ignore lint/suspicious/noExplicitAny: the minimal router above has a
-  // synthetic route tree that doesn't line up with RouterProvider's generic —
-  // runtime contract holds; the assertion keeps tsc quiet.
-  decorators: [() => <RouterProvider router={router as any} />],
+  // The minimal router's generic doesn't line up with the app's
+  // RegisteredRouter (which `RouterProvider` defaults to). `AnyRouter` is
+  // the framework-provided erased type for exactly this case — story
+  // decorators, tests, anywhere the concrete route tree doesn't matter.
+  decorators: [() => <RouterProvider router={router as AnyRouter} />],
 } satisfies Meta<typeof Logo>;
 
 export default meta;
