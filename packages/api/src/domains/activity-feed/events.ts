@@ -25,6 +25,7 @@ export type ActivityEventPayload =
 
 export type ActivityEventRecord = Omit<DbActivityEvent, "payload"> & {
   payload: ActivityEventPayload;
+  actor: { id: string; name: string };
 };
 
 // Envelope yielded by the subscription. "event" = normal tracked event.

@@ -28,6 +28,7 @@ export async function recordActivityEvent(
       kind: input.payload.kind,
       payload: input.payload,
     },
+    include: { actor: { select: { id: true, name: true } } },
   });
   return { ...row, payload: row.payload as ActivityEventPayload };
 }
@@ -53,6 +54,7 @@ export async function listActivityEvents(
     },
     orderBy: { id: "desc" },
     take: limit + 1,
+    include: { actor: { select: { id: true, name: true } } },
   });
   const hasMore = rows.length > limit;
   const items = (hasMore ? rows.slice(0, limit) : rows).map((r) => ({
@@ -126,6 +128,7 @@ export async function* streamActivityEvents(
             },
             orderBy: { id: "asc" },
             take: ACTIVITY_REPLAY_GAP_MAX,
+            include: { actor: { select: { id: true, name: true } } },
           });
           for (const row of gap) {
             const rec: ActivityEventRecord = {

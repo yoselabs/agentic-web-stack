@@ -64,6 +64,10 @@ describe("recordActivityEvent", () => {
     });
     expect(event.todoListId).toBe(listId);
     expect(event.actorId).toBe(userId);
+    expect(event.actor).toEqual({
+      id: userId,
+      name: "Activity Feed Test User",
+    });
     expect(event.id).toMatch(/^c/);
   });
 
@@ -127,6 +131,12 @@ describe("listActivityEvents", () => {
       result.items.map((e) => (e.payload as { todoId: string }).todoId),
     ).toEqual(["c", "b", "a"]);
     expect(result.nextCursor).toBeNull();
+    for (const e of result.items) {
+      expect(e.actor).toEqual({
+        id: userId,
+        name: "Activity Feed Test User",
+      });
+    }
 
     await db.activityEvent.deleteMany({ where: { todoListId: scopedListId } });
     await db.todoList.delete({ where: { id: scopedListId } });
