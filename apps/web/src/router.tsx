@@ -46,6 +46,23 @@ const wsClient = createWSClient({
   lazy: { enabled: true, closeMs: 0 },
 });
 
+// Forward the incoming request's cookies when a tRPC call fires during
+// SSR (route loaders, server functions). `credentials: "include"` in
+// apiClient.fetch is browser-only — on the server there is no cookie
+// jar, so without this the Hono server sees no session cookie and every
+// protectedProcedure returns UNAUTHORIZED. On the client this is a
+// no-op and the browser attaches cookies itself. The
+// `getIncomingCookieHeader` createServerFn is the seam: its body only
+// bundles into the server chunk, and the tRPC batch link calls it
+// inline during SSR (no HTTP round-trip).
+import { getIncomingCookieHeader } from "#/features/auth/session";
+
+async function forwardIncomingCookies(): Promise<Record<string, string>> {
+  if (typeof window !== "undefined") return {};
+  const cookie = await getIncomingCookieHeader();
+  return cookie ? { cookie } : {};
+}
+
 const trpcClient = createTRPCClient<AppRouter>({
   links: [
     splitLink({
@@ -55,6 +72,7 @@ const trpcClient = createTRPCClient<AppRouter>({
         // NOTE: "/trpc" inlined by design — matches server mount. See zero-conf design spec §D3.
         url: `${apiClient.baseUrl}/trpc`,
         fetch: apiClient.fetch,
+        headers: forwardIncomingCookies,
       }),
     }),
   ],

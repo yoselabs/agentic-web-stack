@@ -5,7 +5,11 @@
 // the browser-facing VITE_API_URL (see SSR_API_URL in @project/env/server).
 import { env } from "@project/env/server";
 import { createServerFn } from "@tanstack/react-start";
-import { deleteCookie, getCookie } from "@tanstack/react-start/server";
+import {
+  deleteCookie,
+  getCookie,
+  getRequestHeader,
+} from "@tanstack/react-start/server";
 
 // Narrow shape: only fields the UI reads. The Better-Auth
 // /api/auth/get-session response carries more (emailVerified, image,
@@ -19,6 +23,22 @@ export type SessionData = {
 // HTTP-only, so JS can't read it — but the server-fn runs in the Nitro
 // Node runtime where getCookie reads the incoming Cookie header directly.
 const SESSION_COOKIE_NAME = "better-auth.session_token";
+
+/**
+ * Returns the incoming request's `Cookie` header so the SSR-side tRPC
+ * client can forward it upstream. `credentials: "include"` in
+ * apiClient.fetch is a browser-only mechanism; the SSR runtime has
+ * no cookie jar. Without this forwarding, every route-loader tRPC
+ * call during SSR arrives at Hono with no session cookie and gets
+ * UNAUTHORIZED — exactly what broke 15 BDD scenarios that navigate
+ * to /todo-lists/$listId as a logged-in user.
+ *
+ * Returns `""` when the request has no cookie header; the client-side
+ * call path never hits this function (gated by `typeof window`).
+ */
+export const getIncomingCookieHeader = createServerFn({
+  method: "GET",
+}).handler((): string => getRequestHeader("cookie") ?? "");
 
 export const getSession = createServerFn({ method: "GET" }).handler(
   async (): Promise<SessionData> => {
