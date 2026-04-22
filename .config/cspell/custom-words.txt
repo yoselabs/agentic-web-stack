@@ -184,3 +184,6 @@ yoselabs
 dotdirs
 prismalint
 Unkey
+dedups
+procs
+Resumability
