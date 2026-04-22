@@ -1,41 +1,4 @@
 {
   "$comment": "Ratchet allowlist. Every entry needs a `reason` of >= 10 chars. Shrink over time — each listing is a hook missing its test sibling. New hooks MUST ship with tests; this list is grandfathered existing misses.",
-  "allow": [
-    {
-      "path": "apps/web/src/features/auth/use-forgot-password.ts",
-      "reason": "pre-existing at WS1 landing; auth flow hook covered by BDD"
-    },
-    {
-      "path": "apps/web/src/features/auth/use-reset-password.ts",
-      "reason": "pre-existing at WS1 landing; auth flow hook covered by BDD"
-    },
-    {
-      "path": "apps/web/src/features/todo-list/use-leader-tab.ts",
-      "reason": "pre-existing at WS1 landing; multi-tab coordination, hard to unit-test"
-    },
-    {
-      "path": "apps/web/src/features/todo-list/use-todo-list-live-updates.ts",
-      "reason": "pre-existing at WS1 landing; realtime wiring tested via BDD"
-    },
-    {
-      "path": "apps/web/src/features/todo-list/use-todo-lists.ts",
-      "reason": "pre-existing at WS1 landing; thin tRPC wrapper hook"
-    },
-    {
-      "path": "apps/web/src/features/todo-list/use-todos.ts",
-      "reason": "pre-existing at WS1 landing; thin tRPC wrapper hook"
-    },
-    {
-      "path": "apps/web/src/features/user/use-debounced-value.ts",
-      "reason": "pre-existing at WS1 landing; generic util, needs fake-timers harness"
-    },
-    {
-      "path": "apps/web/src/features/user/use-user-inbox.ts",
-      "reason": "pre-existing at WS1 landing; tRPC subscription hook covered by BDD"
-    },
-    {
-      "path": "apps/web/src/shared/use-optimistic-mutation.ts",
-      "reason": "pre-existing at WS1 landing; generic mutation wrapper"
-    }
-  ]
+  "allow": []
 }

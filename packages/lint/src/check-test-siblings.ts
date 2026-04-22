@@ -52,11 +52,15 @@ export function runTestSiblings(root: string = DEFAULT_ROOT): {
   for (const rel of files) {
     const base = rel.split("/").pop() ?? "";
     if (!base.startsWith(HOOK_PREFIX)) continue;
-    const testSibling = rel.replace(/\.(tsx?)$/, ".test.$1");
-    if (existsSync(join(root, testSibling))) continue;
+    // A .ts hook may use either .test.ts or .test.tsx (if the test wraps
+    // renderHook in a React provider it needs JSX). A .tsx hook takes .test.tsx.
+    const testSiblingTs = rel.replace(/\.(tsx?)$/, ".test.ts");
+    const testSiblingTsx = rel.replace(/\.(tsx?)$/, ".test.tsx");
+    if (existsSync(join(root, testSiblingTs))) continue;
+    if (existsSync(join(root, testSiblingTsx))) continue;
     if (allowed.has(rel)) continue;
     missing.push(
-      `${rel}  missing sibling ${testSibling} — every use-*.ts hook needs a test.`,
+      `${rel}  missing sibling ${testSiblingTs} (or .tsx) — every use-*.ts hook needs a test.`,
     );
   }
   return { missing };
