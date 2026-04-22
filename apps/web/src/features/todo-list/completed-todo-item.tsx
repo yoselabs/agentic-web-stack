@@ -13,6 +13,7 @@ export function CompletedTodoItem({
   return (
     <li
       data-testid="todo-row"
+      aria-label={todo.title}
       className="flex items-center gap-3 rounded-lg border p-3 opacity-60"
     >
       <input

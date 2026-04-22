@@ -38,6 +38,7 @@ export function SortableTodoItem({
       ref={setNodeRef}
       style={style}
       data-testid="todo-row"
+      aria-label={todo.title}
       className="flex cursor-grab items-center gap-3 rounded-lg border bg-background p-3 active:cursor-grabbing"
       {...attributes}
       {...listeners}

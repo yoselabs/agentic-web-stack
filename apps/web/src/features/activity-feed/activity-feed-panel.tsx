@@ -47,6 +47,7 @@ export function ActivityFeedPanel({
               key={e.id}
               className="text-sm"
               data-activity-kind={e.payload.kind}
+              aria-label={formatActivityEvent(e, e.actor?.name ?? "Someone")}
             >
               <span>{formatActivityEvent(e, e.actor?.name ?? "Someone")}</span>
               <time className="block text-muted-foreground text-xs">

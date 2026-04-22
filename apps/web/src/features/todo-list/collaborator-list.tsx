@@ -51,7 +51,10 @@ export function CollaboratorList({
 
   return (
     <ul className="space-y-2">
-      <li className="flex items-center justify-between rounded border p-2">
+      <li
+        aria-label={owner.name}
+        className="flex items-center justify-between rounded border p-2"
+      >
         <span className="flex items-center gap-2">
           <span>{owner.name}</span>
           <span className="text-muted-foreground">@{owner.username}</span>
@@ -64,6 +67,7 @@ export function CollaboratorList({
       {members.map((m) => (
         <li
           key={m.id}
+          aria-label={m.user.name}
           className="flex items-center justify-between rounded border p-2"
         >
           <span className="flex items-center gap-2">
