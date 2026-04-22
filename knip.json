@@ -81,8 +81,7 @@
     "packages/query/src/use-optimistic-mutation.ts",
     "packages/email/src/index.ts",
     "packages/env/src/index.ts",
-    "packages/jobs/src/index.ts",
-    "apps/web/src/features/activity-feed/use-activity-feed.ts"
+    "packages/jobs/src/index.ts"
   ],
   "ignoreDependencies": [
     "@casl/ability",
