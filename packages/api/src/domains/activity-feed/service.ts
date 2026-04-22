@@ -1,6 +1,10 @@
 import type { Prisma, PrismaClient } from "@project/db";
 import type { Channel } from "@project/realtime/types";
-import { ACTIVITY_LIST_PAGE_SIZE } from "./constants";
+import {
+  ACTIVITY_LIST_PAGE_SIZE,
+  ACTIVITY_REPLAY_GAP_MAX,
+  ACTIVITY_REPLAY_MAX_AGE_MS,
+} from "./constants";
 import type {
   ActivityEventEnvelope,
   ActivityEventPayload,
@@ -69,9 +73,89 @@ export type StreamEventsInput = {
 };
 
 export async function* streamActivityEvents(
-  _db: PrismaClient,
-  _input: StreamEventsInput,
+  db: PrismaClient,
+  input: StreamEventsInput,
 ): AsyncGenerator<ActivityEventEnvelope> {
-  if (Math.random() < 0) yield* [];
-  throw new Error("not implemented");
+  const buffered: ActivityEventRecord[] = [];
+  let bufferResolve: (() => void) | null = null;
+
+  // Subscribe FIRST so live events during gap-fill are captured in the buffer.
+  const unsub = await input.channel.subscribe((event) => {
+    buffered.push(event);
+    bufferResolve?.();
+  });
+
+  const onAbort = () => {
+    bufferResolve?.();
+  };
+  input.signal?.addEventListener("abort", onAbort);
+
+  try {
+    let lastYieldedId: string | null = input.lastEventId ?? null;
+
+    // Phase 1: gap-fill.
+    if (input.lastEventId) {
+      const gapCount = await db.activityEvent.count({
+        where: {
+          todoListId: input.todoListId,
+          id: { gt: input.lastEventId },
+        },
+      });
+
+      if (gapCount > ACTIVITY_REPLAY_GAP_MAX) {
+        yield { kind: "resync", reason: "gap-too-large" };
+      } else if (gapCount > 0) {
+        const oldest = await db.activityEvent.findFirst({
+          where: {
+            todoListId: input.todoListId,
+            id: { gt: input.lastEventId },
+          },
+          orderBy: { id: "asc" },
+          select: { createdAt: true },
+        });
+        if (
+          oldest &&
+          Date.now() - oldest.createdAt.getTime() > ACTIVITY_REPLAY_MAX_AGE_MS
+        ) {
+          yield { kind: "resync", reason: "event-expired" };
+        } else {
+          const gap = await db.activityEvent.findMany({
+            where: {
+              todoListId: input.todoListId,
+              id: { gt: input.lastEventId },
+            },
+            orderBy: { id: "asc" },
+            take: ACTIVITY_REPLAY_GAP_MAX,
+          });
+          for (const row of gap) {
+            const rec: ActivityEventRecord = {
+              ...row,
+              payload: row.payload as ActivityEventPayload,
+            };
+            yield { kind: "event", event: rec };
+            lastYieldedId = rec.id;
+          }
+        }
+      }
+    }
+
+    // Phase 2: drain buffer + tail live, dedup anything <= lastYieldedId.
+    while (!input.signal?.aborted) {
+      while (buffered.length > 0) {
+        const ev = buffered.shift();
+        if (!ev) break;
+        if (lastYieldedId && ev.id <= lastYieldedId) continue;
+        yield { kind: "event", event: ev };
+        lastYieldedId = ev.id;
+      }
+      if (input.signal?.aborted) break;
+      await new Promise<void>((resolve) => {
+        bufferResolve = resolve;
+      });
+      bufferResolve = null;
+    }
+  } finally {
+    input.signal?.removeEventListener("abort", onAbort);
+    unsub();
+  }
 }
