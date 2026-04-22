@@ -1,0 +1,18 @@
+// Activity event stream for tracking changes in todo lists.
+
+model ActivityEvent {
+  id         String   @id @default(cuid())
+  todoListId String
+  actorId    String
+  kind       String
+  payload    Json
+  createdAt  DateTime @default(now())
+  updatedAt  DateTime @updatedAt
+
+  todoList TodoList @relation(fields: [todoListId], references: [id], onDelete: Cascade)
+  actor    User     @relation(fields: [actorId], references: [id], onDelete: Cascade)
+
+  @@index([todoListId, id])
+  @@index([todoListId, createdAt])
+  @@map("activity_event")
+}

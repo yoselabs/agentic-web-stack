@@ -12,6 +12,7 @@ model TodoList {
   todos       Todo[]
   memberships TodoListMembership[]
   invites     TodoListInvite[]
+  activityEvents ActivityEvent[]
 }
 
 model TodoListMembership {

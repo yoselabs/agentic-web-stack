@@ -17,6 +17,7 @@ model User {
   todoLists       TodoList[]
   memberships     TodoListMembership[]
   invitesReceived TodoListInvite[]
+  activityEvents  ActivityEvent[]
 }
 
 model Session {
