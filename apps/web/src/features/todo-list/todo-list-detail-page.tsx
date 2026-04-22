@@ -67,16 +67,16 @@ export function TodoListDetailPage({
   }
 
   return (
-    <main className="max-w-2xl mx-auto px-4 sm:px-6 py-8 sm:py-10">
+    <main className="mx-auto max-w-2xl px-4 py-8 sm:px-6 sm:py-10">
       <div className="mb-6">
         <Link
           to="/todo-lists"
-          className="text-sm text-muted-foreground hover:text-foreground"
+          className="text-muted-foreground text-sm hover:text-foreground"
         >
           {"<-"} Back to lists
         </Link>
-        <div className="flex items-center justify-between mt-2 gap-4">
-          <h1 className="text-3xl font-bold">
+        <div className="mt-2 flex items-center justify-between gap-4">
+          <h1 className="font-bold text-3xl">
             {listQuery.data?.name ?? "Loading..."}
           </h1>
           <ShareListDialog listId={listId} trpc={trpc} />
@@ -85,7 +85,7 @@ export function TodoListDetailPage({
 
       {listQuery.data && currentUserId && (
         <section className="mb-6">
-          <h2 className="text-sm font-semibold text-muted-foreground mb-2">
+          <h2 className="mb-2 font-semibold text-muted-foreground text-sm">
             Collaborators
           </h2>
           <CollaboratorList
@@ -97,7 +97,7 @@ export function TodoListDetailPage({
         </section>
       )}
 
-      <div className="flex gap-2 mb-4">
+      <div className="mb-4 flex gap-2">
         <input
           ref={fileInputRef}
           type="file"
@@ -124,7 +124,7 @@ export function TodoListDetailPage({
         </Button>
       </div>
 
-      <form onSubmit={handleSubmit} className="flex gap-2 mb-6">
+      <form onSubmit={handleSubmit} className="mb-6 flex gap-2">
         <Input
           type="text"
           placeholder="Add a todo..."
@@ -174,7 +174,7 @@ export function TodoListDetailPage({
 
           {completedTodos.length > 0 && (
             <>
-              {activeTodos.length > 0 && <div className="border-t my-4" />}
+              {activeTodos.length > 0 && <div className="my-4 border-t" />}
               <ul className="space-y-2">
                 {completedTodos.map((todo) => (
                   <CompletedTodoItem

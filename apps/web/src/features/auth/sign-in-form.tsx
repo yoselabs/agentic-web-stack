@@ -74,7 +74,7 @@ export function SignInForm() {
               required
             />
             {field.state.meta.errors.length > 0 && (
-              <p className="text-sm text-destructive">
+              <p className="text-destructive text-sm">
                 {formatFieldError(field.state.meta.errors[0])}
               </p>
             )}
@@ -96,7 +96,7 @@ export function SignInForm() {
               required
             />
             {field.state.meta.errors.length > 0 && (
-              <p className="text-sm text-destructive">
+              <p className="text-destructive text-sm">
                 {formatFieldError(field.state.meta.errors[0])}
               </p>
             )}
@@ -104,7 +104,7 @@ export function SignInForm() {
         )}
       </form.Field>
 
-      {formError && <p className="text-sm text-destructive">{formError}</p>}
+      {formError && <p className="text-destructive text-sm">{formError}</p>}
 
       <form.Subscribe selector={(s) => s.isSubmitting}>
         {(isSubmitting) => (

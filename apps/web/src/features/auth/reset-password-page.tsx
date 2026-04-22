@@ -26,7 +26,7 @@ export function ResetPasswordPage({ token }: { token: string }) {
             </CardDescription>
           </CardHeader>
           <CardContent>
-            <p className="text-center text-sm text-muted-foreground">
+            <p className="text-center text-muted-foreground text-sm">
               <Link
                 to={"/forgot-password" as string}
                 className="text-foreground underline underline-offset-4 hover:text-primary"
@@ -70,7 +70,7 @@ export function ResetPasswordPage({ token }: { token: string }) {
                     minLength={MIN_PASSWORD_LENGTH}
                   />
                   {field.state.meta.errors.length > 0 && (
-                    <p className="text-sm text-destructive">
+                    <p className="text-destructive text-sm">
                       {String(field.state.meta.errors[0])}
                     </p>
                   )}
@@ -79,7 +79,7 @@ export function ResetPasswordPage({ token }: { token: string }) {
             </form.Field>
 
             {formError && (
-              <p className="text-sm text-destructive">{formError}</p>
+              <p className="text-destructive text-sm">{formError}</p>
             )}
 
             <form.Subscribe selector={(s) => s.isSubmitting}>

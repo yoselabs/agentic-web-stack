@@ -20,7 +20,6 @@ export function abilityFor(user: SessionUser | null): AppAbility {
 
 // biome-ignore lint/performance/noBarrelFile: authz index is the composition root — abilityFor() lives here and re-exports are co-located intentionally
 export { asSubject } from "./subject.js";
-// biome-ignore lint/performance/noBarrelFile: authz index is the composition root — abilityFor() lives here and re-exports are co-located intentionally
 export type {
   AppAbility,
   AppActions,

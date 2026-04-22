@@ -84,8 +84,8 @@ function RootDocument({ children }: Readonly<{ children: ReactNode }>) {
 function NotFound() {
   return (
     <main className="flex min-h-screen flex-col items-center justify-center gap-4">
-      <p className="text-6xl font-bold text-muted-foreground">404</p>
-      <h1 className="text-xl font-semibold">Page not found</h1>
+      <p className="font-bold text-6xl text-muted-foreground">404</p>
+      <h1 className="font-semibold text-xl">Page not found</h1>
       <p className="text-muted-foreground">
         The page you're looking for doesn't exist or has been moved.
       </p>
@@ -101,12 +101,12 @@ function RootError({ error, reset }: ErrorComponentProps) {
 
   return (
     <main className="flex min-h-screen flex-col items-center justify-center gap-4">
-      <p className="text-6xl font-bold text-muted-foreground">500</p>
-      <h1 className="text-xl font-semibold">Something went wrong</h1>
-      <p className="text-sm text-muted-foreground max-w-md text-center">
+      <p className="font-bold text-6xl text-muted-foreground">500</p>
+      <h1 className="font-semibold text-xl">Something went wrong</h1>
+      <p className="max-w-md text-center text-muted-foreground text-sm">
         {error.message || "An unexpected error occurred."}
       </p>
-      <div className="flex gap-3 mt-2">
+      <div className="mt-2 flex gap-3">
         <Button
           variant="outline"
           onClick={() => {

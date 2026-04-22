@@ -13,7 +13,7 @@ export function CompletedTodoItem({
   return (
     <li
       data-testid="todo-row"
-      className="flex items-center gap-3 p-3 rounded-lg border opacity-60"
+      className="flex items-center gap-3 rounded-lg border p-3 opacity-60"
     >
       <input
         type="checkbox"
@@ -21,7 +21,7 @@ export function CompletedTodoItem({
         onChange={onUncomplete}
         className="h-4 w-4"
       />
-      <span className="flex-1 line-through text-muted-foreground">
+      <span className="flex-1 text-muted-foreground line-through">
         {todo.title}
       </span>
       <Button

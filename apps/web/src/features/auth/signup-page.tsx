@@ -21,7 +21,7 @@ export function SignupPage() {
         <CardContent>
           <SignUpForm />
 
-          <p className="mt-4 text-center text-sm text-muted-foreground">
+          <p className="mt-4 text-center text-muted-foreground text-sm">
             <Link
               to={"/forgot-password" as string}
               className="text-foreground underline underline-offset-4 hover:text-primary"
@@ -30,7 +30,7 @@ export function SignupPage() {
             </Link>
           </p>
 
-          <p className="mt-4 text-center text-sm text-muted-foreground">
+          <p className="mt-4 text-center text-muted-foreground text-sm">
             Already have an account?{" "}
             <Link
               to="/login"

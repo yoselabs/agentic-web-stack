@@ -22,13 +22,13 @@ export function TodoListsPage({ trpc }: { trpc: TRPCOptionsProxy<AppRouter> }) {
   return (
     <main
       data-testid="todo-lists-index"
-      className="max-w-2xl mx-auto px-4 sm:px-6 py-8 sm:py-10"
+      className="mx-auto max-w-2xl px-4 py-8 sm:px-6 sm:py-10"
     >
       <PendingInvitesDashboard trpc={trpc} />
 
-      <h1 className="text-3xl font-bold mb-6">Todo Lists</h1>
+      <h1 className="mb-6 font-bold text-3xl">Todo Lists</h1>
 
-      <form onSubmit={handleSubmit} className="flex gap-2 mb-6">
+      <form onSubmit={handleSubmit} className="mb-6 flex gap-2">
         <Input
           type="text"
           placeholder="New list name..."
@@ -52,12 +52,12 @@ export function TodoListsPage({ trpc }: { trpc: TRPCOptionsProxy<AppRouter> }) {
           {todoLists.data?.map((list) => (
             <li
               key={list.id}
-              className="flex items-center justify-between p-3 border rounded-lg"
+              className="flex items-center justify-between rounded-lg border p-3"
             >
               <Link
                 to="/todo-lists/$listId"
                 params={{ listId: list.id }}
-                className="flex items-center gap-3 flex-1 hover:opacity-80"
+                className="flex flex-1 items-center gap-3 hover:opacity-80"
               >
                 <span className="font-medium">{list.name}</span>
                 <Badge

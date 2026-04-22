@@ -46,7 +46,7 @@ export function MobileNav({ slots }: { slots: MobileNavSlots }) {
             live inside the drawer. Scoped to anchors only so dropdown
             triggers (e.g. UserBlock) don't accidentally dismiss it. */}
         <nav
-          className="flex flex-col gap-4 mt-6"
+          className="mt-6 flex flex-col gap-4"
           onClick={(event) => {
             const target = event.target as HTMLElement;
             if (target.closest("a")) setOpen(false);
@@ -59,7 +59,7 @@ export function MobileNav({ slots }: { slots: MobileNavSlots }) {
         >
           {slots.primaryLinks}
           {slots.adminActions}
-          <div className="border-t pt-4 mt-2">{slots.user}</div>
+          <div className="mt-2 border-t pt-4">{slots.user}</div>
         </nav>
       </SheetContent>
     </Sheet>

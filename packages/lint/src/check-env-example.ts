@@ -17,13 +17,13 @@ function extractSchemaKeys(tsSource: string, objectKey: string): string[] {
   for (const call of sf.getDescendantsOfKind(SyntaxKind.CallExpression)) {
     if (call.getExpression().getText() !== "createEnv") continue;
     const arg = call.getArguments()[0];
-    if (!arg || !arg.isKind(SyntaxKind.ObjectLiteralExpression)) continue;
+    if (!arg?.isKind(SyntaxKind.ObjectLiteralExpression)) continue;
     const prop = arg.getProperty(objectKey);
     if (!prop) continue;
     const init = prop.isKind(SyntaxKind.PropertyAssignment)
       ? prop.getInitializer()
       : undefined;
-    if (!init || !init.isKind(SyntaxKind.ObjectLiteralExpression)) continue;
+    if (!init?.isKind(SyntaxKind.ObjectLiteralExpression)) continue;
     return init
       .getProperties()
       .filter((p) => p.isKind(SyntaxKind.PropertyAssignment))

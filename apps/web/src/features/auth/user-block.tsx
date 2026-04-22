@@ -15,7 +15,7 @@ export function UserBlock() {
 
   return (
     <div className="flex items-center gap-4">
-      <span className="text-sm text-muted-foreground">
+      <span className="text-muted-foreground text-sm">
         {session.user.name ?? session.user.email}
       </span>
       <Button variant="outline" size="sm" onClick={handleSignOut}>

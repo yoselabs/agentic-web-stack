@@ -8,8 +8,8 @@ export function LandingPage() {
   return (
     <main className="flex min-h-[calc(100vh-57px)] items-center justify-center">
       <div className="text-center">
-        <h1 className="text-4xl font-bold mb-4">Agentic Web Stack</h1>
-        <p className="text-lg text-muted-foreground mb-6">
+        <h1 className="mb-4 font-bold text-4xl">Agentic Web Stack</h1>
+        <p className="mb-6 text-lg text-muted-foreground">
           TanStack Start + Hono + tRPC + Prisma + Better-Auth
         </p>
         {isPending ? (

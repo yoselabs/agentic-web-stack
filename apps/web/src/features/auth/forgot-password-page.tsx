@@ -26,7 +26,7 @@ export function ForgotPasswordPage() {
             </CardDescription>
           </CardHeader>
           <CardContent>
-            <p className="text-center text-sm text-muted-foreground">
+            <p className="text-center text-muted-foreground text-sm">
               <Link
                 to="/login"
                 className="text-foreground underline underline-offset-4 hover:text-primary"
@@ -71,7 +71,7 @@ export function ForgotPasswordPage() {
                     required
                   />
                   {field.state.meta.errors.length > 0 && (
-                    <p className="text-sm text-destructive">
+                    <p className="text-destructive text-sm">
                       {String(field.state.meta.errors[0])}
                     </p>
                   )}
@@ -80,7 +80,7 @@ export function ForgotPasswordPage() {
             </form.Field>
 
             {formError && (
-              <p className="text-sm text-destructive">{formError}</p>
+              <p className="text-destructive text-sm">{formError}</p>
             )}
 
             <form.Subscribe selector={(s) => s.isSubmitting}>
@@ -96,7 +96,7 @@ export function ForgotPasswordPage() {
             </form.Subscribe>
           </form>
 
-          <p className="mt-4 text-center text-sm text-muted-foreground">
+          <p className="mt-4 text-center text-muted-foreground text-sm">
             <Link
               to="/login"
               className="text-foreground underline underline-offset-4 hover:text-primary"

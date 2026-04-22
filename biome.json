@@ -15,15 +15,14 @@
       "recommended": true,
       "nursery": {
         "noFloatingPromises": "error",
-        "useExhaustiveSwitchCases": "warn",
-        "useExplicitType": "warn",
-        "useSortedClasses": "warn"
+        "useExhaustiveSwitchCases": "error",
+        "useSortedClasses": "error"
       },
       "complexity": {
-        "noUselessUndefined": "warn"
+        "noUselessUndefined": "error"
       },
       "correctness": {
-        "noUnusedFunctionParameters": "warn"
+        "noUnusedFunctionParameters": "error"
       },
       "performance": {
         "noBarrelFile": "error",

@@ -31,7 +31,7 @@ export function InviteAutocomplete({
   const showNoMatch = enabled && results.isSuccess && matches.length === 0;
 
   return (
-    <div className="space-y-1 w-full">
+    <div className="w-full space-y-1">
       <Input
         placeholder="Search by username or name"
         value={raw}
@@ -43,12 +43,12 @@ export function InviteAutocomplete({
         autoFocus
       />
       {matches.length > 0 && (
-        <ul className="border rounded divide-y">
+        <ul className="divide-y rounded border">
           {matches.map((u) => (
             <li key={u.id}>
               <button
                 type="button"
-                className="w-full text-left px-3 py-2 hover:bg-muted"
+                className="w-full px-3 py-2 text-left hover:bg-muted"
                 onClick={() => {
                   onSelect(u);
                   setRaw(`@${u.username}`);
@@ -62,7 +62,7 @@ export function InviteAutocomplete({
         </ul>
       )}
       {showNoMatch && (
-        <p className="text-sm text-destructive">No user with that username.</p>
+        <p className="text-destructive text-sm">No user with that username.</p>
       )}
     </div>
   );

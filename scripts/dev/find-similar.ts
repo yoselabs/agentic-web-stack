@@ -22,7 +22,6 @@ import {
   Node,
   Project,
   type SourceFile,
-  SyntaxKind,
   type VariableDeclaration,
 } from "ts-morph";
 

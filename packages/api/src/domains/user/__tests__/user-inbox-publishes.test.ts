@@ -13,11 +13,7 @@ import {
   inviteCollaborator,
   removeCollaborator,
 } from "@project/api/domains/todo-list/service";
-import {
-  completeTodo,
-  createTodo,
-  deleteTodo,
-} from "@project/api/domains/todo-list/todo-service";
+import { createTodo } from "@project/api/domains/todo-list/todo-service";
 import { db } from "@project/db";
 import { MemoryChannelFactory } from "@project/realtime/memory";
 import { userInboxChannelKey } from "@project/realtime/user-inbox";

@@ -45,10 +45,7 @@ const dirname = fileURLToPath(new URL(".", import.meta.url));
 // projects need these so story files + unit tests agree on module
 // resolution.
 const sharedPlugins = [
-  // biome-ignore lint/suspicious/noExplicitAny: vitest/config re-exports vite
-  // types that don't line up with @vitejs/plugin-react's Plugin<any>[] return
-  // type (rolldown vs rollup context meta). Runtime is fine; the cast keeps
-  // tsc quiet.
+  // biome-ignore lint/suspicious/noExplicitAny: vitest/config re-exports vite types that don't line up with @vitejs/plugin-react's Plugin<any>[] return type (rolldown vs rollup context meta). Runtime is fine.
   viteReact() as any,
 ];
 const sharedResolve = { alias: { tslib: tslibEsm } };
@@ -90,8 +87,7 @@ export default defineConfig({
       },
       {
         extends: true,
-        // biome-ignore lint/suspicious/noExplicitAny: the storybook plugin's
-        // Plugin<any>[] type targets an older vite range; runtime is fine.
+        // biome-ignore lint/suspicious/noExplicitAny: the storybook plugin's Plugin<any>[] type targets an older vite range; runtime is fine.
         plugins: storybookPlugins as any,
         test: {
           name: "storybook",

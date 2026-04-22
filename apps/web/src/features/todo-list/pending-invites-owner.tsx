@@ -32,7 +32,7 @@ export function PendingInvitesOwner({
 
   return (
     <section className="mt-4 space-y-2">
-      <h4 className="text-sm font-semibold">Pending invites</h4>
+      <h4 className="font-semibold text-sm">Pending invites</h4>
       <ul className="space-y-2">
         {invites.data.map((inv) => (
           <li

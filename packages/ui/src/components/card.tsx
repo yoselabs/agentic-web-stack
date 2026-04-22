@@ -30,7 +30,7 @@ function CardTitle({ className, ...props }: ComponentProps<"h3">) {
 
 function CardDescription({ className, ...props }: ComponentProps<"p">) {
   return (
-    <p className={cn("text-sm text-muted-foreground", className)} {...props} />
+    <p className={cn("text-muted-foreground text-sm", className)} {...props} />
   );
 }
 

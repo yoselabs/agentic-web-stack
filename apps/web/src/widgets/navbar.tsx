@@ -26,16 +26,16 @@ export type NavbarSlots = {
 
 export function Navbar({ slots }: { slots: NavbarSlots }) {
   return (
-    <nav className="border-b px-6 py-3 flex items-center justify-between">
+    <nav className="flex items-center justify-between border-b px-6 py-3">
       {/* Desktop */}
       <div className="flex items-center gap-6">
         {slots.logo}
-        <div className="hidden md:flex items-center gap-6">
+        <div className="hidden items-center gap-6 md:flex">
           {slots.primaryLinks}
         </div>
       </div>
 
-      <div className="hidden md:flex items-center gap-4">
+      <div className="hidden items-center gap-4 md:flex">
         {slots.adminActions}
         {slots.user}
       </div>

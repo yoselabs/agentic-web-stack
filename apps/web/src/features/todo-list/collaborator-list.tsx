@@ -36,12 +36,12 @@ export function CollaboratorList({
 
   if (collaborators.isPending) {
     return (
-      <p className="text-sm text-muted-foreground">Loading collaborators…</p>
+      <p className="text-muted-foreground text-sm">Loading collaborators…</p>
     );
   }
   if (collaborators.isError) {
     return (
-      <p className="text-sm text-destructive">Couldn't load collaborators.</p>
+      <p className="text-destructive text-sm">Couldn't load collaborators.</p>
     );
   }
 
@@ -87,7 +87,7 @@ export function CollaboratorList({
         </li>
       ))}
       {members.length === 0 && (
-        <p className="text-sm text-muted-foreground">
+        <p className="text-muted-foreground text-sm">
           No other collaborators yet.
         </p>
       )}

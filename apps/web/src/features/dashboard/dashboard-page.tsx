@@ -17,8 +17,8 @@ export function DashboardPage({ trpc }: { trpc: TRPCOptionsProxy<AppRouter> }) {
   const { data: session } = useSession();
 
   return (
-    <main className="max-w-2xl mx-auto px-4 sm:px-6 py-8 sm:py-10">
-      <h1 className="text-3xl font-bold mb-6">Dashboard</h1>
+    <main className="mx-auto max-w-2xl px-4 py-8 sm:px-6 sm:py-10">
+      <h1 className="mb-6 font-bold text-3xl">Dashboard</h1>
       <PendingInvitesDashboard trpc={trpc} />
       <Card>
         <CardHeader>
@@ -28,7 +28,7 @@ export function DashboardPage({ trpc }: { trpc: TRPCOptionsProxy<AppRouter> }) {
           <CardDescription>You are signed in and ready to go.</CardDescription>
         </CardHeader>
         <CardContent>
-          <p className="text-sm text-muted-foreground">
+          <p className="text-muted-foreground text-sm">
             Use the navigation above to manage your todos or explore the app.
           </p>
         </CardContent>

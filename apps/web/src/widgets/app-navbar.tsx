@@ -29,22 +29,20 @@ export function AppNavbar() {
   // because they don't depend on the bare slash).
   const jobsAdminHref = `${env.VITE_API_URL}/admin/queues`;
 
-  const desktopLinks = isAuthed ? (
-    <>
-      {authedLinks.map((link) => (
+  const desktopLinks = isAuthed
+    ? authedLinks.map((link) => (
         <Link
           key={link.to}
           to={link.to}
-          className="text-sm text-muted-foreground hover:text-foreground"
+          className="text-muted-foreground text-sm hover:text-foreground"
           activeProps={{
             className: "text-sm font-semibold text-foreground",
           }}
         >
           {link.label}
         </Link>
-      ))}
-    </>
-  ) : null;
+      ))
+    : null;
 
   const desktopAdminActions =
     isAuthed && isAdmin ? (
@@ -52,7 +50,7 @@ export function AppNavbar() {
         href={jobsAdminHref}
         target="_blank"
         rel="noreferrer"
-        className="text-sm text-muted-foreground hover:text-foreground"
+        className="text-muted-foreground text-sm hover:text-foreground"
       >
         Jobs Admin
       </a>
@@ -66,9 +64,8 @@ export function AppNavbar() {
     </Button>
   );
 
-  const mobileLinks = isAuthed ? (
-    <>
-      {authedLinks.map((link) => (
+  const mobileLinks = isAuthed
+    ? authedLinks.map((link) => (
         <Link
           key={link.to}
           to={link.to}
@@ -79,9 +76,8 @@ export function AppNavbar() {
         >
           {link.label}
         </Link>
-      ))}
-    </>
-  ) : null;
+      ))
+    : null;
 
   const mobileAdminActions =
     isAuthed && isAdmin ? (
