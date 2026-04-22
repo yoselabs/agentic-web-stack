@@ -29,6 +29,14 @@ Before writing new code, check [docs/package-taxonomy.md](docs/package-taxonomy.
 your concern isn't listed, pick the closest match and extend that package's
 README growth path rather than inventing a new home.
 
+## What Can I Reuse?
+
+Before writing *logic*, scan [docs/capabilities.md](docs/capabilities.md)
+— a catalog of shipped primitives (auth, realtime, rate limiting, jobs,
+email, optimistic mutations, live-update hooks, session mocking, …) with
+import paths, "when to use" / "when not" notes, and links to references.
+Most feature-building questions have an existing answer here.
+
 ## Conventions
 
 Canonical cross-cutting conventions live in `docs/conventions.md`. Read
