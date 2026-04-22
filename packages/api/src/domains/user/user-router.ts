@@ -8,7 +8,7 @@ import { searchUsersByUsername } from "./user-service.js";
 
 export const userRouter = router({
   searchByUsername: protectedProcedure
-    .input(z.object({ prefix: z.string().min(1).max(64) }))
+    .input(z.strictObject({ prefix: z.string().min(1).max(64) }))
     .query(({ ctx, input }) =>
       searchUsersByUsername(ctx.db, ctx.session.user.id, input.prefix),
     ),

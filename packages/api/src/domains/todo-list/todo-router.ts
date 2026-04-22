@@ -30,19 +30,19 @@ const rateLimitedWrite = protectedProcedure.use(
 
 export const todoRouter = router({
   list: protectedProcedure
-    .input(z.object({ todoListId: z.string() }))
+    .input(z.strictObject({ todoListId: z.string() }))
     .query(({ ctx, input }) => {
       return listTodos(ctx.db, ctx.session.user.id, input.todoListId);
     }),
   create: rateLimitedWrite
-    .input(z.object({ title: z.string().min(1), todoListId: z.string() }))
+    .input(z.strictObject({ title: z.string().min(1), todoListId: z.string() }))
     .mutation(({ ctx, input }) => {
       return ctx.db.$transaction((tx) =>
         createTodo(tx, ctx.session.user.id, input.title, input.todoListId),
       );
     }),
   complete: protectedProcedure
-    .input(z.object({ id: z.string(), completed: z.boolean() }))
+    .input(z.strictObject({ id: z.string(), completed: z.boolean() }))
     .mutation(({ ctx, input }) => {
       return ctx.db.$transaction((tx) =>
         completeTodo(tx, ctx.session.user.id, input.id, input.completed),
@@ -50,7 +50,7 @@ export const todoRouter = router({
     }),
   reorder: protectedProcedure
     .input(
-      z.object({
+      z.strictObject({
         todoListId: z.string().min(1),
         ids: z.array(z.string()).min(1),
       }),
@@ -61,7 +61,7 @@ export const todoRouter = router({
       );
     }),
   delete: protectedProcedure
-    .input(z.object({ id: z.string() }))
+    .input(z.strictObject({ id: z.string() }))
     .mutation(({ ctx, input }) => {
       return ctx.db.$transaction((tx) =>
         deleteTodo(tx, ctx.session.user.id, input.id),

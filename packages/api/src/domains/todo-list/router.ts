@@ -31,19 +31,21 @@ export const todoListRouter = router({
     return listTodoLists(ctx.db, ctx.session.user.id);
   }),
   get: protectedProcedure
-    .input(z.object({ id: z.string() }))
+    .input(z.strictObject({ id: z.string() }))
     .query(({ ctx, input }) => {
       return getTodoList(ctx.db, ctx.session.user.id, input.id);
     }),
   create: protectedProcedure
-    .input(z.object({ name: z.string().min(1), color: z.string().optional() }))
+    .input(
+      z.strictObject({ name: z.string().min(1), color: z.string().optional() }),
+    )
     .mutation(({ ctx, input }) => {
       return ctx.db.$transaction((tx) =>
         createTodoList(tx, ctx.session.user.id, input.name, input.color),
       );
     }),
   delete: protectedProcedure
-    .input(z.object({ id: z.string() }))
+    .input(z.strictObject({ id: z.string() }))
     .mutation(({ ctx, input }) => {
       return ctx.db.$transaction((tx) =>
         deleteTodoList(tx, ctx.session.user.id, input.id),
@@ -53,7 +55,12 @@ export const todoListRouter = router({
     listAccessibleTodoLists(ctx.db, ctx.session.user.id),
   ),
   inviteCollaborator: protectedProcedure
-    .input(z.object({ listId: z.string().min(1), username: z.string().min(1) }))
+    .input(
+      z.strictObject({
+        listId: z.string().min(1),
+        username: z.string().min(1),
+      }),
+    )
     .mutation(async ({ ctx, input }) => {
       // Service creates the invite row; email is enqueued AFTER the
       // transaction commits so a rollback never leaks an orphan email.
@@ -77,14 +84,16 @@ export const todoListRouter = router({
       return result.invite;
     }),
   acceptInvite: protectedProcedure
-    .input(z.object({ token: z.string().min(1) }))
+    .input(z.strictObject({ token: z.string().min(1) }))
     .mutation(({ ctx, input }) =>
       ctx.db.$transaction((tx) =>
         acceptInviteFn(tx, ctx.session.user.id, input.token),
       ),
     ),
   removeCollaborator: protectedProcedure
-    .input(z.object({ listId: z.string().min(1), userId: z.string().min(1) }))
+    .input(
+      z.strictObject({ listId: z.string().min(1), userId: z.string().min(1) }),
+    )
     .mutation(({ ctx, input }) =>
       ctx.db.$transaction((tx) =>
         removeCollaboratorFn(
@@ -96,7 +105,7 @@ export const todoListRouter = router({
       ),
     ),
   collaborators: protectedProcedure
-    .input(z.object({ listId: z.string().min(1) }))
+    .input(z.strictObject({ listId: z.string().min(1) }))
     .query(async ({ ctx, input }) => {
       const allowed = await canReadList(
         ctx.db,
@@ -107,7 +116,7 @@ export const todoListRouter = router({
       return listCollaborators(ctx.db, input.listId);
     }),
   declineInvite: protectedProcedure
-    .input(z.object({ token: z.string().min(1) }))
+    .input(z.strictObject({ token: z.string().min(1) }))
     .mutation(({ ctx, input }) =>
       ctx.db.$transaction((tx) =>
         declineInviteFn(tx, ctx.session.user.id, input.token),
@@ -117,12 +126,12 @@ export const todoListRouter = router({
     listMyPendingInvites(ctx.db, ctx.session.user.id),
   ),
   pendingInvites: protectedProcedure
-    .input(z.object({ listId: z.string().min(1) }))
+    .input(z.strictObject({ listId: z.string().min(1) }))
     .query(({ ctx, input }) =>
       listPendingInvitesForList(ctx.db, ctx.session.user.id, input.listId),
     ),
   revokeInvite: protectedProcedure
-    .input(z.object({ inviteId: z.string().min(1) }))
+    .input(z.strictObject({ inviteId: z.string().min(1) }))
     .mutation(({ ctx, input }) =>
       ctx.db.$transaction((tx) =>
         revokeInviteFn(tx, ctx.session.user.id, input.inviteId),
@@ -131,7 +140,7 @@ export const todoListRouter = router({
   // Native async generator (via the subscribeToListEvents helper in
   // events.ts). Auto-closes when the viewer's own membership is revoked.
   onListEvent: protectedProcedure
-    .input(z.object({ listId: z.string().min(1) }))
+    .input(z.strictObject({ listId: z.string().min(1) }))
     .subscription(async function* ({ ctx, input, signal }) {
       const allowed = await canReadList(
         ctx.db,

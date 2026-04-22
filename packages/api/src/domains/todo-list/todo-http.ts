@@ -12,8 +12,12 @@ import { exportTodosAsCSV, importTodosFromCSV } from "./todo-service.js";
 // (undici's File vs. global File can differ at the constructor level,
 // causing false-negative instanceof). This split preserves hc's typed
 // `form: { todoListId }` input while keeping the File check robust.
+// Kept non-strict: the multipart form carries an additional `file` field
+// that we read separately via `parseBody()` (the File check is manual —
+// z.instanceof(File) is unreliable across Node runtimes). Strict-mode
+// would reject the `file` key as unrecognized before the handler runs.
 const importFormSchema = z.object({ todoListId: z.string().min(1) });
-const exportSchema = z.object({ todoListId: z.string().min(1) });
+const exportSchema = z.strictObject({ todoListId: z.string().min(1) });
 
 export const todoHttpRouter = new Hono()
   .post("/import", zValidator("form", importFormSchema), async (c) => {

@@ -14,8 +14,8 @@ import type { TRPCClient } from "@trpc/client";
 import type { TRPCOptionsProxy } from "@trpc/tanstack-react-query";
 import { type ReactNode, useEffect } from "react";
 import { Toaster } from "sonner";
-import { RealSessionBridge } from "#/features/auth/session-context";
 import { getSession, type SessionData } from "#/features/auth/session";
+import { RealSessionBridge } from "#/features/auth/session-context";
 import { AppNavbar } from "#/widgets/app-navbar";
 import { AppShell } from "#/widgets/app-shell";
 
