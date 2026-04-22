@@ -65,7 +65,7 @@ when("I request the admin queues API endpoint", async ({ page }) => {
 // biome-ignore lint/correctness/noEmptyPattern: playwright-bdd requires object destructuring as first arg
 given("I promote {string} to admin", async ({}, email: string) => {
   const subEnv = envForSubprocess("e2e");
-  execSync(`bun run scripts/seed-admin.ts ${email}`, {
+  execSync(`bun run scripts/seed/seed-admin.ts ${email}`, {
     stdio: "inherit",
     cwd: PROJECT_ROOT,
     env: {

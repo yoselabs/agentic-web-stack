@@ -131,7 +131,11 @@ describe("BullMQ retry wiring", () => {
   // `failedReason` (resp. `returnvalue`) to be populated, not just for
   // getState() to flip — BullMQ writes the state field a hair before
   // the reason/returnvalue field, and reading between the two yields a
-  // Job with failedReason === undefined.
+  // Job whose returnvalue field is `null` in Redis (a hash-get of a
+  // not-yet-written field). Use loose `!= null` so transient nulls
+  // don't resolve the poll with a premature Job snapshot — this was
+  // the source of the "expected {ok:true} to equal null" flake on
+  // the retry-then-complete path.
   async function waitForJobState(
     jobId: string,
     target: "failed" | "completed",
@@ -144,8 +148,7 @@ describe("BullMQ retry wiring", () => {
         const state = await job.getState();
         if (state === target) {
           if (target === "failed" && job.failedReason) return job;
-          if (target === "completed" && job.returnvalue !== undefined)
-            return job;
+          if (target === "completed" && job.returnvalue != null) return job;
         }
       }
       await new Promise((r) => setTimeout(r, 25));
