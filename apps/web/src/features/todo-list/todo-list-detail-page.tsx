@@ -10,6 +10,7 @@ import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { Link } from "@tanstack/react-router";
 import type { TRPCOptionsProxy } from "@trpc/tanstack-react-query";
 import { useRef } from "react";
+import { ActivityFeedPanel } from "#/features/activity-feed/activity-feed-panel.js";
 import { AccessLostEmptyState } from "#/features/todo-list/access-lost-empty-state.js";
 import { CollaboratorList } from "#/features/todo-list/collaborator-list.js";
 import { CompletedTodoItem } from "#/features/todo-list/completed-todo-item.js";
@@ -67,98 +68,121 @@ export function TodoListDetailPage({
   }
 
   return (
-    <main className="mx-auto max-w-2xl px-4 py-8 sm:px-6 sm:py-10">
-      <div className="mb-6">
-        <Link
-          to="/todo-lists"
-          className="text-muted-foreground text-sm hover:text-foreground"
-        >
-          {"<-"} Back to lists
-        </Link>
-        <div className="mt-2 flex items-center justify-between gap-4">
-          <h1 className="font-bold text-3xl">
-            {listQuery.data?.name ?? "Loading..."}
-          </h1>
-          <ShareListDialog listId={listId} trpc={trpc} />
+    <div className="flex flex-col md:flex-row">
+      <main className="mx-auto max-w-2xl flex-1 px-4 py-8 sm:px-6 sm:py-10">
+        <div className="mb-6">
+          <Link
+            to="/todo-lists"
+            className="text-muted-foreground text-sm hover:text-foreground"
+          >
+            {"<-"} Back to lists
+          </Link>
+          <div className="mt-2 flex items-center justify-between gap-4">
+            <h1 className="font-bold text-3xl">
+              {listQuery.data?.name ?? "Loading..."}
+            </h1>
+            <ShareListDialog listId={listId} trpc={trpc} />
+          </div>
         </div>
-      </div>
 
-      {listQuery.data && currentUserId && (
-        <section className="mb-6">
-          <h2 className="mb-2 font-semibold text-muted-foreground text-sm">
-            Collaborators
-          </h2>
-          <CollaboratorList
-            listId={listId}
-            ownerId={listQuery.data.userId}
-            currentUserId={currentUserId}
-            trpc={trpc}
+        {listQuery.data && currentUserId && (
+          <section className="mb-6">
+            <h2 className="mb-2 font-semibold text-muted-foreground text-sm">
+              Collaborators
+            </h2>
+            <CollaboratorList
+              listId={listId}
+              ownerId={listQuery.data.userId}
+              currentUserId={currentUserId}
+              trpc={trpc}
+            />
+          </section>
+        )}
+
+        <div className="mb-4 flex gap-2">
+          <input
+            ref={fileInputRef}
+            type="file"
+            accept=".csv"
+            className="hidden"
+            onChange={(e) => {
+              const file = e.target.files?.[0];
+              if (file) {
+                importTodos.mutate(file);
+                e.target.value = "";
+              }
+            }}
           />
-        </section>
-      )}
+          <Button
+            variant="outline"
+            size="sm"
+            onClick={() => fileInputRef.current?.click()}
+            disabled={importTodos.isPending}
+          >
+            {importTodos.isPending ? "Importing..." : "Import CSV"}
+          </Button>
+          <Button variant="outline" size="sm" onClick={exportTodos}>
+            Export CSV
+          </Button>
+        </div>
 
-      <div className="mb-4 flex gap-2">
-        <input
-          ref={fileInputRef}
-          type="file"
-          accept=".csv"
-          className="hidden"
-          onChange={(e) => {
-            const file = e.target.files?.[0];
-            if (file) {
-              importTodos.mutate(file);
-              e.target.value = "";
-            }
-          }}
-        />
-        <Button
-          variant="outline"
-          size="sm"
-          onClick={() => fileInputRef.current?.click()}
-          disabled={importTodos.isPending}
-        >
-          {importTodos.isPending ? "Importing..." : "Import CSV"}
-        </Button>
-        <Button variant="outline" size="sm" onClick={exportTodos}>
-          Export CSV
-        </Button>
-      </div>
+        <form onSubmit={handleSubmit} className="mb-6 flex gap-2">
+          <Input
+            type="text"
+            placeholder="Add a todo..."
+            value={newTitle}
+            onChange={(e) => setNewTitle(e.target.value)}
+            className="flex-1"
+          />
+          <Button type="submit" disabled={createTodo.isPending}>
+            {createTodo.isPending ? "Adding..." : "Add"}
+          </Button>
+        </form>
 
-      <form onSubmit={handleSubmit} className="mb-6 flex gap-2">
-        <Input
-          type="text"
-          placeholder="Add a todo..."
-          value={newTitle}
-          onChange={(e) => setNewTitle(e.target.value)}
-          className="flex-1"
-        />
-        <Button type="submit" disabled={createTodo.isPending}>
-          {createTodo.isPending ? "Adding..." : "Add"}
-        </Button>
-      </form>
-
-      {todos.isPending ? (
-        <p className="text-muted-foreground">Loading...</p>
-      ) : todos.data?.length === 0 ? (
-        <p className="text-muted-foreground">No todos yet</p>
-      ) : (
-        <>
-          {activeTodos.length > 0 && (
-            <DndContext
-              sensors={sensors}
-              collisionDetection={closestCenter}
-              onDragEnd={handleDragEnd}
-            >
-              <SortableContext
-                items={activeTodos.map((t) => t.id)}
-                strategy={verticalListSortingStrategy}
+        {todos.isPending ? (
+          <p className="text-muted-foreground">Loading...</p>
+        ) : todos.data?.length === 0 ? (
+          <p className="text-muted-foreground">No todos yet</p>
+        ) : (
+          <>
+            {activeTodos.length > 0 && (
+              <DndContext
+                sensors={sensors}
+                collisionDetection={closestCenter}
+                onDragEnd={handleDragEnd}
               >
+                <SortableContext
+                  items={activeTodos.map((t) => t.id)}
+                  strategy={verticalListSortingStrategy}
+                >
+                  <ul className="space-y-2">
+                    {activeTodos.map((todo) => (
+                      <SortableTodoItem
+                        key={todo.id}
+                        todo={todo}
+                        onComplete={() =>
+                          completeTodo.mutate({
+                            id: todo.id,
+                            completed: !todo.completed,
+                          })
+                        }
+                        onDelete={() => deleteTodo.mutate({ id: todo.id })}
+                      />
+                    ))}
+                  </ul>
+                </SortableContext>
+              </DndContext>
+            )}
+
+            {completedTodos.length > 0 && (
+              <>
+                {activeTodos.length > 0 && <div className="my-4 border-t" />}
                 <ul className="space-y-2">
-                  {activeTodos.map((todo) => (
-                    <SortableTodoItem
+                  {completedTodos.map((todo) => (
+                    <CompletedTodoItem
                       key={todo.id}
                       todo={todo}
-                      onComplete={() =>
+                      onUncomplete={() =>
                         completeTodo.mutate({
                           id: todo.id,
                           completed: !todo.completed,
@@ -168,32 +192,12 @@ export function TodoListDetailPage({
                     />
                   ))}
                 </ul>
-              </SortableContext>
-            </DndContext>
-          )}
-
-          {completedTodos.length > 0 && (
-            <>
-              {activeTodos.length > 0 && <div className="my-4 border-t" />}
-              <ul className="space-y-2">
-                {completedTodos.map((todo) => (
-                  <CompletedTodoItem
-                    key={todo.id}
-                    todo={todo}
-                    onUncomplete={() =>
-                      completeTodo.mutate({
-                        id: todo.id,
-                        completed: !todo.completed,
-                      })
-                    }
-                    onDelete={() => deleteTodo.mutate({ id: todo.id })}
-                  />
-                ))}
-              </ul>
-            </>
-          )}
-        </>
-      )}
-    </main>
+              </>
+            )}
+          </>
+        )}
+      </main>
+      <ActivityFeedPanel trpc={trpc} todoListId={listId} />
+    </div>
   );
 }

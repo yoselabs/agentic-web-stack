@@ -27,6 +27,11 @@ export const Route = createFileRoute("/_authenticated/todo-lists/$listId")({
       queryClient
         .fetchQuery(trpc.todo.list.queryOptions({ todoListId: params.listId }))
         .catch(() => {}),
+      queryClient
+        .fetchQuery(
+          trpc.activity.list.queryOptions({ todoListId: params.listId }),
+        )
+        .catch(() => {}),
     ]),
   component: RouteComponent,
 });
