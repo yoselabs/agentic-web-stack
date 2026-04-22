@@ -24,6 +24,7 @@ let TEST_LIST_ID: string;
 const createdTodoIds: string[] = [];
 
 beforeAll(async () => {
+  await db.activityEvent.deleteMany({ where: { actorId: TEST_USER_ID } });
   await db.todo.deleteMany({ where: { userId: TEST_USER_ID } });
   await db.todoList.deleteMany({ where: { userId: TEST_USER_ID } });
   await db.user.deleteMany({ where: { id: TEST_USER_ID } });
@@ -52,6 +53,7 @@ afterEach(async () => {
 });
 
 afterAll(async () => {
+  await db.activityEvent.deleteMany({ where: { actorId: TEST_USER_ID } });
   await db.todo.deleteMany({ where: { userId: TEST_USER_ID } });
   await db.todoList.deleteMany({ where: { userId: TEST_USER_ID } });
   await db.user.delete({ where: { id: TEST_USER_ID } }).catch(() => {});

@@ -270,6 +270,52 @@ describe("collaborator lifecycle", () => {
     await factory.closeAll();
   });
 
+  it("acceptInvite emits a member-added activity event", async () => {
+    const result = await db.$transaction((tx) =>
+      inviteCollaborator(tx, OWNER_ID, listId, "invitee-collab"),
+    );
+    await db.$transaction((tx) =>
+      acceptInvite(tx, INVITEE_ID, result.invite.token),
+    );
+
+    const events = await db.activityEvent.findMany({
+      where: { todoListId: listId, kind: "member-added" },
+      orderBy: { id: "desc" },
+      take: 1,
+    });
+    expect(events[0]?.kind).toBe("member-added");
+    expect(events[0]?.actorId).toBe(INVITEE_ID);
+    expect(events[0]?.payload).toMatchObject({
+      memberId: INVITEE_ID,
+      memberName: "Invitee",
+    });
+  });
+
+  it("removeCollaborator emits a member-removed activity event", async () => {
+    const result = await db.$transaction((tx) =>
+      inviteCollaborator(tx, OWNER_ID, listId, "invitee-collab"),
+    );
+    await db.$transaction((tx) =>
+      acceptInvite(tx, INVITEE_ID, result.invite.token),
+    );
+
+    await db.$transaction((tx) =>
+      removeCollaborator(tx, OWNER_ID, listId, INVITEE_ID),
+    );
+
+    const events = await db.activityEvent.findMany({
+      where: { todoListId: listId, kind: "member-removed" },
+      orderBy: { id: "desc" },
+      take: 1,
+    });
+    expect(events[0]?.kind).toBe("member-removed");
+    expect(events[0]?.actorId).toBe(OWNER_ID);
+    expect(events[0]?.payload).toMatchObject({
+      memberId: INVITEE_ID,
+      memberName: "Invitee",
+    });
+  });
+
   it("listAccessibleTodoLists returns owner's + collaborator's lists", async () => {
     const result = await db.$transaction((tx) =>
       inviteCollaborator(tx, OWNER_ID, listId, "invitee-collab"),

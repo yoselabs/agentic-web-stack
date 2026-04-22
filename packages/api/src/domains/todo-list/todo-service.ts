@@ -3,6 +3,11 @@ import { channel as defaultChannel } from "@project/realtime/channel";
 import type { Channel } from "@project/realtime/types";
 import { TRPCError } from "@trpc/server";
 import Papa from "papaparse";
+import {
+  type ActivityChannelProvider,
+  emitActivity,
+  publishActivity,
+} from "./activity-publishers.js";
 import { listChannelKey, type TodoListEvent } from "./events.js";
 import { canReadList } from "./service.js";
 import {
@@ -80,6 +85,7 @@ export async function createTodo(
   options: {
     channel?: ChannelProvider;
     userInboxChannel?: UserInboxChannelProvider;
+    activityChannel?: ActivityChannelProvider;
   } = {},
 ) {
   const provider = options.channel ?? defaultProvider;
@@ -96,11 +102,17 @@ export async function createTodo(
     data: { title, userId: creatorId, todoListId, position: 0 },
     include: { todoList: true },
   });
+  const activityEvent = await emitActivity(tx, {
+    todoListId,
+    actorId: creatorId,
+    payload: { kind: "todo-created", todoId: created.id, title: created.title },
+  });
   await provider(listChannelKey(todoListId)).publish({
     kind: "todo-created",
     listId: todoListId,
     todo: created,
   });
+  await publishActivity(activityEvent, options.activityChannel);
   const inboxProvider = options.userInboxChannel ?? defaultUserInboxProvider;
   const recipients = await listMemberIdsForList(tx, todoListId);
   await publishCountersChanged(inboxProvider, recipients, todoListId);
@@ -115,6 +127,7 @@ export async function completeTodo(
   options: {
     channel?: ChannelProvider;
     userInboxChannel?: UserInboxChannelProvider;
+    activityChannel?: ActivityChannelProvider;
   } = {},
 ) {
   const provider = options.channel ?? defaultProvider;
@@ -145,12 +158,22 @@ export async function completeTodo(
     where: { id },
     include: { todoList: true },
   });
+  const activityEvent = await emitActivity(tx, {
+    todoListId: todo.todoListId,
+    actorId: viewerId,
+    payload: {
+      kind: completed ? "todo-completed" : "todo-uncompleted",
+      todoId: updatedWithList.id,
+      title: updatedWithList.title,
+    },
+  });
   // Fan out to collaborators so they see the completion state flip in realtime.
   await provider(listChannelKey(todo.todoListId)).publish({
     kind: "todo-updated",
     listId: todo.todoListId,
     todo: updatedWithList,
   });
+  await publishActivity(activityEvent, options.activityChannel);
   const inboxProvider = options.userInboxChannel ?? defaultUserInboxProvider;
   const recipients = await listMemberIdsForList(tx, todo.todoListId);
   await publishCountersChanged(inboxProvider, recipients, todo.todoListId);
@@ -193,6 +216,7 @@ export async function deleteTodo(
   options: {
     channel?: ChannelProvider;
     userInboxChannel?: UserInboxChannelProvider;
+    activityChannel?: ActivityChannelProvider;
   } = {},
 ) {
   const provider = options.channel ?? defaultProvider;
@@ -205,11 +229,21 @@ export async function deleteTodo(
     });
   }
   const deleted = await tx.todo.delete({ where: { id } });
+  const activityEvent = await emitActivity(tx, {
+    todoListId: todo.todoListId,
+    actorId: viewerId,
+    payload: {
+      kind: "todo-deleted",
+      todoId: deleted.id,
+      title: deleted.title,
+    },
+  });
   await provider(listChannelKey(todo.todoListId)).publish({
     kind: "todo-deleted",
     listId: todo.todoListId,
     todoId: id,
   });
+  await publishActivity(activityEvent, options.activityChannel);
   const inboxProvider = options.userInboxChannel ?? defaultUserInboxProvider;
   const recipients = await listMemberIdsForList(tx, todo.todoListId);
   await publishCountersChanged(inboxProvider, recipients, todo.todoListId);

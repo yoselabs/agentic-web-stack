@@ -3,6 +3,11 @@ import type { Prisma, PrismaClient } from "@project/db";
 import { channel as defaultChannel } from "@project/realtime/channel";
 import type { Channel } from "@project/realtime/types";
 import { TRPCError } from "@trpc/server";
+import {
+  type ActivityChannelProvider,
+  emitActivity,
+  publishActivity,
+} from "./activity-publishers.js";
 import { INVITE_EXPIRY_DAYS, INVITE_RETENTION_DAYS } from "./constants.js";
 import { listChannelKey, type TodoListEvent } from "./events.js";
 import {
@@ -196,6 +201,7 @@ export async function acceptInvite(
     channel?: ChannelProvider;
     nowMs?: number;
     userInboxChannel?: UserInboxChannelProvider;
+    activityChannel?: ActivityChannelProvider;
   } = {},
 ) {
   const provider = options.channel ?? defaultProvider;
@@ -236,11 +242,26 @@ export async function acceptInvite(
 
   await tx.todoListInvite.delete({ where: { id: invite.id } });
 
+  const memberUser = await tx.user.findUniqueOrThrow({
+    where: { id: userId },
+    select: { name: true },
+  });
+  const activityEvent = await emitActivity(tx, {
+    todoListId: invite.todoListId,
+    actorId: userId,
+    payload: {
+      kind: "member-added",
+      memberId: userId,
+      memberName: memberUser.name,
+    },
+  });
+
   await provider(listChannelKey(invite.todoListId)).publish({
     kind: "todo-list-collaborator-added",
     listId: invite.todoListId,
     userId,
   });
+  await publishActivity(activityEvent, options.activityChannel);
 
   const inboxProvider = options.userInboxChannel ?? defaultUserInboxProvider;
   const memberIds = await listMemberIdsForList(tx, invite.todoListId);
@@ -264,6 +285,7 @@ export async function removeCollaborator(
   options: {
     channel?: ChannelProvider;
     userInboxChannel?: UserInboxChannelProvider;
+    activityChannel?: ActivityChannelProvider;
   } = {},
 ) {
   const provider = options.channel ?? defaultProvider;
@@ -294,11 +316,26 @@ export async function removeCollaborator(
     where: { id: membership.id },
   });
 
+  const targetUser = await tx.user.findUniqueOrThrow({
+    where: { id: targetUserId },
+    select: { name: true },
+  });
+  const activityEvent = await emitActivity(tx, {
+    todoListId: listId,
+    actorId: ownerId,
+    payload: {
+      kind: "member-removed",
+      memberId: targetUserId,
+      memberName: targetUser.name,
+    },
+  });
+
   await provider(listChannelKey(listId)).publish({
     kind: "todo-list-collaborator-removed",
     listId,
     userId: targetUserId,
   });
+  await publishActivity(activityEvent, options.activityChannel);
 
   const inboxProvider = options.userInboxChannel ?? defaultUserInboxProvider;
   await publishAccessRevoked(inboxProvider, [targetUserId], listId);
