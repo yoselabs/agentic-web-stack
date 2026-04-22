@@ -1,7 +1,7 @@
 import { env } from "@project/env/client";
 import { Button } from "@project/ui/components/button";
 import { Link } from "@tanstack/react-router";
-import { useSession } from "#/features/auth/auth-client";
+import { useAppSession } from "#/features/auth/session-context";
 import { UserBlock } from "#/features/auth/user-block";
 import { Logo } from "./logo";
 import { MobileNav } from "./mobile-nav";
@@ -19,7 +19,7 @@ const authedLinks = [
  * with arbitrary slot content.
  */
 export function AppNavbar() {
-  const { data: session } = useSession();
+  const { data: session } = useAppSession();
   const isAuthed = !!session;
   const isAdmin =
     isAuthed && (session.user as { role?: string }).role === "admin";

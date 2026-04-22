@@ -1,9 +1,10 @@
 import { Button } from "@project/ui/components/button";
 import { useNavigate } from "@tanstack/react-router";
-import { signOut, useSession } from "#/features/auth/auth-client";
+import { signOut } from "#/features/auth/auth-client";
+import { useAppSession } from "#/features/auth/session-context";
 
 export function UserBlock() {
-  const { data: session } = useSession();
+  const { data: session } = useAppSession();
   const navigate = useNavigate();
 
   if (!session) return null;

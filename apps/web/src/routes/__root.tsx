@@ -14,6 +14,7 @@ import type { TRPCClient } from "@trpc/client";
 import type { TRPCOptionsProxy } from "@trpc/tanstack-react-query";
 import { type ReactNode, useEffect } from "react";
 import { Toaster } from "sonner";
+import { RealSessionBridge } from "#/features/auth/session-context";
 import { getSession, type SessionData } from "#/features/auth/session";
 import { AppNavbar } from "#/widgets/app-navbar";
 import { AppShell } from "#/widgets/app-shell";
@@ -67,12 +68,14 @@ function RootDocument({ children }: Readonly<{ children: ReactNode }>) {
       </head>
       <body className="font-sans antialiased">
         <QueryClientProvider client={queryClient}>
-          <AppShell
-            slots={{
-              nav: <AppNavbar />,
-              main: children,
-            }}
-          />
+          <RealSessionBridge>
+            <AppShell
+              slots={{
+                nav: <AppNavbar />,
+                main: children,
+              }}
+            />
+          </RealSessionBridge>
         </QueryClientProvider>
         <Toaster richColors closeButton />
         <Scripts />

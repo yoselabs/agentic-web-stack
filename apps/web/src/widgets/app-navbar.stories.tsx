@@ -1,42 +1,70 @@
 import type { Meta, StoryObj } from "@storybook/react-vite";
+import {
+  type AnyRouter,
+  createRootRoute,
+  createRouter,
+  RouterProvider,
+} from "@tanstack/react-router";
+import { AppNavbar } from "./app-navbar";
 
 /**
  * `AppNavbar` is the session-aware composition that feeds the slot-typed
- * `Navbar` shell. Unlike `Navbar` itself (pure/slot-driven, enumerated
- * exhaustively in `navbar.stories.tsx`), `AppNavbar` reads Better-Auth's
- * `useSession()`.
+ * `Navbar` shell. Sessions are injected via `parameters.session` (see
+ * `.storybook/preview.tsx`'s `withSession` decorator) — no Better-Auth
+ * runtime, no network probe.
  *
- * Stories are tagged `no-test` (excluded in `vitest.config.ts`) because
- * `useSession()` reaches into a session store that isn't meaningfully
- * mockable without a full auth decorator we don't ship yet. The
- * state-space enumeration (LoggedOut / LoggedInBasic / LoggedInAdmin /
- * WithAdminActions) is covered through the slot contract in
- * `navbar.stories.tsx`. This file exists to satisfy
- * `check-stories-siblings` and give humans a live preview in the
- * Storybook dev server. Promote to the default tag once a session
- * decorator lands.
+ * The slot-contract combinatorics (every nav/user/admin-action shape)
+ * stay enumerated in `navbar.stories.tsx`, which exercises the dumb
+ * shell directly. These stories assert the session → slot-selection
+ * mapping: signed out vs user vs admin.
  */
+const rootRoute = createRootRoute({ component: () => <AppNavbar /> });
+const router = createRouter({ routeTree: rootRoute });
+
 const meta = {
   title: "widgets/AppNavbar",
-  tags: ["no-test"],
+  component: AppNavbar,
+  decorators: [() => <RouterProvider router={router as AnyRouter} />],
   parameters: { layout: "fullscreen" },
-} satisfies Meta<Record<string, never>>;
+} satisfies Meta<typeof AppNavbar>;
 
 export default meta;
 type Story = StoryObj<typeof meta>;
 
-/**
- * Placeholder preview — see JSDoc above. Run `pnpm storybook` to render
- * `AppNavbar` live; do not rely on this story for regression coverage.
- */
-export const Placeholder: Story = {
-  render: () => (
-    <div style={{ padding: 16 }}>
-      <em>
-        Rendered live in Storybook dev server only. See `navbar.stories.tsx` for
-        the exhaustive slot-state enumeration that exercises every shape
-        `AppNavbar` produces.
-      </em>
-    </div>
-  ),
+/** Signed out: only Sign In affordance renders. */
+export const LoggedOut: Story = {
+  parameters: { session: { data: null, isPending: false } },
+};
+
+/** Signed-in non-admin: primary links visible, Jobs Admin suppressed. */
+export const LoggedInUser: Story = {
+  parameters: {
+    session: {
+      data: {
+        user: {
+          id: "u-basic",
+          email: "ada@example.com",
+          name: "Ada Lovelace",
+        },
+      },
+      isPending: false,
+    },
+  },
+};
+
+/** Signed-in admin: Jobs Admin link visible on desktop + mobile. */
+export const LoggedInAdmin: Story = {
+  parameters: {
+    session: {
+      data: {
+        user: {
+          id: "u-admin",
+          email: "admin@example.com",
+          name: "Admin",
+          role: "admin",
+        },
+      },
+      isPending: false,
+    },
+  },
 };

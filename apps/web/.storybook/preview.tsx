@@ -2,6 +2,10 @@
 import type { Decorator, Preview } from "@storybook/react-vite";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import type { ReactNode } from "react";
+import {
+  type AppSession,
+  SessionProvider,
+} from "#/features/auth/session-context";
 
 /**
  * Per-story `QueryClient`. Mirrors `apps/web/test/render.tsx` exactly:
@@ -72,6 +76,45 @@ const withTRPC: Decorator = (Story, context) => {
   );
 };
 
+/**
+ * Session parameters. Story opts in via `parameters.session` — absence
+ * means "logged out (data: null)" so stories that don't care about auth
+ * still get a valid provider without typing ceremony.
+ */
+type StorySessionParameters = {
+  session?: AppSession;
+};
+
+/**
+ * `AppNavbar`, `LandingPage`, `UserBlock` and friends read session
+ * through `useAppSession()`. In production that's populated by
+ * `RealSessionBridge` wrapping Better-Auth; in stories we inject a
+ * fixed `AppSession` via `SessionProvider` — no network, no Better-Auth
+ * runtime. Default: signed out.
+ *
+ * Example:
+ *
+ * ```ts
+ * export const LoggedIn: Story = {
+ *   parameters: {
+ *     session: {
+ *       data: { user: { id: "u1", email: "a@b.co", name: "Ada" } },
+ *       isPending: false,
+ *     },
+ *   },
+ * };
+ * ```
+ */
+const withSession: Decorator = (Story, context) => {
+  const params = context.parameters.session as
+    | StorySessionParameters["session"]
+    | undefined;
+  const value: AppSession = params ?? { data: null, isPending: false };
+  return (
+    <SessionProvider value={value}>{Story() as ReactNode}</SessionProvider>
+  );
+};
+
 const preview: Preview = {
   parameters: {
     // Stories fail on a11y violations, not just warn in the panel.
@@ -89,7 +132,7 @@ const preview: Preview = {
       test: "error",
     },
   },
-  decorators: [withTRPC],
+  decorators: [withTRPC, withSession],
 };
 
 export default preview;

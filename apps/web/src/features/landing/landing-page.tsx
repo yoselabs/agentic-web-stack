@@ -1,9 +1,9 @@
 import { Button } from "@project/ui/components/button";
 import { Link } from "@tanstack/react-router";
-import { useSession } from "#/features/auth/auth-client";
+import { useAppSession } from "#/features/auth/session-context";
 
 export function LandingPage() {
-  const { data: session, isPending } = useSession();
+  const { data: session, isPending } = useAppSession();
 
   return (
     <main className="flex min-h-[calc(100vh-57px)] items-center justify-center">

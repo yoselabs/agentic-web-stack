@@ -7,14 +7,14 @@ import {
   CardTitle,
 } from "@project/ui/components/card";
 import type { TRPCOptionsProxy } from "@trpc/tanstack-react-query";
-import { useSession } from "#/features/auth/auth-client";
+import { useAppSession } from "#/features/auth/session-context";
 import { PendingInvitesDashboard } from "#/features/todo-list/pending-invites-dashboard";
 
 // Composes user-session display with the todo-list pending invites widget.
 // Lives in its own feature dir because it spans two domain concerns
 // (auth session + todo-list invites); neither alone owns it.
 export function DashboardPage({ trpc }: { trpc: TRPCOptionsProxy<AppRouter> }) {
-  const { data: session } = useSession();
+  const { data: session } = useAppSession();
 
   return (
     <main className="mx-auto max-w-2xl px-4 py-8 sm:px-6 sm:py-10">
