@@ -1,5 +1,6 @@
 import type { Prisma, PrismaClient } from "@project/db";
 import type { Channel } from "@project/realtime/types";
+import { ACTIVITY_LIST_PAGE_SIZE } from "./constants";
 import type {
   ActivityEventEnvelope,
   ActivityEventPayload,
@@ -34,10 +35,30 @@ export type ListEventsInput = {
 };
 
 export async function listActivityEvents(
-  _db: PrismaClient,
-  _input: ListEventsInput,
+  db: PrismaClient,
+  input: ListEventsInput,
 ): Promise<{ items: ActivityEventRecord[]; nextCursor: string | null }> {
-  throw new Error("not implemented");
+  const limit = Math.min(
+    input.limit ?? ACTIVITY_LIST_PAGE_SIZE,
+    ACTIVITY_LIST_PAGE_SIZE,
+  );
+  const rows = await db.activityEvent.findMany({
+    where: {
+      todoListId: input.todoListId,
+      ...(input.cursor ? { id: { lt: input.cursor } } : {}),
+    },
+    orderBy: { id: "desc" },
+    take: limit + 1,
+  });
+  const hasMore = rows.length > limit;
+  const items = (hasMore ? rows.slice(0, limit) : rows).map((r) => ({
+    ...r,
+    payload: r.payload as ActivityEventPayload,
+  }));
+  return {
+    items,
+    nextCursor: hasMore ? (items[items.length - 1]?.id ?? null) : null,
+  };
 }
 
 export type StreamEventsInput = {
