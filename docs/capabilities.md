@@ -92,6 +92,47 @@ Each entry follows the same shape:
   `packages/api/src/domains/todo-list/todo-service.ts`,
   `conventions.md#realtime-event-naming`.
 
+### Activity feed — resumable append-only event stream
+
+- **What** — Domain `activity-feed` renders an ordered log of what
+  happened in a scope (currently per todo-list). Reconnecting clients
+  replay missed events via tRPC `tracked()` — no full refetch. Gap-fill
+  uses the `activity_event` table as the replay buffer; overflow yields
+  a `resync` sentinel.
+- **Import** —
+  - Server service: `recordActivityEvent`, `listActivityEvents`,
+    `streamActivityEvents` from
+    `@project/api/domains/activity-feed/service`.
+  - Event types: `ActivityEventKind`, `ActivityEventPayload`,
+    `ActivityEventRecord`, `ActivityEventEnvelope`,
+    `activityChannelKey` from
+    `@project/api/domains/activity-feed/events`.
+  - Constants: `ACTIVITY_REPLAY_GAP_MAX`, `ACTIVITY_REPLAY_MAX_AGE_MS`,
+    `ACTIVITY_LIST_PAGE_SIZE` from
+    `@project/api/domains/activity-feed/constants`.
+  - Web hook: `useActivityFeed(trpc, todoListId)` from
+    `apps/web/src/features/activity-feed/use-activity-feed`.
+  - Web panel: `<ActivityFeedPanel trpc={trpc} todoListId={listId} />`
+    from `apps/web/src/features/activity-feed/activity-feed-panel`.
+- **When** — you need an ordered, append-only view of user actions
+  within a domain (activity log, audit feed, chat, notifications with
+  history) where missed events during disconnect must replay in order.
+- **When not** — ephemeral state (presence, typing) — don't log it.
+  "Something changed in this query, refetch" — use a regular realtime
+  invalidate event (see the todo-list event channel) and let React
+  Query refetch; don't reach for `tracked()`.
+- **Emission pattern** — to add a new domain that emits activity events,
+  import `recordActivityEvent` into the domain's service and call it
+  inside the mutation's `$transaction` callback, then publish the
+  returned record via `channel(activityChannelKey(todoListId)).publish(event)`
+  after tx commit. See
+  `packages/api/src/domains/todo-list/activity-publishers.ts` for the
+  canonical example.
+- **See** —
+  `docs/conventions.md#when-to-use-tracked-resumable-subscriptions`,
+  `docs/superpowers/plans/2026-04-22-tracked-activity-feed.md`,
+  `e2e/features/activity-feed/activity-feed.feature`.
+
 ### Rate limiting
 
 - **What** — `rate-limiter-flexible` wrappers (in-memory for dev,

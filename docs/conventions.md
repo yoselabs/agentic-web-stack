@@ -66,6 +66,48 @@ every exhaustive consumer.
 
 Reference implementation: `packages/api/src/domains/todo-list/events.ts`.
 
+## When to use `tracked()` (resumable subscriptions)
+
+tRPC's `tracked(id, payload)` enables resumable subscriptions: on reconnect,
+the client's last-seen event id is threaded back to the server, which replays
+missed events before tailing live.
+
+**Prescribe `tracked()` when:** missed events have user-visible consequences
+that don't self-heal on reconnect — ordered deltas where "apply event N then
+N+1" matters to the user (activity feeds, chat, collaborative cursors with
+history). The event kind is durable domain data persisted in its own table.
+
+**Do NOT use `tracked()` when:** the event is an "invalidate this query"
+notification (todo-list mutation events, revoke cascade) — refetch on
+reconnect is already correct and cheaper. Or when the event is ephemeral
+state (presence, typing indicators, live cursors) — fresh snapshot on
+reconnect is the right semantic.
+
+**Storage rule — reuse the domain table as the replay buffer.** Do not
+introduce Redis Streams or separate ring buffers as a replay layer unless the
+event kind has no durable form. The activity_event / messages / orders table
+already satisfies gap-fill via `WHERE id > lastEventId ORDER BY id ASC
+LIMIT ?`. Transport is still plain Redis pub/sub (via
+`packages/realtime/RedisChannel`) — transport and replay are orthogonal.
+
+**Ordering rule — INSERT then PUBLISH.** Insert the event row inside the
+mutation's transaction, then publish to the realtime channel after commit.
+Never publish before commit: the gap query would miss an event the client
+already received via pub/sub, breaking dedup.
+
+**Replay bounds.** Cap the gap query (500 events or 24h, per
+`packages/api/src/domains/activity-feed/constants.ts`). On overflow, yield a
+`resync` sentinel envelope; the client falls back to a full fetch.
+
+**Client hook discipline.** The subscription hook must NOT auto-invalidate on
+`onStarted` — the whole point of `tracked()` is that reconnect resumes from
+`lastEventId` without a full refetch. Only the `resync` sentinel triggers
+invalidation.
+
+**Exhibit:** `packages/api/src/domains/activity-feed/` implements this
+pattern end-to-end — schema, service (with gap-fill + resync), router,
+web hook, panel, and BDD spec.
+
 ## Realtime channel granularity
 
 Two channel patterns in this codebase:
@@ -307,6 +349,34 @@ top-level queries in step files. A fallback
 `scripts/check-scoped-landmarks.ts` ships for patterns Grit cannot
 express (e.g., "preceding-line comment" context). Both wire into
 `make lint`.
+
+## E2E locator hierarchy (Playwright + playwright-bdd)
+
+Bare tag/CSS locators (`page.locator("li", { hasText: title })`) don't
+compose — the moment two regions render the same shape, every unscoped
+query collides. Use this 4-tier hierarchy, in order of preference:
+
+1. **Role + name, scoped under a landmark.**
+   `page.getByRole("main").getByRole("listitem", { name: title })`.
+   Always the first choice — semantic, a11y-aligned, automatically scoped.
+2. **Label / placeholder** for form fields.
+   `page.getByLabel("Email")`, `page.getByPlaceholder("Add a todo...")`.
+3. **Scoped text** under a landmark.
+   `page.getByRole("main").getByText(title)`.
+4. **`getByTestId`** only as an escape hatch for components whose
+   semantics don't map cleanly to roles (charts, composite widgets,
+   dialog wrappers where ARIA is awkward).
+
+**Scope every query under a landmark** unless it's unambiguously
+page-global (`main`, `complementary`, `navigation`, `banner`). Landmarks
+are required for accessibility anyway — using them in tests makes the
+a11y tree load-bearing, which is the point.
+
+Rule of thumb: if a step def starts with bare `page.locator(...)`, there
+is almost always a role-based alternative. Reach for `data-testid` only
+after exhausting (1)–(3).
+
+See `TODO.md` for the cross-cutting migration of existing step defs.
 
 ## Web app Vitest project selection
 
