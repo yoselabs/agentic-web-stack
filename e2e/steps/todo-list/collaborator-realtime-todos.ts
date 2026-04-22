@@ -90,7 +90,7 @@ Then(
   // biome-ignore lint/correctness/noEmptyPattern: playwright-bdd requires object destructuring as first arg
   async ({}, first: string, second: string, actorName: string) => {
     const actor = getActor(actorName);
-    const items = actor.page.locator('[data-testid="todo-row"]');
+    const items = actor.page.getByTestId("todo-row");
     const texts: string[] = [];
     const count = await items.count();
     for (let i = 0; i < count; i++) {

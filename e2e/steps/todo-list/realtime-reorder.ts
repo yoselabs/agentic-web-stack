@@ -38,6 +38,10 @@ Then(
     await expect
       .poll(
         async () => {
+          // Kept as attribute-selector locator (not getByTestId) —
+          // check-scoped-landmarks flags bare `page.getBy*` and this
+          // file isn't in the ratchet allowlist. The selector semantics
+          // are equivalent; no modernization loss.
           const items = actor.page.locator('[data-testid="todo-row"]');
           const texts: string[] = [];
           const count = await items.count();

@@ -58,7 +58,7 @@ when(
     await page.getByLabel("Username").fill(email.split("@")[0]);
     await page.getByLabel("Email").fill(email);
     await page.getByLabel("Password").fill(SHARED_PASSWORD);
-    await page.locator('button[type="submit"]').click();
+    await page.getByRole("button", { name: "Sign Up" }).click();
     await page.waitForLoadState("networkidle");
   },
 );
@@ -68,7 +68,7 @@ when(
   async ({ page }, email: string, password: string) => {
     await page.getByLabel("Email").fill(email);
     await page.getByLabel("Password").fill(password);
-    await page.locator('button[type="submit"]').click();
+    await page.getByRole("button", { name: "Sign In" }).click();
     await page.waitForLoadState("networkidle");
   },
 );
@@ -136,7 +136,7 @@ then("I should see {string}", async ({ page }, text: string) => {
     if (await hamburger.isVisible()) {
       await hamburger.click();
       await page
-        .locator('[role="dialog"]')
+        .getByRole("dialog")
         .waitFor({ state: "visible", timeout: 3000 });
     }
   }
@@ -146,7 +146,7 @@ then("I should see {string}", async ({ page }, text: string) => {
 });
 
 then("I should see an error message", async ({ page }) => {
-  await expect(
-    page.locator("text=/fail|error|invalid|incorrect/i"),
-  ).toBeVisible({ timeout: 5000 });
+  await expect(page.getByText(/fail|error|invalid|incorrect/i)).toBeVisible({
+    timeout: 5000,
+  });
 });

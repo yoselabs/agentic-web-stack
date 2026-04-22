@@ -13,12 +13,12 @@ when("I open the mobile menu", async ({ page }) => {
 
 then("I should see {string} in the menu", async ({ page }, text: string) => {
   // The menu sheet contains navigation links
-  const sheet = page.locator('[role="dialog"]');
+  const sheet = page.getByRole("dialog");
   await expect(sheet.getByText(text)).toBeVisible({ timeout: 3000 });
 });
 
 when("I tap {string} in the menu", async ({ page }, text: string) => {
-  const sheet = page.locator('[role="dialog"]');
+  const sheet = page.getByRole("dialog");
   await sheet.getByText(text).click();
 });
 
@@ -28,7 +28,7 @@ then("I should be on the todo lists page", async ({ page }) => {
 
 then("the mobile menu should be closed", async ({ page }) => {
   // Sheet should no longer be visible after navigation
-  await expect(page.locator('[role="dialog"]')).not.toBeVisible({
+  await expect(page.getByRole("dialog")).not.toBeVisible({
     timeout: 3000,
   });
 });

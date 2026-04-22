@@ -50,7 +50,7 @@ when("I sign out and sign in as {string}", async ({ page }, email: string) => {
   await page.getByLabel("Username").fill(email.split("@")[0]);
   await page.getByLabel("Email").fill(email);
   await page.getByLabel("Password").fill(SHARED_PASSWORD);
-  await page.locator('button[type="submit"]').click();
+  await page.getByRole("button", { name: "Sign Up" }).click();
   await page.waitForURL(/\/dashboard/, { timeout: 10000 });
 });
 
@@ -91,7 +91,7 @@ then(
     // CollaboratorList <ul> before the todos <ul>, so `ul.first()` would
     // pick up collaborators instead of todos. `data-testid="todo-row"` is
     // set by SortableTodoItem on each active todo.
-    const items = page.locator('[data-testid="todo-row"]');
+    const items = page.getByTestId("todo-row");
     const texts: string[] = [];
     for (let i = 0; i < (await items.count()); i++) {
       const text = await items.nth(i).innerText();

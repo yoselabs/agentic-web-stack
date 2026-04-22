@@ -22,7 +22,7 @@ then(
 then(
   "I should see a {string} button in the navigation",
   async ({ page }, label: string) => {
-    const nav = page.locator("nav").first();
+    const nav = page.getByRole("navigation").first();
     // On mobile, the button is behind the hamburger menu sheet. Open if
     // the desktop locator doesn't match first.
     const visibleInNav = nav.getByRole("link", { name: label });
@@ -46,7 +46,7 @@ then(
 then(
   "I should see a {string} link in the navigation",
   async ({ page }, label: string) => {
-    const nav = page.locator("nav").first();
+    const nav = page.getByRole("navigation").first();
     const visibleInNav = nav.getByRole("link", { name: label });
     if ((await visibleInNav.count()) === 0) {
       const hamburger = page.getByRole("button", { name: "Toggle menu" });
@@ -68,7 +68,7 @@ then(
 then(
   "I should not see a {string} button in the navigation",
   async ({ page }, label: string) => {
-    const nav = page.locator("nav").first();
+    const nav = page.getByRole("navigation").first();
     await expect(nav.getByRole("link", { name: label })).toHaveCount(0);
   },
 );
