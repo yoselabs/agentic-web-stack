@@ -72,6 +72,10 @@ export type StreamEventsInput = {
   lastEventId?: string;
   channel: Channel<ActivityEventRecord>;
   signal?: AbortSignal;
+  // Authz cascade: when a `member-removed` event names this viewer, the
+  // generator yields the event then returns. Subscription MUST NOT
+  // outlive viewer access (mirrors the pattern in todo-list events.ts).
+  viewerId?: string;
 };
 
 export async function* streamActivityEvents(
@@ -150,6 +154,17 @@ export async function* streamActivityEvents(
         if (lastYieldedId && ev.id <= lastYieldedId) continue;
         yield { kind: "event", event: ev };
         lastYieldedId = ev.id;
+        // Authz cascade: viewer's own membership was just revoked — close
+        // the stream so they stop receiving further events on this list.
+        // The `member-removed` event is the last thing they see (it's
+        // already been published by the time we reach here).
+        if (
+          input.viewerId &&
+          ev.payload.kind === "member-removed" &&
+          ev.payload.memberId === input.viewerId
+        ) {
+          return;
+        }
       }
       if (input.signal?.aborted) break;
       await new Promise<void>((resolve) => {

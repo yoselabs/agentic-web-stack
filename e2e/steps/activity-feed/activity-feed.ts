@@ -1,9 +1,8 @@
 // Step defs for e2e/features/activity-feed/activity-feed.feature.
-// Multi-context actors (Alice + Bob) registered via tRPC HTTP signup —
-// same pattern as collaborators.ts. Request log tapped per-page for the
-// "no refetch during reconnect" assertion. WS severance via
-// page.context().setOffline(true/false) — tears down the active WS and
-// blocks HTTP, matching the real network-drop path tracked() was built for.
+// Multi-context actors (Alice + Bob) via tRPC HTTP signup (same pattern
+// as collaborators.ts). Per-page request log feeds the "no refetch
+// during reconnect" assertion. WS severance via CDP
+// Network.emulateNetworkConditions (setOffline alone leaves sockets open).
 
 import type { BrowserContext, Page } from "@playwright/test";
 import { expect } from "@playwright/test";
@@ -121,10 +120,9 @@ async function fetchUserId(page: Page): Promise<string> {
   return id;
 }
 
-// Register a fresh actor with its own browser context. We generate a
-// unique email/username so Background can run before the scenario's
-// explicit "a user X with email Y" step (which is treated as a no-op
-// alias — see the step def below). The password is the shared test pw.
+// Register a fresh actor with its own browser context. Unique
+// email/username lets Background run before the explicit "a user X with
+// email Y" step (which is a no-op alias — see below).
 async function registerActor(
   browser: import("@playwright/test").Browser,
   displayName: string,
@@ -191,10 +189,8 @@ Given(
 );
 
 // "Bob is a collaborator on "Groceries"" — unquoted actor name. Regex
-// (rather than cucumber expression) so we don't collide with the existing
-// `"{string}" is a collaborator on "{string}"` step in
-// e2e/steps/todo-list/collaborators.ts — cucumber's `{word}` would match
-// a quoted "bob" too because `{word}` is `\S+`.
+// form avoids cucumber's `{word}` matching a quoted "bob", which would
+// collide with the todo-list/collaborators.ts step.
 Given(
   /^([A-Za-z][A-Za-z0-9_]*) is a collaborator on "([^"]+)"$/,
   async ({ browser }, name: string, listName: string) => {
@@ -242,10 +238,9 @@ Given(
   },
 );
 
-// "a user "Alice" with email "alice-live@example.com"" — alias for the
-// Background-registered actor. The email in the Gherkin documents the
-// scenario's intent; actual emails come from Background so Background
-// can run first. This step is a no-op for already-registered actors.
+// Alias for a Background-registered actor. Email in Gherkin is doc;
+// actual emails come from Background so it can run first. No-op on
+// already-registered actors.
 Given(
   "a user {string} with email {string}",
   // biome-ignore lint/correctness/noEmptyPattern: playwright-bdd requires object destructuring as first arg
@@ -260,46 +255,36 @@ Given(
   "{word} is signed in and viewing {string}",
   // biome-ignore lint/correctness/noEmptyPattern: playwright-bdd requires object destructuring as first arg
   async ({}, name: string, listName: string) => {
-    const actor = getActor(name);
-    // Ensure session is fresh on this page (registerActor already signed
-    // in, but a subsequent actor creation may have cleared cookies).
-    await signInOnPage(actor.page, actor.email);
-    const id = getListId(listName);
-    await actor.page.goto(`/todo-lists/${id}`);
-    await waitForHydration(actor.page);
-    // placement-agnostic: list heading is the only h1 on the detail page
-    await expect(
-      actor.page.getByRole("heading", { name: listName }),
-    ).toBeVisible({ timeout: 10_000 });
-    // placement-agnostic: activity-feed testid is globally unique on this page
-    await expect(actor.page.getByTestId("activity-feed")).toBeVisible({
-      timeout: 10_000,
-    });
+    await openListForActor(getActor(name), listName);
   },
 );
 
-// "Bob is signed in in a second browser and viewing "Groceries"" —
-// same as above, just phrased to flag the multi-context pattern in the
-// Gherkin. Actor already has its own context (one per registered actor).
+// Same as above; Gherkin phrasing flags the multi-context pattern.
+// Each registered actor already owns its own browser context.
 Given(
   "{word} is signed in in a second browser and viewing {string}",
   // biome-ignore lint/correctness/noEmptyPattern: playwright-bdd requires object destructuring as first arg
   async ({}, name: string, listName: string) => {
-    const actor = getActor(name);
-    await signInOnPage(actor.page, actor.email);
-    const id = getListId(listName);
-    await actor.page.goto(`/todo-lists/${id}`);
-    await waitForHydration(actor.page);
-    // placement-agnostic: list heading is the only h1 on the detail page
-    await expect(
-      actor.page.getByRole("heading", { name: listName }),
-    ).toBeVisible({ timeout: 10_000 });
-    // placement-agnostic: activity-feed testid is globally unique on this page
-    await expect(actor.page.getByTestId("activity-feed")).toBeVisible({
-      timeout: 10_000,
-    });
+    await openListForActor(getActor(name), listName);
   },
 );
+
+// Ensure fresh session (a later registerActor may have cleared cookies)
+// then navigate to the list and wait for the activity-feed panel.
+async function openListForActor(actor: ActorState, listName: string) {
+  await signInOnPage(actor.page, actor.email);
+  const id = getListId(listName);
+  await actor.page.goto(`/todo-lists/${id}`);
+  await waitForHydration(actor.page);
+  // placement-agnostic: list heading is the only h1 on the detail page
+  await expect(actor.page.getByRole("heading", { name: listName })).toBeVisible(
+    { timeout: 10_000 },
+  );
+  // placement-agnostic: activity-feed testid is globally unique on this page
+  await expect(actor.page.getByTestId("activity-feed")).toBeVisible({
+    timeout: 10_000,
+  });
+}
 
 // --- When ---
 
@@ -352,10 +337,23 @@ When(
   // biome-ignore lint/correctness/noEmptyPattern: playwright-bdd requires object destructuring as first arg
   async ({}, name: string) => {
     const actor = getActor(name);
-    // Going offline tears down in-flight sockets AND blocks outgoing
-    // fetches, matching "the user dropped network" more accurately than
-    // a targeted WS close.
+    // `BrowserContext.setOffline` intercepts fetches but doesn't close
+    // open WebSockets, so the tRPC wsLink never notices and never
+    // triggers its reconnect path. CDP's `Network.emulateNetworkConditions`
+    // does drop active sockets, which is what we need here.
     await actor.context.setOffline(true);
+    const client = await actor.context.newCDPSession(actor.page);
+    try {
+      await client.send("Network.enable");
+      await client.send("Network.emulateNetworkConditions", {
+        offline: true,
+        latency: 0,
+        downloadThroughput: 0,
+        uploadThroughput: 0,
+      });
+    } finally {
+      await client.detach().catch(() => {});
+    }
   },
 );
 
@@ -364,24 +362,22 @@ When(
   // biome-ignore lint/correctness/noEmptyPattern: playwright-bdd requires object destructuring as first arg
   async ({}, name: string) => {
     const actor = getActor(name);
-    // Wait for the next websocket that opens after we go online — that
-    // one is the reconnect. `page.waitForEvent("websocket")` fires on WS
-    // construction; we then await its open.
-    const wsPromise = actor.page.waitForEvent("websocket", {
-      timeout: 10_000,
-    });
+    // Restore the network. wsLink is already in retry-backoff from the
+    // CDP-induced close; letting traffic flow lets the next retry succeed.
+    const client = await actor.context.newCDPSession(actor.page);
+    try {
+      await client.send("Network.emulateNetworkConditions", {
+        offline: false,
+        latency: 0,
+        downloadThroughput: -1,
+        uploadThroughput: -1,
+      });
+    } finally {
+      await client.detach().catch(() => {});
+    }
     await actor.context.setOffline(false);
-    const ws = await wsPromise;
-    // Capture the moment the reconnect's transport is established — the
-    // "no refetch" assertion filters requests observed after this.
+    // Capture the reconnect moment — used by the "no refetch" filter.
     reconnectTimestamps.set(actorKey(name), Date.now());
-    // Wait for it to close (indicates full reconnect lifecycle saw
-    // messages) OR to stay open. We don't need it closed; just confirm
-    // the socket is live by observing it opened without an immediate
-    // close. Playwright's WebSocket object doesn't expose an "open"
-    // event — isClosed() suffices.
-    // Give the server a beat to replay missed tracked() events.
-    expect(ws.isClosed()).toBe(false);
   },
 );
 

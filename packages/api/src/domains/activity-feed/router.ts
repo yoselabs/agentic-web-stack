@@ -66,6 +66,7 @@ export const activityFeedRouter = router({
         lastEventId: input.lastEventId,
         channel: ch,
         signal,
+        viewerId: ctx.session.user.id,
       })) {
         if (envelope.kind === "event") {
           yield tracked(envelope.event.id, envelope);
