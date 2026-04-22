@@ -13,10 +13,18 @@ export type RecordEventInput = {
 };
 
 export async function recordActivityEvent(
-  _tx: Prisma.TransactionClient,
-  _input: RecordEventInput,
+  tx: Prisma.TransactionClient,
+  input: RecordEventInput,
 ): Promise<ActivityEventRecord> {
-  throw new Error("not implemented");
+  const row = await tx.activityEvent.create({
+    data: {
+      todoListId: input.todoListId,
+      actorId: input.actorId,
+      kind: input.payload.kind,
+      payload: input.payload,
+    },
+  });
+  return { ...row, payload: row.payload as ActivityEventPayload };
 }
 
 export type ListEventsInput = {
