@@ -41,7 +41,25 @@ export function useActivityFeed(
       // static type may not be assignment-compatible with
       // ActivityEventEnvelope. The `kind` discriminator is intact either
       // way — dispatch is safe. Same pattern as use-todo-list-live-updates.
-      const envelope = data as ActivityEventEnvelope;
+      //
+      // Tracked-envelope unwrap: when the server yields `tracked(id, value)`,
+      // the WS/SSE link delivers `{ id, data: value }` to onData (so the
+      // client can thread `Last-Event-Id` on reconnect). When the server
+      // yields a plain value (our `resync` sentinel), `data` IS the value.
+      // Detect the wrapped shape by looking for a `data` child whose `kind`
+      // is one of our envelope discriminants and unwrap it.
+      const maybeWrapped = data as
+        | { id?: unknown; data?: { kind?: unknown } }
+        | undefined;
+      const inner =
+        maybeWrapped &&
+        typeof maybeWrapped === "object" &&
+        maybeWrapped.data &&
+        (maybeWrapped.data.kind === "event" ||
+          maybeWrapped.data.kind === "resync")
+          ? (maybeWrapped.data as ActivityEventEnvelope)
+          : (data as ActivityEventEnvelope);
+      const envelope = inner;
       if (envelope.kind === "resync") {
         setLiveEvents([]);
         void queryClient.invalidateQueries({
