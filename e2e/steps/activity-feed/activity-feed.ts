@@ -312,8 +312,10 @@ When(
     await actor.page.getByPlaceholder("Add a todo...").fill(title);
     // placement-agnostic: the Add button is scoped by its unique name
     await actor.page.getByRole("button", { name: "Add" }).click();
+    // placement-agnostic: scope via <main> so activity-feed <aside> entries don't collide.
+    const main = actor.page.getByRole("main");
     await expect(
-      actor.page.locator("li", { hasText: title }).first(),
+      main.getByTestId("todo-row").filter({ hasText: title }).first(),
     ).toBeVisible({ timeout: 5000 });
   },
 );
@@ -323,7 +325,9 @@ When(
   // biome-ignore lint/correctness/noEmptyPattern: playwright-bdd requires object destructuring as first arg
   async ({}, name: string, title: string) => {
     const actor = getActor(name);
-    const row = actor.page.locator("li", { hasText: title }).first();
+    // placement-agnostic: scope via <main> so activity-feed <aside> entries don't collide.
+    const main = actor.page.getByRole("main");
+    const row = main.getByTestId("todo-row").filter({ hasText: title }).first();
     await row.getByRole("checkbox").click();
     await expect(row.getByRole("checkbox")).toBeChecked({ timeout: 5000 });
   },

@@ -11,21 +11,29 @@ const stepsDir = dirname(fileURLToPath(import.meta.url));
 
 let lastDownloadPath: string | null = null;
 
+// Scope every todo-row lookup to [data-testid="todo-row"] so the
+// activity-feed panel's <li> entries (which mention the same titles
+// verbatim in "alice added Buy milk" copy) don't collide with the
+// todo-row locator. Both SortableTodoItem and CompletedTodoItem set
+// data-testid="todo-row".
+const todoRowLocator = (page: import("@playwright/test").Page, title: string) =>
+  page.getByTestId("todo-row").filter({ hasText: title });
+
 given("I have a todo {string}", async ({ page }, title: string) => {
   await page.getByPlaceholder("Add a todo...").fill(title);
   await page.getByRole("button", { name: "Add" }).click();
-  await expect(page.locator("li", { hasText: title }).first()).toBeVisible({
+  await expect(todoRowLocator(page, title).first()).toBeVisible({
     timeout: 5000,
   });
 });
 
 when("I toggle the todo {string}", async ({ page }, title: string) => {
-  const todoRow = page.locator("li", { hasText: title });
+  const todoRow = todoRowLocator(page, title);
   await todoRow.getByRole("checkbox").click();
 });
 
 when("I delete the todo {string}", async ({ page }, title: string) => {
-  const todoRow = page.locator("li", { hasText: title });
+  const todoRow = todoRowLocator(page, title);
   await todoRow.getByRole("button", { name: "Delete" }).click();
   await todoRow.waitFor({ state: "detached", timeout: 5000 });
 });
@@ -57,20 +65,25 @@ when("I sign out and sign in as {string}", async ({ page }, email: string) => {
 then(
   "the todo {string} should be completed",
   async ({ page }, title: string) => {
-    const todoRow = page.locator("li", { hasText: title });
+    const todoRow = todoRowLocator(page, title);
     await expect(todoRow.getByRole("checkbox")).toBeChecked();
   },
 );
 
 then("I should not see {string}", async ({ page }, text: string) => {
-  await expect(page.getByText(text)).not.toBeVisible();
+  // Scope the "absence" assertion to the main region — the activity
+  // feed <aside> may legitimately render past activity entries that
+  // mention the text (e.g. "alice deleted Old task"), which is not the
+  // presence this assertion is about. The assertion is about the todo
+  // list rendering, which lives under <main>.
+  await expect(page.getByRole("main").getByText(text)).not.toBeVisible();
 });
 
 when(
   "I drag {string} above {string}",
   async ({ page }, source: string, target: string) => {
-    const sourceItem = page.locator("li", { hasText: source });
-    const targetItem = page.locator("li", { hasText: target });
+    const sourceItem = todoRowLocator(page, source);
+    const targetItem = todoRowLocator(page, target);
 
     const targetBox = await targetItem.boundingBox();
     if (!targetBox) throw new Error(`Could not find target item "${target}"`);

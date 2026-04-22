@@ -13,8 +13,17 @@ When(
   // biome-ignore lint/correctness/noEmptyPattern: playwright-bdd requires object destructuring as first arg
   async ({}, actorName: string, draggedTitle: string, targetTitle: string) => {
     const actor = getActor(actorName);
-    const dragged = actor.page.locator("li", { hasText: draggedTitle }).first();
-    const target = actor.page.locator("li", { hasText: targetTitle }).first();
+    // placement-agnostic: getByRole("main") scopes below the activity
+    // feed <aside>; getByTestId("todo-row") narrows to a sortable row.
+    const main = actor.page.getByRole("main");
+    const dragged = main
+      .getByTestId("todo-row")
+      .filter({ hasText: draggedTitle })
+      .first();
+    const target = main
+      .getByTestId("todo-row")
+      .filter({ hasText: targetTitle })
+      .first();
     await dragged.dragTo(target, {
       targetPosition: { x: 10, y: 5 },
     });

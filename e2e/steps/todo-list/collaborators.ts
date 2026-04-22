@@ -1,5 +1,4 @@
-// Multi-user todo-list step defs. Each actor runs in its own Playwright
-// BrowserContext. Module-level Maps scope state per scenario.
+// Multi-user todo-list step defs. Each actor runs in its own Playwright BrowserContext; module-level Maps scope state per scenario.
 
 import type { BrowserContext, Page } from "@playwright/test";
 import { expect } from "@playwright/test";
@@ -10,6 +9,10 @@ import { waitForHydration } from "../../helpers/waits.ts";
 import { TEST_API_URL } from "../../test-env.ts";
 
 const { Given, When, Then, Before, After } = createBdd();
+
+// Scoped to todo-row — activity-feed <li>s collide on bare `li`.
+const todoRow = (p: Page, t: string) =>
+  p.getByTestId("todo-row").filter({ hasText: t }).first();
 
 export type Actor = {
   context: BrowserContext;
@@ -25,8 +28,7 @@ export const actors = new Map<string, Actor>();
 // Track list IDs by display name so steps can deep-link pre-accept.
 export const listIdByName = new Map<string, string>();
 
-// Mailpit shared across workers; waitForMailTo filters by recipient, so
-// no delete-all per scenario (would race with sibling pollers).
+// Mailpit shared across workers; waitForMailTo filters by recipient — no delete-all per scenario.
 Before(async () => {
   actors.clear();
   listIdByName.clear();
@@ -50,8 +52,7 @@ export function getActor(name: string): Actor {
   return actor;
 }
 
-// Sign-up with an EXPLICIT username (decoupled from email prefix) so
-// invite tests can target a stable username.
+// Sign-up with EXPLICIT username (decoupled from email prefix) so invite tests can target a stable username.
 async function signUpWithUsername(
   page: Page,
   email: string,
@@ -327,7 +328,7 @@ When(
   // biome-ignore lint/correctness/noEmptyPattern: playwright-bdd requires object destructuring as first arg
   async ({}, name: string, todoTitle: string) => {
     const actor = getActor(name);
-    const row = actor.page.locator("li", { hasText: todoTitle }).first();
+    const row = todoRow(actor.page, todoTitle);
     const checkbox = row.getByRole("checkbox");
     await checkbox.click();
   },
@@ -412,7 +413,7 @@ Then(
   // biome-ignore lint/correctness/noEmptyPattern: playwright-bdd requires object destructuring as first arg
   async ({}, name: string, todoTitle: string, seconds: number) => {
     const actor = getActor(name);
-    const row = actor.page.locator("li", { hasText: todoTitle }).first();
+    const row = todoRow(actor.page, todoTitle);
     const checkbox = row.getByRole("checkbox");
     await expect(checkbox).toBeChecked({ timeout: seconds * 1000 });
   },

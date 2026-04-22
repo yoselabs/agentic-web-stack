@@ -14,7 +14,7 @@ When(
     await actor.page.getByPlaceholder("Add a todo...").fill(title);
     await actor.page.getByRole("button", { name: "Add" }).click();
     await expect(
-      actor.page.locator("li", { hasText: title }).first(),
+      actor.page.getByTestId("todo-row").filter({ hasText: title }).first(),
     ).toBeVisible({ timeout: 5000 });
   },
 );
@@ -24,7 +24,7 @@ When(
   // biome-ignore lint/correctness/noEmptyPattern: playwright-bdd requires object destructuring as first arg
   async ({}, actorName: string, title: string) => {
     const actor = getActor(actorName);
-    const row = actor.page.locator("li", { hasText: title });
+    const row = actor.page.getByTestId("todo-row").filter({ hasText: title });
     await row.getByRole("button", { name: "Delete" }).click();
     await row.waitFor({ state: "detached", timeout: 5000 });
   },
@@ -79,7 +79,9 @@ Then(
   // biome-ignore lint/correctness/noEmptyPattern: playwright-bdd requires object destructuring as first arg
   async ({}, actorName: string, title: string, seconds: number) => {
     const actor = getActor(actorName);
-    await expect(actor.page.locator("li", { hasText: title })).toHaveCount(0, {
+    await expect(
+      actor.page.getByTestId("todo-row").filter({ hasText: title }),
+    ).toHaveCount(0, {
       timeout: seconds * 1000,
     });
   },
