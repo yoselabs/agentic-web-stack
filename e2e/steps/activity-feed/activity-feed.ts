@@ -1,21 +1,9 @@
-// Step definitions for e2e/features/activity-feed/activity-feed.feature.
-//
-// Actors: each scenario uses two browser contexts (Alice + Bob) so a
-// live-update assertion can observe Alice's DOM while Bob mutates. The
-// Background phase registers both actors + a shared "Groceries" list
-// via the tRPC HTTP transport (same pattern as collaborators.ts) —
-// UI-driven signup would be 10-20× slower and we're not exercising the
-// signup form here.
-//
-// Network tap: the "reconnect does not refetch" assertion relies on a
-// per-actor request log + a timestamp captured at reconnect. Both are
-// scoped to this file's module state and cleared in Before.
-//
-// Websocket severing: we drive page.context().setOffline(true/false).
-// This tears down the in-flight WS (the tRPC client's retry loop will
-// re-open it on setOffline(false)) and blocks HTTP fetches while offline,
-// which matches the real "browser lost network" scenario the tracked()
-// subscription was built for.
+// Step defs for e2e/features/activity-feed/activity-feed.feature.
+// Multi-context actors (Alice + Bob) registered via tRPC HTTP signup —
+// same pattern as collaborators.ts. Request log tapped per-page for the
+// "no refetch during reconnect" assertion. WS severance via
+// page.context().setOffline(true/false) — tears down the active WS and
+// blocks HTTP, matching the real network-drop path tracked() was built for.
 
 import type { BrowserContext, Page } from "@playwright/test";
 import { expect } from "@playwright/test";
@@ -279,12 +267,11 @@ Given(
     const id = getListId(listName);
     await actor.page.goto(`/todo-lists/${id}`);
     await waitForHydration(actor.page);
+    // placement-agnostic: list heading is the only h1 on the detail page
     await expect(
       actor.page.getByRole("heading", { name: listName }),
     ).toBeVisible({ timeout: 10_000 });
-    // Wait for activity feed aside to hydrate so the WS subscription is
-    // open before mutations fire (otherwise the tracked stream's
-    // lastEventId is null on first subscribe and replay is ambiguous).
+    // placement-agnostic: activity-feed testid is globally unique on this page
     await expect(actor.page.getByTestId("activity-feed")).toBeVisible({
       timeout: 10_000,
     });
@@ -303,9 +290,11 @@ Given(
     const id = getListId(listName);
     await actor.page.goto(`/todo-lists/${id}`);
     await waitForHydration(actor.page);
+    // placement-agnostic: list heading is the only h1 on the detail page
     await expect(
       actor.page.getByRole("heading", { name: listName }),
     ).toBeVisible({ timeout: 10_000 });
+    // placement-agnostic: activity-feed testid is globally unique on this page
     await expect(actor.page.getByTestId("activity-feed")).toBeVisible({
       timeout: 10_000,
     });
@@ -319,7 +308,9 @@ When(
   // biome-ignore lint/correctness/noEmptyPattern: playwright-bdd requires object destructuring as first arg
   async ({}, name: string, title: string) => {
     const actor = getActor(name);
+    // placement-agnostic: the Add-todo form is the only input on the detail page
     await actor.page.getByPlaceholder("Add a todo...").fill(title);
+    // placement-agnostic: the Add button is scoped by its unique name
     await actor.page.getByRole("button", { name: "Add" }).click();
     await expect(
       actor.page.locator("li", { hasText: title }).first(),
@@ -398,6 +389,7 @@ Then(
   async ({}, name: string, text: string, seconds: number) => {
     const actor = getActor(name);
     await expect(
+      // placement-agnostic: already scoped via the activity-feed testid chain
       actor.page.getByTestId("activity-feed").getByText(text, { exact: false }),
     ).toBeVisible({ timeout: seconds * 1000 });
   },
@@ -416,6 +408,7 @@ Then(
   ) => {
     const actor = getActor(name);
     const expected = table.raw().map((row: string[]) => row[0].trim());
+    // placement-agnostic: activity-feed testid is globally unique on this page
     const feed = actor.page.getByTestId("activity-feed");
 
     // Wait until every expected entry is rendered somewhere in the feed.
@@ -495,6 +488,7 @@ Then(
     // memory-channel tests; 2s gives headroom without hiding regressions.
     await actor.page.waitForTimeout(2000);
     await expect(
+      // placement-agnostic: already scoped via the activity-feed testid chain
       actor.page.getByTestId("activity-feed").getByText(text, { exact: false }),
     ).toHaveCount(0);
   },
