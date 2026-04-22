@@ -10,9 +10,9 @@ import { protectedProcedure, router } from "../../trpc.js";
 import { canReadList } from "../todo-list/service.js";
 import { ACTIVITY_LIST_PAGE_SIZE } from "./constants.js";
 import {
-  activityChannelKey,
   type ActivityEventEnvelope,
   type ActivityEventRecord,
+  activityChannelKey,
 } from "./events.js";
 import { listActivityEvents, streamActivityEvents } from "./service.js";
 

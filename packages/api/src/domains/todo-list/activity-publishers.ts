@@ -2,9 +2,9 @@ import type { Prisma } from "@project/db";
 import { channel as defaultChannel } from "@project/realtime/channel";
 import type { Channel } from "@project/realtime/types";
 import {
-  activityChannelKey,
   type ActivityEventPayload,
   type ActivityEventRecord,
+  activityChannelKey,
 } from "../activity-feed/events.js";
 import { recordActivityEvent } from "../activity-feed/service.js";
 

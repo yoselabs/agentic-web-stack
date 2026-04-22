@@ -10,6 +10,9 @@
     "./context": {
       "default": "./src/context.ts"
     },
+    "./domains/activity-feed/events": {
+      "default": "./src/domains/activity-feed/events.ts"
+    },
     "./domains/todo-list/todo-service": {
       "default": "./src/domains/todo-list/todo-service.ts"
     },
