@@ -4,6 +4,42 @@ Canonical cross-cutting conventions. Read the relevant section before
 writing code that touches the area. CLAUDE.md files link back to specific
 sections here.
 
+## Realtime — which primitive?
+
+Before reaching for a realtime channel, walk this tree. It routes a
+mutation that "needs to reach other clients" to the cheapest correct
+primitive — the rest of the realtime sections below cover each branch
+in detail.
+
+```
+Mutation happened on the server; other clients need to see it.
+│
+├─ Is a network round-trip acceptable on the client's next read?
+│   └─ yes → `queryClient.invalidateQueries()` after the mutation.
+│            No event, no channel. Cheapest, correct for most cases.
+│
+├─ Would missing events have user-visible consequences that don't
+│  self-heal on reconnect? (ordered history: messages, activity, feed)
+│   └─ yes → `tracked()` subscription + durable replay buffer (the
+│            domain table itself — not Redis Streams). See
+│            "When to use `tracked()`" below.
+│
+├─ Ephemeral state where fresh snapshot on reconnect is the right
+│  semantic? (presence, typing, live cursors)
+│   └─ yes → fire-and-forget publish, no persistence, no `tracked()`.
+│
+└─ Live state change + missing events self-heal on reconnect (list
+   mutations, authz cascades, counter bumps).
+   └─ fire-and-forget publish on a realtime channel. Shape:
+      ├─ Payload — carries post-commit entity/delta; client
+      │            patches cache via `setQueryData`. High-frequency,
+      │            cache-patchable mutations.
+      └─ Notification — carries identifiers only; client
+                        `invalidateQueries`. Authz cascades, rare
+                        mutations, anything where the payload isn't
+                        trustworthy for the consumer's decision.
+```
+
 ## Realtime event naming
 
 Every realtime event kind MUST start with its owning domain — the domain
@@ -13,11 +49,17 @@ whose service emits it. Examples:
 - `todos-reordered`, `todos-imported` (todo domain, bulk)
 - `todo-list-updated`, `todo-list-collaborator-added` (todo-list domain)
 
-**Pluralization rule.** Single-item mutations use singular
-(`todo-created`); bulk mutations that span multiple items atomically use
-plural (`todos-reordered`, `todos-imported`). This mirrors the server's
-payload shape — singular events carry one entity, plural events carry an
-array.
+**Pluralization rule.**
+
+- **Payload-shape events** — singular for single-item mutations
+  (`todo-created`); plural for bulk mutations that span multiple items
+  atomically (`todos-reordered`, `todos-imported`). Mirrors the server's
+  payload: singular carries one entity, plural carries an array.
+- **Notification-shape events** — carry no entity. Plural when the
+  event describes change to an aggregate collection
+  (`todo-list-counters-changed`, `todo-list-invites-changed`). Singular
+  when it describes a single conceptual event
+  (`todo-list-access-granted`).
 
 Events may ride on a channel owned by a *different* domain (e.g.,
 `todo-created` publishes on `todo-list:{listId}`); the prefix refers to
@@ -138,15 +180,6 @@ Every application-owned model has:
 
 Join/link tables included (they represent edges that can be updated).
 Better-Auth-owned tables follow Better-Auth's schema.
-
-## Realtime event naming — pluralization (addendum)
-
-The existing pluralization rule (singular for single-item payloads,
-plural for bulk payloads) governs **payload-shape** events.
-**Notification-shape** events carry no entity; pluralize when the event
-describes change to an aggregate collection (`todo-list-counters-changed`,
-`todo-list-invites-changed`), singular when it describes a single
-conceptual event (`todo-list-access-granted`).
 
 ## Aggregation modules (integration surfaces)
 
