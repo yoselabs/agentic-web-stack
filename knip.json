@@ -38,8 +38,7 @@
       "ignoreDependencies": ["@testing-library/user-event", "@project/query"]
     },
     "apps/server": {
-      "entry": ["src/index.ts"],
-      "ignoreDependencies": ["@hono/node-ws", "ws"]
+      "entry": ["src/index.ts"]
     },
     "apps/worker": {
       "entry": ["src/index.ts"],

@@ -16,14 +16,14 @@
     "postinstall": "bun run scripts/generate.ts"
   },
   "dependencies": {
-    "@prisma/adapter-pg": "^7.7.0",
+    "@prisma/adapter-pg": "^7.8.0",
     "@prisma/client": "catalog:",
     "@project/env": "workspace:*",
-    "pg": "^8.16.3",
+    "pg": "^8.20.0",
     "prisma": "catalog:"
   },
   "devDependencies": {
     "@types/node": "catalog:",
-    "@types/pg": "^8.15.5"
+    "@types/pg": "^8.20.0"
   }
 }
