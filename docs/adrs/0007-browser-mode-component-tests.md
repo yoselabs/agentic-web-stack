@@ -117,9 +117,9 @@ stories rarely needs browser-mode tests — only when (1)–(3) apply.
 - **Positive.** `vitest-browser-react` keeps the
   `renderWithTRPC({ seed })` mental model intact across all three
   projects. Only the environment changes.
-- **Negative.** `vitest-browser-react@1.x` pinned to support
-  vitest@3; the 2.x line requires vitest@4. Tracked as a bump
-  alongside the vitest 4 upgrade.
+- **Negative.** `vitest-browser-react` is coupled to the vitest
+  major (v1 → vitest 3, v2 → vitest 4). A future vitest bump will
+  pull this along; annoying but bounded.
 - **Negative.** A `.browser.test.tsx` run in the `unit` project would
   fail at `vitest-browser-react` import time (requires browser
   environment). The include glob + filename suffix keeps them

@@ -75,7 +75,7 @@ Every invariant the template relies on is enforced by **types, static checks, or
 
 **Tools (heterogeneous per package):**
 - `@project/api` — Bun test. Real Postgres, real Prisma. Router + service tests. One `$transaction` per mutation test.
-- `@project/web` — Vitest 3 with happy-dom. `renderWithTRPC(ui, seed)` helper seeds tRPC cache via `queryOptions().queryKey`. `withFakeTimers({ toFake })` harness avoids React 19 scheduler breakage.
+- `@project/web` — Vitest 4 with happy-dom. `renderWithTRPC(ui, seed)` helper seeds tRPC cache via `queryOptions().queryKey`. `withFakeTimers({ toFake })` harness avoids React 19 scheduler breakage.
 - Run in parallel: `turbo run test --filter=@project/api --filter=@project/web`.
 
 **Authoring patterns:**

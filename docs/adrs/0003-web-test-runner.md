@@ -50,7 +50,7 @@ benefits from Bun's raw speed.
 
 ## Decision
 
-- **`apps/web`** runs on **Vitest 3** with **happy-dom** as the
+- **`apps/web`** runs on **Vitest 4** with **happy-dom** as the
   environment. `vitest.config.ts` reuses the app's module-resolution
   surface (`tsconfigPaths` + the `tslib` ESM alias — see `vite.config.ts`
   for the `__toESM` interop rationale) and loads `@vitejs/plugin-react`
