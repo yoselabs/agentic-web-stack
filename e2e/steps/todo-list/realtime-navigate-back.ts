@@ -47,7 +47,7 @@ Then(
   async ({}, actorName: string, title: string) => {
     const actor = getActor(actorName);
     await expect(
-      actor.page.getByTestId("todo-row").filter({ hasText: title }).first(),
+      actor.page.getByTestId("todo-row").filter({ hasText: title }),
     ).toBeVisible({ timeout: 10_000 });
   },
 );

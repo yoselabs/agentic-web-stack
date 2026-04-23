@@ -93,7 +93,11 @@ When(
   async ({}, actorName: string, inviteeUsername: string) => {
     const actor = getActor(actorName);
     const dialog = actor.page.getByRole("dialog");
-    const row = dialog.locator("li", { hasText: inviteeUsername });
+    // Pending-invite rows are <li>s mentioning the invitee's username;
+    // filter narrows by visible text (the username) without a raw selector.
+    const row = dialog
+      .getByRole("listitem")
+      .filter({ hasText: inviteeUsername });
     await row.getByRole("button", { name: "Revoke" }).click();
     await expect(row).toBeHidden({ timeout: 10_000 });
   },
@@ -107,9 +111,11 @@ Then(
   async ({}, actorName: string, text: string) => {
     const actor = getActor(actorName);
     const dialog = actor.page.getByRole("dialog");
-    await expect(dialog.getByText(text, { exact: false }).first()).toBeVisible({
-      timeout: 5000,
-    });
+    // Suggestion buttons carry the matched text in their accessible name.
+    // Role+text scoping is stable even if the surrounding DOM shifts.
+    await expect(
+      dialog.getByRole("button", { name: new RegExp(text) }),
+    ).toBeVisible({ timeout: 5000 });
   },
 );
 
@@ -128,9 +134,16 @@ Then(
   // biome-ignore lint/correctness/noEmptyPattern: playwright-bdd requires object destructuring as first arg
   async ({}, actorName: string, text: string) => {
     const actor = getActor(actorName);
-    await expect(
-      actor.page.getByText(text, { exact: false }).first(),
-    ).toBeVisible({ timeout: 5000 });
+    await expect
+      .poll(
+        () =>
+          actor.page
+            .getByText(text, { exact: false })
+            .filter({ visible: true })
+            .count(),
+        { timeout: 5000 },
+      )
+      .toBeGreaterThanOrEqual(1);
   },
 );
 
@@ -139,17 +152,14 @@ Then(
   // biome-ignore lint/correctness/noEmptyPattern: playwright-bdd requires object destructuring as first arg
   async ({}, actorName: string, listName: string) => {
     const actor = getActor(actorName);
-    // Pending-invitations card renders <h3>Pending invitations</h3> via
-    // shadcn's <CardTitle>. Scope to that card to avoid matching "Groceries"
-    // elsewhere.
-    const card = actor.page
-      .locator("div", {
-        has: actor.page.getByText("Pending invitations", { exact: true }),
-      })
-      .first();
-    await expect(card.getByText(listName).first()).toBeVisible({
-      timeout: 10_000,
+    // PendingInvitesDashboard sets role="region" on the Card with the
+    // heading as its accessible name so we can address it by name.
+    const card = actor.page.getByRole("region", {
+      name: "Pending invitations",
     });
+    await expect(
+      card.getByText(listName).filter({ visible: true }),
+    ).toBeVisible({ timeout: 10_000 });
   },
 );
 
@@ -158,12 +168,18 @@ Then(
   // biome-ignore lint/correctness/noEmptyPattern: playwright-bdd requires object destructuring as first arg
   async ({}, actorName: string) => {
     const actor = getActor(actorName);
-    await expect(
-      actor.page.getByRole("button", { name: "Accept" }).first(),
-    ).toBeVisible({ timeout: 5000 });
-    await expect(
-      actor.page.getByRole("button", { name: "Decline" }).first(),
-    ).toBeVisible({ timeout: 5000 });
+    // `toBeVisible` on a multi-match locator triggers strict-mode; assert
+    // count ≥1 via expect.poll to accept "at least one" without picking.
+    await expect
+      .poll(() => actor.page.getByRole("button", { name: "Accept" }).count(), {
+        timeout: 5000,
+      })
+      .toBeGreaterThanOrEqual(1);
+    await expect
+      .poll(() => actor.page.getByRole("button", { name: "Decline" }).count(), {
+        timeout: 5000,
+      })
+      .toBeGreaterThanOrEqual(1);
   },
 );
 
@@ -173,12 +189,12 @@ Then(
   async ({}, actorName: string, username: string) => {
     const actor = getActor(actorName);
     const dialog = actor.page.getByRole("dialog");
-    const section = dialog.locator("section", {
-      has: actor.page.getByRole("heading", { name: "Pending invites" }),
-    });
-    await expect(section.getByText(username).first()).toBeVisible({
-      timeout: 10_000,
-    });
+    // The pending-invites <section> inside the dialog carries an
+    // accessible name via its <h3>Pending invites</h3>. Address by role.
+    const section = dialog.getByRole("region", { name: "Pending invites" });
+    await expect(
+      section.getByText(username).filter({ visible: true }),
+    ).toBeVisible({ timeout: 10_000 });
   },
 );
 
@@ -191,9 +207,7 @@ Then(
     // The whole section vanishes when the last invite is revoked (the
     // component renders null on empty data). Accept either: section gone,
     // or section present but username absent.
-    const section = dialog.locator("section", {
-      has: actor.page.getByRole("heading", { name: "Pending invites" }),
-    });
+    const section = dialog.getByRole("region", { name: "Pending invites" });
     const sectionCount = await section.count();
     if (sectionCount === 0) return;
     await expect(section.getByText(username)).toHaveCount(0);

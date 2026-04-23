@@ -14,7 +14,7 @@ When(
     await actor.page.getByPlaceholder("Add a todo...").fill(title);
     await actor.page.getByRole("button", { name: "Add" }).click();
     await expect(
-      actor.page.getByTestId("todo-row").filter({ hasText: title }).first(),
+      actor.page.getByTestId("todo-row").filter({ hasText: title }),
     ).toBeVisible({ timeout: 5000 });
   },
 );
@@ -37,13 +37,16 @@ When(
     const actor = getActor(actorName);
     const rows = csvTitles.split(",").map((t) => t.trim());
     const csv = `title\n${rows.join("\n")}\n`;
-    const input = actor.page.locator('input[type="file"]');
+    // See todos.ts — the hidden <input type="file"> carries
+    // data-testid="todo-import-input" for direct addressability.
+    const input = actor.page.getByTestId("todo-import-input");
     await input.setInputFiles({
       name: "import.csv",
       mimeType: "text/csv",
       buffer: Buffer.from(csv, "utf-8"),
     });
-    await actor.page.waitForLoadState("networkidle");
+    // Imports trigger a bulk create → invalidate → refetch; the caller's
+    // subsequent "X sees Y" assertion naturally waits for the UI.
   },
 );
 
@@ -56,7 +59,12 @@ Given(
     const actor = getActor(actorName);
     await actor.page.goto("/todo-lists");
     await actor.page.waitForURL("**/todo-lists");
-    await actor.page.waitForSelector('[data-testid="todo-lists-index"]');
+    // The TodoListsPage sets data-testid="todo-lists-index" once the
+    // index rendered; assert visibility instead of waitForSelector so
+    // the waitForHydration-style fallback isn't needed.
+    await expect(actor.page.getByTestId("todo-lists-index")).toBeVisible({
+      timeout: 10_000,
+    });
   },
 );
 
@@ -96,6 +104,7 @@ Then(
     const texts: string[] = [];
     const count = await items.count();
     for (let i = 0; i < count; i++) {
+      // eslint-disable-next-line playwright/no-nth-methods -- positional assertion: this step asserts DOM order of sortable rows
       texts.push(await items.nth(i).innerText());
     }
     const firstIdx = texts.findIndex((t) => t.includes(first));

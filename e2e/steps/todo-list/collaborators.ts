@@ -1,5 +1,4 @@
-// Multi-user todo-list step defs. Each actor runs in its own Playwright BrowserContext; module-level Maps scope state per scenario.
-
+// Multi-user todo-list step defs. Each actor runs in its own BrowserContext.
 import type { BrowserContext, Page } from "@playwright/test";
 import { expect } from "@playwright/test";
 import { createBdd } from "playwright-bdd";
@@ -12,7 +11,7 @@ const { Given, When, Then, Before, After } = createBdd();
 
 // Scoped to todo-row — activity-feed <li>s collide on bare `li`.
 const todoRow = (p: Page, t: string) =>
-  p.getByTestId("todo-row").filter({ hasText: t }).first();
+  p.getByTestId("todo-row").filter({ hasText: t });
 
 export type Actor = {
   context: BrowserContext;
@@ -28,7 +27,6 @@ export const actors = new Map<string, Actor>();
 // Track list IDs by display name so steps can deep-link pre-accept.
 export const listIdByName = new Map<string, string>();
 
-// Mailpit shared across workers; waitForMailTo filters by recipient — no delete-all per scenario.
 Before(async () => {
   actors.clear();
   listIdByName.clear();
@@ -52,7 +50,7 @@ export function getActor(name: string): Actor {
   return actor;
 }
 
-// Sign-up with EXPLICIT username (decoupled from email prefix) so invite tests can target a stable username.
+// Sign-up with EXPLICIT username (decoupled from email prefix).
 async function signUpWithUsername(
   page: Page,
   email: string,
@@ -172,9 +170,10 @@ Given(
     await waitForHydration(actor.page);
     await actor.page.getByPlaceholder("New list name...").fill(listName);
     await actor.page.getByRole("button", { name: "Create" }).click();
-    await expect(actor.page.getByText(listName).first()).toBeVisible({
-      timeout: 10_000,
-    });
+    // New list renders as a link in <main>; avoid nav/aside collisions.
+    await expect(
+      actor.page.getByRole("main").getByRole("link", { name: listName }),
+    ).toBeVisible({ timeout: 10_000 });
     const id = await resolveListIdFor(actor, listName);
     listIdByName.set(listName, id);
   },
@@ -195,9 +194,7 @@ Given(
     }
     const inviteRes = await owner.page.request.post(
       `${TEST_API_URL}/trpc/todoList.inviteCollaborator`,
-      {
-        data: { listId, username: invitee.username },
-      },
+      { data: { listId, username: invitee.username } },
     );
     if (!inviteRes.ok()) {
       throw new Error(
@@ -217,9 +214,7 @@ Given(
     await signInOnPage(invitee.page, invitee.email, SHARED_PASSWORD);
     const acceptRes = await invitee.page.request.post(
       `${TEST_API_URL}/trpc/todoList.acceptInvite`,
-      {
-        data: { token },
-      },
+      { data: { token } },
     );
     if (!acceptRes.ok()) {
       throw new Error(
@@ -287,9 +282,10 @@ When(
     // Autocomplete flow: type prefix → click the suggestion → Invite enabled.
     const input = dialog.getByPlaceholder("Search by username or name");
     await input.fill(invitee.username);
-    const suggestion = dialog
-      .getByRole("button", { name: new RegExp(`@${invitee.username}`) })
-      .first();
+    // Usernames are unique — regex anchors to "@<username>".
+    const suggestion = dialog.getByRole("button", {
+      name: new RegExp(`@${invitee.username}`),
+    });
     await suggestion.click();
     await dialog.getByRole("button", { name: "Invite", exact: true }).click();
     // Dialog closes on success (share-list-dialog.tsx onSuccess).
@@ -370,8 +366,11 @@ When(
       await owner.page.goto(`/todo-lists/${listId}`);
       await waitForHydration(owner.page);
     }
-    const row = owner.page.locator("li", {
-      hasText: `@${target.username}`,
+    // Collaborator <li> aria-label={user.name}; exact:true avoids the
+    // activity-feed <li>s whose aria-label contains the same username.
+    const row = owner.page.getByRole("listitem", {
+      name: target.username,
+      exact: true,
     });
     await row.getByRole("button", { name: "Remove" }).click();
     // Wait for it to vanish — the mutation triggers invalidate +
@@ -402,9 +401,9 @@ Then(
       await actor.page.goto("/todo-lists");
       await waitForHydration(actor.page);
     }
-    await expect(actor.page.getByText(listName).first()).toBeVisible({
-      timeout: 10_000,
-    });
+    await expect(
+      actor.page.getByRole("main").getByRole("link", { name: listName }),
+    ).toBeVisible({ timeout: 10_000 });
   },
 );
 
@@ -425,9 +424,17 @@ Then(
   // biome-ignore lint/correctness/noEmptyPattern: playwright-bdd requires object destructuring as first arg
   async ({}, name: string, text: string, seconds: number) => {
     const actor = getActor(name);
-    await expect(
-      actor.page.getByText(text, { exact: false }).first(),
-    ).toBeVisible({ timeout: seconds * 1000 });
+    // Assert ≥1 visible match without picking an index.
+    await expect
+      .poll(
+        () =>
+          actor.page
+            .getByText(text, { exact: false })
+            .filter({ visible: true })
+            .count(),
+        { timeout: seconds * 1000 },
+      )
+      .toBeGreaterThanOrEqual(1);
   },
 );
 
@@ -441,8 +448,7 @@ Then(
         `Actor "${name}" has no second tab. Call "opens X in two browser tabs" first.`,
       );
     }
-    // Web Locks are origin-scoped: both tabs see the same snapshot.
-    // Query one tab; expect exactly one held lock.
+    // Web Locks are origin-scoped; querying one tab shows both tabs' state.
     await expect
       .poll(() => heldLeaderLocksOn(actor.page, actor.userId), {
         timeout: 2000,
@@ -469,8 +475,6 @@ Then(
   },
 );
 
-// --- Helpers ---
-
 // Resolve a list ID from the actor's viewpoint via todoList.listAccessible.
 export async function resolveListIdFor(
   actor: Actor,
@@ -490,11 +494,7 @@ export async function resolveListIdFor(
   const lists = body.result?.data ?? [];
   const found = lists.find((l) => l.name === listName);
   if (!found) {
-    throw new Error(
-      `List "${listName}" not found in listAccessible response: ${JSON.stringify(
-        lists,
-      )}`,
-    );
+    throw new Error(`List "${listName}" not found: ${JSON.stringify(lists)}`);
   }
   return found.id;
 }

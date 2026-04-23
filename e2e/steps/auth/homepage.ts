@@ -17,58 +17,61 @@ then(
   },
 );
 
-// Navigation-scoped button lookup. Scopes to <nav> so in-page CTA text
-// (e.g., a "Sign In" button in the body) doesn't satisfy the assertion.
+// Navigation-scoped button lookup. Scopes to the primary (desktop) <nav>
+// so in-page CTA text (e.g., a "Sign In" button in the body) doesn't
+// satisfy the assertion. On mobile, the desktop nav's inner links are
+// hidden via CSS — we fall back to opening the hamburger sheet and
+// asserting inside its <nav aria-label="Mobile">.
 then(
   "I should see a {string} button in the navigation",
   async ({ page }, label: string) => {
-    const nav = page.getByRole("navigation").first();
-    // On mobile, the button is behind the hamburger menu sheet. Open if
-    // the desktop locator doesn't match first.
-    const visibleInNav = nav.getByRole("link", { name: label });
+    const primaryNav = page.getByRole("navigation", { name: "Primary" });
+    const visibleInNav = primaryNav.getByRole("link", { name: label });
     if ((await visibleInNav.count()) === 0) {
       const hamburger = page.getByRole("button", { name: "Toggle menu" });
       if (await hamburger.isVisible()) {
         await hamburger.click();
         await page
-          .locator('[role="dialog"]')
+          .getByRole("dialog")
           .waitFor({ state: "visible", timeout: 3000 });
-        await expect(page.getByRole("link", { name: label })).toBeVisible({
+        const mobileNav = page.getByRole("navigation", { name: "Mobile" });
+        await expect(mobileNav.getByRole("link", { name: label })).toBeVisible({
           timeout: 5000,
         });
         return;
       }
     }
-    await expect(visibleInNav.first()).toBeVisible({ timeout: 5000 });
+    await expect(visibleInNav).toBeVisible({ timeout: 5000 });
   },
 );
 
 then(
   "I should see a {string} link in the navigation",
   async ({ page }, label: string) => {
-    const nav = page.getByRole("navigation").first();
-    const visibleInNav = nav.getByRole("link", { name: label });
+    const primaryNav = page.getByRole("navigation", { name: "Primary" });
+    const visibleInNav = primaryNav.getByRole("link", { name: label });
     if ((await visibleInNav.count()) === 0) {
       const hamburger = page.getByRole("button", { name: "Toggle menu" });
       if (await hamburger.isVisible()) {
         await hamburger.click();
         await page
-          .locator('[role="dialog"]')
+          .getByRole("dialog")
           .waitFor({ state: "visible", timeout: 3000 });
-        await expect(page.getByRole("link", { name: label })).toBeVisible({
+        const mobileNav = page.getByRole("navigation", { name: "Mobile" });
+        await expect(mobileNav.getByRole("link", { name: label })).toBeVisible({
           timeout: 5000,
         });
         return;
       }
     }
-    await expect(visibleInNav.first()).toBeVisible({ timeout: 5000 });
+    await expect(visibleInNav).toBeVisible({ timeout: 5000 });
   },
 );
 
 then(
   "I should not see a {string} button in the navigation",
   async ({ page }, label: string) => {
-    const nav = page.getByRole("navigation").first();
-    await expect(nav.getByRole("link", { name: label })).toHaveCount(0);
+    const primaryNav = page.getByRole("navigation", { name: "Primary" });
+    await expect(primaryNav.getByRole("link", { name: label })).toHaveCount(0);
   },
 );

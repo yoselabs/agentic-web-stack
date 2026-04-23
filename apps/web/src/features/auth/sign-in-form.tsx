@@ -74,7 +74,7 @@ export function SignInForm() {
               required
             />
             {field.state.meta.errors.length > 0 && (
-              <p className="text-destructive text-sm">
+              <p role="alert" className="text-destructive text-sm">
                 {formatFieldError(field.state.meta.errors[0])}
               </p>
             )}
@@ -96,7 +96,7 @@ export function SignInForm() {
               required
             />
             {field.state.meta.errors.length > 0 && (
-              <p className="text-destructive text-sm">
+              <p role="alert" className="text-destructive text-sm">
                 {formatFieldError(field.state.meta.errors[0])}
               </p>
             )}

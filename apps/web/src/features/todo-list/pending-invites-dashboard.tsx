@@ -49,9 +49,15 @@ export function PendingInvitesDashboard({
   if (!invites.data || invites.data.length === 0) return null;
 
   return (
-    <Card className="mb-6">
+    <Card
+      role="region"
+      aria-labelledby="pending-invitations-heading"
+      className="mb-6"
+    >
       <CardHeader>
-        <CardTitle>Pending invitations</CardTitle>
+        <CardTitle id="pending-invitations-heading">
+          Pending invitations
+        </CardTitle>
         <CardDescription>
           You've been invited to collaborate on these lists.
         </CardDescription>

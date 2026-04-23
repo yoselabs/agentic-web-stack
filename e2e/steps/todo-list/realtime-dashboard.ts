@@ -24,7 +24,9 @@ Given(
     ).toBeVisible({ timeout: 10_000 });
     // Give the tRPC WS subscription a beat to establish — otherwise the
     // event from "bob" fires before alice's socket is registered on the
-    // user-inbox channel and she misses the invalidation.
+    // user-inbox channel and she misses the invalidation. There is no
+    // DOM signal for "socket connected"; a short sleep is inherent.
+    // eslint-disable-next-line playwright/no-wait-for-timeout -- WS-subscription handshake has no DOM signal
     await actor.page.waitForTimeout(500);
   },
 );
@@ -57,7 +59,9 @@ When(
     const actor = getActor(actorName);
     await actor.page.goto("/todo-lists");
     await waitForHydration(actor.page);
-    await actor.page.waitForSelector('[data-testid="todo-lists-index"]');
+    await expect(actor.page.getByTestId("todo-lists-index")).toBeVisible({
+      timeout: 10_000,
+    });
   },
 );
 
@@ -72,9 +76,12 @@ Then(
     seconds: number,
   ) => {
     const actor = getActor(actorName);
-    const row = actor.page.locator("li", { hasText: listName }).first();
-    await expect(row.getByText(`${count} todos`)).toBeVisible({
-      timeout: seconds * 1000,
+    // The list renders as a link with accessible name
+    // "{listName} {count} todos" (span + badge text). Using name regex
+    // with both pieces is deterministic without picking by index.
+    const row = actor.page.getByRole("main").getByRole("link", {
+      name: new RegExp(`${listName}.*${count}\\s*todos`, "i"),
     });
+    await expect(row).toBeVisible({ timeout: seconds * 1000 });
   },
 );

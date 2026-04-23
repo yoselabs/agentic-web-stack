@@ -4,21 +4,24 @@
 // suffixed with "(You)". Remove buttons appear only on peer rows when
 // the viewer is the owner.
 
+import type { Page } from "@playwright/test";
 import { expect } from "@playwright/test";
 import { createBdd } from "playwright-bdd";
 import { getActor } from "./collaborators.ts";
 
 const { Then } = createBdd();
 
-// Helper: locate the <ul> that holds collaborator rows. The list-detail
-// page renders a <section><h2>Collaborators</h2><ul>...</ul></section>.
-function collaboratorList(page: import("@playwright/test").Page) {
-  return page
-    .locator("section", {
-      has: page.getByRole("heading", { name: "Collaborators" }),
-    })
-    .locator("ul")
-    .first();
+// Collaborator rows are <li aria-label={user.name}> rendered inside the
+// CollaboratorList <ul>. Actors set name === username, so addressing a
+// row by role+name yields the right one without needing a separate
+// landmark for the section. The scenarios verify owner vs collaborator
+// vs (You) markings by asserting the row is visible and contains the
+// expected badge/suffix text.
+
+function collaboratorRow(page: Page, username: string) {
+  // exact: true — activity-feed <li>s carry aria-label containing the
+  // same username in a longer sentence (e.g. "alice added alice").
+  return page.getByRole("listitem", { name: username, exact: true });
 }
 
 Then(
@@ -32,8 +35,7 @@ Then(
     actorName: string,
   ) => {
     const actor = getActor(actorName);
-    const list = collaboratorList(actor.page);
-    const row = list.locator("li", { hasText: username }).first();
+    const row = collaboratorRow(actor.page, username);
     await expect(row).toBeVisible({ timeout: 10_000 });
     await expect(row.getByText(badge, { exact: true })).toBeVisible();
     await expect(row.getByText(suffix, { exact: true })).toBeVisible();
@@ -45,8 +47,7 @@ Then(
   // biome-ignore lint/correctness/noEmptyPattern: playwright-bdd requires object destructuring as first arg
   async ({}, username: string, badge: string, actorName: string) => {
     const actor = getActor(actorName);
-    const list = collaboratorList(actor.page);
-    const row = list.locator("li", { hasText: username }).first();
+    const row = collaboratorRow(actor.page, username);
     await expect(row).toBeVisible({ timeout: 10_000 });
     await expect(row.getByText(badge, { exact: true })).toBeVisible();
   },
@@ -57,8 +58,7 @@ Then(
   // biome-ignore lint/correctness/noEmptyPattern: playwright-bdd requires object destructuring as first arg
   async ({}, username: string, badge: string, actorName: string) => {
     const actor = getActor(actorName);
-    const list = collaboratorList(actor.page);
-    const row = list.locator("li", { hasText: username }).first();
+    const row = collaboratorRow(actor.page, username);
     await expect(row).toBeVisible({ timeout: 10_000 });
     await expect(row.getByText(badge, { exact: true })).toBeVisible();
   },
@@ -75,8 +75,7 @@ Then(
     actorName: string,
   ) => {
     const actor = getActor(actorName);
-    const list = collaboratorList(actor.page);
-    const row = list.locator("li", { hasText: username }).first();
+    const row = collaboratorRow(actor.page, username);
     await expect(row).toBeVisible({ timeout: 10_000 });
     await expect(row.getByText(badge, { exact: true })).toBeVisible();
     await expect(row.getByText(suffix, { exact: true })).toBeVisible();
@@ -88,12 +87,15 @@ Then(
   // biome-ignore lint/correctness/noEmptyPattern: playwright-bdd requires object destructuring as first arg
   async ({}, actorName: string) => {
     const actor = getActor(actorName);
-    const list = collaboratorList(actor.page);
-    // Owner row is the first <li>; assert it has no Remove button.
-    const ownerRow = list.locator("li").first();
-    await expect(ownerRow.getByRole("button", { name: "Remove" })).toHaveCount(
-      0,
-    );
+    // Owner row is the first listitem in the collaborator list; address
+    // it by the owner's username via the shared helper. We rely on the
+    // feature-level assertions above to prove the owner's username
+    // appears on the owner row — here we only assert *no* Remove button
+    // exists on *any* collaborator row of the owner. For visibility-only
+    // scenarios the acting user IS the owner, so their listitem is the
+    // owner row.
+    const row = collaboratorRow(actor.page, actor.username);
+    await expect(row.getByRole("button", { name: "Remove" })).toHaveCount(0);
   },
 );
 
@@ -102,7 +104,11 @@ Then(
   // biome-ignore lint/correctness/noEmptyPattern: playwright-bdd requires object destructuring as first arg
   async ({}, actorName: string) => {
     const actor = getActor(actorName);
-    const list = collaboratorList(actor.page);
-    await expect(list.getByRole("button", { name: "Remove" })).toHaveCount(0);
+    // Remove buttons only ever render in the Collaborators <ul>. The
+    // list-detail page has no other "Remove" button, so the assertion
+    // is deterministic when scoped to the page.
+    await expect(
+      actor.page.getByRole("button", { name: "Remove" }),
+    ).toHaveCount(0);
   },
 );

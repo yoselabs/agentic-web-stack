@@ -22,7 +22,7 @@ const todoRowLocator = (page: import("@playwright/test").Page, title: string) =>
 given("I have a todo {string}", async ({ page }, title: string) => {
   await page.getByPlaceholder("Add a todo...").fill(title);
   await page.getByRole("button", { name: "Add" }).click();
-  await expect(todoRowLocator(page, title).first()).toBeVisible({
+  await expect(todoRowLocator(page, title)).toBeVisible({
     timeout: 5000,
   });
 });
@@ -76,7 +76,7 @@ then("I should not see {string}", async ({ page }, text: string) => {
   // mention the text (e.g. "alice deleted Old task"), which is not the
   // presence this assertion is about. The assertion is about the todo
   // list rendering, which lives under <main>.
-  await expect(page.getByRole("main").getByText(text)).not.toBeVisible();
+  await expect(page.getByRole("main").getByText(text)).toBeHidden();
 });
 
 when(
@@ -93,7 +93,9 @@ when(
       targetPosition: { x: targetBox.width / 2, y: 0 },
     });
 
-    await page.waitForLoadState("networkidle");
+    // Reorder mutation updates the cache; the subsequent Then-step's
+    // `appear before` assertion polls DOM order and naturally waits for
+    // the React re-render.
   },
 );
 
@@ -101,12 +103,15 @@ then(
   "{string} should appear before {string}",
   async ({ page }, first: string, second: string) => {
     // Scope to the todo rows — the list-detail page renders a
-    // CollaboratorList <ul> before the todos <ul>, so `ul.first()` would
-    // pick up collaborators instead of todos. `data-testid="todo-row"` is
-    // set by SortableTodoItem on each active todo.
+    // CollaboratorList <ul> before the todos <ul>. `data-testid="todo-row"`
+    // is set by SortableTodoItem on each active todo.
+    // Positional assertion: order-in-list is the whole point of this
+    // step, so `nth(i)` is inherent to the assertion — sanctioned escape.
     const items = page.getByTestId("todo-row");
     const texts: string[] = [];
-    for (let i = 0; i < (await items.count()); i++) {
+    const count = await items.count();
+    for (let i = 0; i < count; i++) {
+      // eslint-disable-next-line playwright/no-nth-methods -- positional assertion: this step asserts order of sortable rows
       const text = await items.nth(i).innerText();
       texts.push(text);
     }
@@ -122,9 +127,16 @@ then(
 
 when("I import todos from {string}", async ({ page }, filename: string) => {
   const filePath = resolve(stepsDir, `../../fixtures/${filename}`);
-  const input = page.locator('input[type="file"]');
+  // The file input is visually hidden (the real trigger is the "Import"
+  // button). There's no accessible label on the raw <input type="file">
+  // because the label lives on the button; use getByTestId to scope to
+  // the hidden input. Acceptable per locator hierarchy level 4 —
+  // escape hatch for non-semantic elements.
+  const input = page.getByTestId("todo-import-input");
   await input.setInputFiles(filePath);
-  await page.waitForLoadState("networkidle");
+  // Imports trigger a bulk create → invalidate → refetch. The assertion
+  // in the following Then step ("I should see ...") proves the UI
+  // settled on the new data.
 });
 
 when("I export todos", async ({ page }) => {

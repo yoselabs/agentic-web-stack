@@ -46,6 +46,7 @@ export function MobileNav({ slots }: { slots: MobileNavSlots }) {
             live inside the drawer. Scoped to anchors only so dropdown
             triggers (e.g. UserBlock) don't accidentally dismiss it. */}
         <nav
+          aria-label="Mobile"
           className="mt-6 flex flex-col gap-4"
           onClick={(event) => {
             const target = event.target as HTMLElement;

@@ -15,19 +15,19 @@ When(
     const actor = getActor(actorName);
     // placement-agnostic: getByRole("main") scopes below the activity
     // feed <aside>; getByTestId("todo-row") narrows to a sortable row.
+    // Titles are unique per scenario — filter matches exactly one.
     const main = actor.page.getByRole("main");
     const dragged = main
       .getByTestId("todo-row")
-      .filter({ hasText: draggedTitle })
-      .first();
+      .filter({ hasText: draggedTitle });
     const target = main
       .getByTestId("todo-row")
-      .filter({ hasText: targetTitle })
-      .first();
+      .filter({ hasText: targetTitle });
     await dragged.dragTo(target, {
       targetPosition: { x: 10, y: 5 },
     });
-    await actor.page.waitForLoadState("networkidle");
+    // The subsequent Then-step polls DOM order until it matches —
+    // natural wait; no networkidle (which also races WS keep-alive pings).
   },
 );
 
@@ -47,14 +47,15 @@ Then(
     await expect
       .poll(
         async () => {
-          // Kept as attribute-selector locator (not getByTestId) —
-          // check-scoped-landmarks flags bare `page.getBy*` and this
-          // file isn't in the ratchet allowlist. The selector semantics
-          // are equivalent; no modernization loss.
-          const items = actor.page.locator('[data-testid="todo-row"]');
+          // Positional assertion: this step proves `firstTitle` appears
+          // before `secondTitle` in DOM order. Iterating by index is
+          // inherent — `nth(i)` is the sanctioned escape.
+          // placement-agnostic: todo-row testid is globally unique.
+          const items = actor.page.getByTestId("todo-row");
           const texts: string[] = [];
           const count = await items.count();
           for (let i = 0; i < count; i++) {
+            // eslint-disable-next-line playwright/no-nth-methods -- positional assertion: this step asserts DOM order of sortable rows
             texts.push(await items.nth(i).innerText());
           }
           const firstIdx = texts.findIndex((t) => t.includes(firstTitle));

@@ -15,9 +15,15 @@ const HYDRATION_TIMEOUT_MS = 10_000;
 // page.goto() in step definitions.
 export async function waitForHydration(page: Page): Promise<void> {
   try {
-    await page
-      .locator("[data-hydrated]")
-      .waitFor({ timeout: HYDRATION_TIMEOUT_MS });
+    // [data-hydrated] is a custom hydration marker on <html>, not a
+    // semantic role. Wait via DOM predicate — avoids raw-locator lint
+    // while preserving the "attribute appears after React hydrates"
+    // contract.
+    await page.waitForFunction(
+      () => document.documentElement.hasAttribute("data-hydrated"),
+      null,
+      { timeout: HYDRATION_TIMEOUT_MS },
+    );
   } catch {
     const url = page.url();
     const snippet = await page

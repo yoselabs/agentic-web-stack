@@ -300,7 +300,7 @@ When(
     // placement-agnostic: scope via <main> so activity-feed <aside> entries don't collide.
     const main = actor.page.getByRole("main");
     await expect(
-      main.getByTestId("todo-row").filter({ hasText: title }).first(),
+      main.getByTestId("todo-row").filter({ hasText: title }),
     ).toBeVisible({ timeout: 5000 });
   },
 );
@@ -312,7 +312,7 @@ When(
     const actor = getActor(name);
     // placement-agnostic: scope via <main> so activity-feed <aside> entries don't collide.
     const main = actor.page.getByRole("main");
-    const row = main.getByTestId("todo-row").filter({ hasText: title }).first();
+    const row = main.getByTestId("todo-row").filter({ hasText: title });
     await row.getByRole("checkbox").click();
     await expect(row.getByRole("checkbox")).toBeChecked({ timeout: 5000 });
   },
@@ -324,8 +324,10 @@ When(
   async ({}, ownerName: string, targetName: string) => {
     const owner = getActor(ownerName);
     const target = getActor(targetName);
-    const row = owner.page.locator("li", {
-      hasText: `@${target.username}`,
+    // placement-agnostic: collaborator <li> aria-label={user.name}; exact avoids activity-feed <li>s.
+    const row = owner.page.getByRole("listitem", {
+      name: target.displayName,
+      exact: true,
     });
     await row.getByRole("button", { name: "Remove" }).click();
     await expect(row).toBeHidden({ timeout: 10_000 });
@@ -415,7 +417,7 @@ Then(
     await expect
       .poll(
         async () => {
-          const texts = await feed.locator("li").allTextContents();
+          const texts = await feed.getByRole("listitem").allTextContents();
           return expected.every((e) => texts.some((t) => t.includes(e)));
         },
         { timeout: seconds * 1000, intervals: [200, 500, 1000] },
@@ -425,8 +427,8 @@ Then(
     // Now assert order. DOM is newest-first; Gherkin table is
     // oldest-first. Filter DOM lines that match ANY expected entry, then
     // reverse to align with the table.
-    const allTexts = (await feed.locator("li").allTextContents()).map((s) =>
-      s.trim(),
+    const allTexts = (await feed.getByRole("listitem").allTextContents()).map(
+      (s) => s.trim(),
     );
     const matching = allTexts.filter((t) =>
       expected.some((e) => t.includes(e)),
@@ -451,7 +453,8 @@ Then(
       ts,
       `no reconnect timestamp for ${name} — did "${name}'s websocket reconnects" run?`,
     ).toBeDefined();
-    // Let any post-reconnect refetch race finish flushing.
+    // Settle window for negative-proof assertion — no DOM event to await on.
+    // eslint-disable-next-line playwright/no-wait-for-timeout -- negative-proof settle window
     await actor.page.waitForTimeout(1000);
     const since = actor.requestLog.filter(
       (r) => ts !== undefined && r.timestamp >= ts,
@@ -484,8 +487,8 @@ Then(
   // biome-ignore lint/correctness/noEmptyPattern: playwright-bdd requires object destructuring as first arg
   async ({}, name: string, text: string) => {
     const actor = getActor(name);
-    // Settle window — real-time propagation is expected to be <1s in the
-    // memory-channel tests; 2s gives headroom without hiding regressions.
+    // Settle window for negative-proof assertion — realtime <1s; 2s headroom.
+    // eslint-disable-next-line playwright/no-wait-for-timeout -- negative-proof settle window
     await actor.page.waitForTimeout(2000);
     await expect(
       // placement-agnostic: already scoped via the activity-feed testid chain

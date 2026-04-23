@@ -59,7 +59,10 @@ when(
     await page.getByLabel("Email").fill(email);
     await page.getByLabel("Password").fill(SHARED_PASSWORD);
     await page.getByRole("button", { name: "Sign Up" }).click();
-    await page.waitForLoadState("networkidle");
+    // Successful sign-up lands on /dashboard; failure keeps us on /signup
+    // with an error. Either way wait for a settled URL instead of network
+    // idle (which also races WS keep-alive pings).
+    await page.waitForURL(/\/(dashboard|signup)/, { timeout: 10_000 });
   },
 );
 
@@ -69,7 +72,8 @@ when(
     await page.getByLabel("Email").fill(email);
     await page.getByLabel("Password").fill(password);
     await page.getByRole("button", { name: "Sign In" }).click();
-    await page.waitForLoadState("networkidle");
+    // Sign-in either lands on /dashboard or stays on /login with an error.
+    await page.waitForURL(/\/(dashboard|login)/, { timeout: 10_000 });
   },
 );
 
@@ -102,7 +106,9 @@ when("I click {string}", async ({ page }, text: string) => {
     }
   }
   await btn.click();
-  await page.waitForLoadState("networkidle");
+  // Nav-triggered clicks navigate; user-action clicks invalidate queries.
+  // Either way the UI settles when React has no in-flight work — we rely
+  // on the subsequent step's web-first assertion to prove the new state.
 });
 
 // --- Then ---
@@ -130,7 +136,7 @@ then("I should see {string}", async ({ page }, text: string) => {
   // Check if any visible instance exists; if not, try opening the menu.
   const visible = page
     .getByText(text, { exact: false })
-    .locator("visible=true");
+    .filter({ visible: true });
   if ((await visible.count()) === 0) {
     const hamburger = page.getByRole("button", { name: "Toggle menu" });
     if (await hamburger.isVisible()) {
@@ -140,9 +146,18 @@ then("I should see {string}", async ({ page }, text: string) => {
         .waitFor({ state: "visible", timeout: 3000 });
     }
   }
-  await expect(
-    page.getByText(text, { exact: false }).locator("visible=true").first(),
-  ).toBeVisible({ timeout: 5000 });
+  // `toHaveCount({ gte: 1 })` isn't exposed; assert ≥1 visible match via
+  // count instead of picking a specific index (satisfies no-nth-methods).
+  await expect
+    .poll(
+      () =>
+        page
+          .getByText(text, { exact: false })
+          .filter({ visible: true })
+          .count(),
+      { timeout: 5000 },
+    )
+    .toBeGreaterThanOrEqual(1);
 });
 
 then("I should see an error message", async ({ page }) => {

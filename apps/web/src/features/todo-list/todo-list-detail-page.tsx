@@ -105,6 +105,7 @@ export function TodoListDetailPage({
             type="file"
             accept=".csv"
             className="hidden"
+            data-testid="todo-import-input"
             onChange={(e) => {
               const file = e.target.files?.[0];
               if (file) {

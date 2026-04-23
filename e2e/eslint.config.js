@@ -2,10 +2,6 @@
 // Playwright semantics) with playwright-specific lint rules: web-first
 // assertions, missing-await, raw-locator hygiene, no nth-methods.
 //
-// NOTE: Opt-in stricter rules (`no-raw-locators`, `no-nth-methods`) are
-// set to `warn` until L4 migration lands. After L4 they flip to `error`.
-// See docs/superpowers/plans/2026-04-22-e2e-locator-hygiene.
-//
 // Wired via root `lint:eslint-e2e` script + `//#lint:eslint-e2e` turbo
 // task. Root `eslint.config.ts` intentionally ignores `e2e/**` — typed
 // linting isn't configured here; we don't need it for these rules.
@@ -37,18 +33,21 @@ export default [
       },
     },
     rules: {
-      // Opt-ins beyond `recommended` — stricter locator hygiene.
-      // `warn` until L4 drains the backlog, then flip to `error`.
-      "playwright/no-raw-locators": "warn",
-      "playwright/no-nth-methods": "warn",
-      // Also downgrade `recommended` rules that today's step defs violate
-      // — we want the pipeline green while L4 is in flight.
-      "playwright/no-wait-for-timeout": "warn",
-      "playwright/missing-playwright-await": "warn",
-      "playwright/prefer-web-first-assertions": "warn",
-      "playwright/no-networkidle": "warn",
-      "playwright/no-useless-not": "warn",
-      "playwright/no-wait-for-selector": "warn",
+      // Opt-ins beyond `recommended` — stricter locator hygiene. Both
+      // promoted to `error` after L4 drained the step-def backlog to 0.
+      // Inline `eslint-disable-next-line` with a reason is the sanctioned
+      // escape for positional assertions (DnD reorder) and WS-handshake
+      // settle windows that have no DOM signal.
+      "playwright/no-raw-locators": "error",
+      "playwright/no-nth-methods": "error",
+      // `recommended` rules — promoted from `warn` to `error` together
+      // with the opt-ins so the whole gate trips CI on new violations.
+      "playwright/no-wait-for-timeout": "error",
+      "playwright/missing-playwright-await": "error",
+      "playwright/prefer-web-first-assertions": "error",
+      "playwright/no-networkidle": "error",
+      "playwright/no-useless-not": "error",
+      "playwright/no-wait-for-selector": "error",
       // BDD step defs legitimately call `expect` outside `test()` blocks —
       // each step is its own assertion site. This rule is a false positive
       // for the playwright-bdd pattern; keep off (not just `warn`).

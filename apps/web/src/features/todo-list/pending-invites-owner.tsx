@@ -31,8 +31,13 @@ export function PendingInvitesOwner({
   if (!invites.data || invites.data.length === 0) return null;
 
   return (
-    <section className="mt-4 space-y-2">
-      <h4 className="font-semibold text-sm">Pending invites</h4>
+    <section
+      aria-labelledby="pending-invites-heading"
+      className="mt-4 space-y-2"
+    >
+      <h4 id="pending-invites-heading" className="font-semibold text-sm">
+        Pending invites
+      </h4>
       <ul className="space-y-2">
         {invites.data.map((inv) => (
           <li
