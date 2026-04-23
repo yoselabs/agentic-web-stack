@@ -3,6 +3,7 @@ import { sendEmail } from "@project/email/service";
 import { env } from "@project/env/server";
 import { betterAuth } from "better-auth";
 import { prismaAdapter } from "better-auth/adapters/prisma";
+import { magicLink } from "better-auth/plugins";
 import { MIN_PASSWORD_LENGTH } from "./constants.js";
 
 export const auth = betterAuth({
@@ -20,6 +21,21 @@ export const auth = betterAuth({
       });
     },
   },
+  plugins: [
+    // Magic-link sign-in (Pattern 2 — secondary option below the password
+    // form). Defaults: 5-minute expiry, single-use token. The "expired
+    // link" BDD scenario hits the verify endpoint with an invalid token
+    // rather than skipping past the default expiry.
+    magicLink({
+      sendMagicLink: async ({ email, url }) => {
+        await sendEmail({
+          template: "magic-link",
+          to: email,
+          vars: { signInUrl: url },
+        });
+      },
+    }),
+  ],
   user: {
     additionalFields: {
       role: {

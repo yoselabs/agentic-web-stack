@@ -6,10 +6,12 @@
 
 import { emailQueue } from "@project/jobs/queues";
 import type { InviteCollaboratorVars } from "./templates/invite-collaborator.js";
+import type { MagicLinkVars } from "./templates/magic-link.js";
 import type { PasswordResetVars } from "./templates/password-reset.js";
 
 export type EmailJobData =
   | { template: "password-reset"; to: string; vars: PasswordResetVars }
+  | { template: "magic-link"; to: string; vars: MagicLinkVars }
   | {
       template: "invite-collaborator";
       to: string;

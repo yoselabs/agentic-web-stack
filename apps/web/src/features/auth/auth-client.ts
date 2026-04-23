@@ -1,6 +1,9 @@
 import { apiClient } from "@project/http/client";
 import type { BetterAuthClientOptions } from "better-auth/client";
-import { inferAdditionalFields } from "better-auth/client/plugins";
+import {
+  inferAdditionalFields,
+  magicLinkClient,
+} from "better-auth/client/plugins";
 import { createAuthClient } from "better-auth/react";
 
 // Schema literal mirroring packages/auth/src/index.ts additionalFields.
@@ -35,7 +38,7 @@ type AuthClient = Omit<BaseAuthClient, "signUp"> & {
 
 export const authClient = createAuthClient({
   baseURL: apiClient.baseUrl,
-  plugins: [inferAdditionalFields(additionalFieldsSchema)],
+  plugins: [inferAdditionalFields(additionalFieldsSchema), magicLinkClient()],
 }) as unknown as AuthClient;
 
 export const { signIn, signUp, signOut, useSession } = authClient;

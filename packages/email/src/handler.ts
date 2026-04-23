@@ -10,6 +10,7 @@ import { env } from "@project/env/server";
 import nodemailer from "nodemailer";
 import type { EmailJobData } from "./service.js";
 import { inviteCollaboratorTemplate } from "./templates/invite-collaborator.js";
+import { magicLinkTemplate } from "./templates/magic-link.js";
 import { passwordResetTemplate } from "./templates/password-reset.js";
 
 function createTransport() {
@@ -36,7 +37,9 @@ export async function handleEmailJob(data: EmailJobData): Promise<void> {
   const rendered =
     data.template === "password-reset"
       ? passwordResetTemplate.render(data.vars)
-      : inviteCollaboratorTemplate.render(data.vars);
+      : data.template === "magic-link"
+        ? magicLinkTemplate.render(data.vars)
+        : inviteCollaboratorTemplate.render(data.vars);
 
   await transport().sendMail({
     from: "no-reply@example.com",
