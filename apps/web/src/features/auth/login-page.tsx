@@ -21,14 +21,14 @@ export function LoginPage() {
 
           <p className="mt-4 flex items-center justify-center gap-3 text-center text-muted-foreground text-sm">
             <Link
-              to={"/forgot-password" as string}
+              to="/forgot-password"
               className="text-foreground underline underline-offset-4 hover:text-primary"
             >
               Forgot password?
             </Link>
             <span aria-hidden="true">·</span>
             <Link
-              to={"/sign-in/magic-link" as string}
+              to="/sign-in/magic-link"
               className="text-foreground underline underline-offset-4 hover:text-primary"
             >
               Sign in with link instead
