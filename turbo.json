@@ -220,6 +220,10 @@
       "inputs": ["e2e/**/*.ts", "e2e/eslint.config.js", "pnpm-lock.yaml"],
       "outputs": []
     },
+    "//#lint:gherkin": {
+      "inputs": ["e2e/features/**/*.feature", ".gherkin-lintrc"],
+      "outputs": []
+    },
     "//#lint:secretlint": {
       "inputs": [
         "**/*",
