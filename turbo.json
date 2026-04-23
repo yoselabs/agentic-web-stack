@@ -216,6 +216,10 @@
       ],
       "outputs": []
     },
+    "//#lint:eslint-e2e": {
+      "inputs": ["e2e/**/*.ts", "e2e/eslint.config.js", "pnpm-lock.yaml"],
+      "outputs": []
+    },
     "//#lint:secretlint": {
       "inputs": [
         "**/*",
