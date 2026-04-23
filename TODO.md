@@ -9,7 +9,7 @@ Items marked **[recipe]** should be documented as patterns — added per-project
 
 Next-up work surfaced in the 2026-04-21 handover. Not yet started — pick up one at a time.
 
-- [ ] **Session decorator for Storybook** — add `withSession(user)` decorator (mocked auth context + MSW tRPC handler; no backend). Removes the last `!test` tag on `apps/web/src/widgets/app-navbar.stories.tsx`, enables a11y coverage on AppNavbar.
+- [x] **Session decorator for Storybook** — `withSession` preview decorator (in `apps/web/.storybook/preview.tsx`) reads `parameters.session` and mounts `SessionProvider` with the fixture. `app-navbar.stories.tsx` runs as part of `pnpm --filter web test-stories` with a11y enforcement (`a11y.test: "error"`). No MSW needed — `useSession` is context-based via `useAppSession()`.
 - [ ] **Close `.config/allowlists/test-siblings.json` ratchet** — write the 9 missing `use-*.test.ts` siblings one feature at a time, shrinking the allowlist to empty. Current misses: `auth/use-forgot-password`, `auth/use-reset-password`, `todo-list/use-leader-tab`, `todo-list/use-todo-list-live-updates`, `todo-list/use-todo-lists`, `todo-list/use-todos`, `user/use-debounced-value`, `user/use-user-inbox`, `shared/use-optimistic-mutation`.
 - [ ] **Promote nursery rules `warn` → `error`** — fix incidental hits first, then flip in `biome.json`: `useExhaustiveSwitchCases`, `useExplicitType`, `useSortedClasses` (nursery section).
 - [ ] **Vitest 4 upgrade pass** — unlocks `vitest-browser-react@2.x`, may simplify the storybook-project wiring. *(May be absorbed or reordered by the pending upgrade audit — see below.)*
