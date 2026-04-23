@@ -11,7 +11,7 @@
   "dependencies": {
     "@bull-board/api": "catalog:",
     "@bull-board/hono": "catalog:",
-    "@hono/node-server": "^1.19.14",
+    "@hono/node-server": "^2.0.0",
     "@hono/trpc-server": "^0.3.4",
     "@project/api": "workspace:*",
     "@project/auth": "workspace:*",

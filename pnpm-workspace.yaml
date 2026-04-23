@@ -4,8 +4,8 @@ packages:
   - "e2e"
 
 catalog:
-  "@bull-board/api": ^6.21.3
-  "@bull-board/hono": ^6.21.3
+  "@bull-board/api": ^7.0.0
+  "@bull-board/hono": ^7.0.0
   "@casl/ability": ^6.8.1
   "@casl/prisma": ^1.6.2
   "@casl/react": ^6.0.0
