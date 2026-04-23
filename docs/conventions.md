@@ -376,7 +376,23 @@ Rule of thumb: if a step def starts with bare `page.locator(...)`, there
 is almost always a role-based alternative. Reach for `data-testid` only
 after exhausting (1)–(3).
 
-See `TODO.md` for the cross-cutting migration of existing step defs.
+**Enforcement.** `eslint-plugin-playwright` (scoped to `e2e/` via
+`e2e/eslint.config.js`) enforces this hierarchy via `no-raw-locators` and
+`no-nth-methods` (opt-ins), plus `prefer-web-first-assertions`,
+`missing-playwright-await`, `no-wait-for-timeout`, `no-networkidle`,
+`no-useless-not`, `no-wait-for-selector` from the recommended preset.
+`no-standalone-expect` is disabled — playwright-bdd's step defs
+legitimately call `expect` outside `test()` blocks. Run via `make lint`.
+
+Feature files (`e2e/features/*.feature`) are linted by `gherkin-lint` with
+structural rules (duplicate scenarios, empty files, indentation). Config:
+`.gherkin-lintrc`.
+
+When the hierarchy must be broken (negative-proof settle windows, true
+positional assertions in reorder tests), use
+`// eslint-disable-next-line playwright/<rule> -- <reason>` with a concrete
+reason. See existing suppressions in `e2e/steps/activity-feed/activity-feed.ts`
+and `e2e/steps/todo-list/realtime-reorder.ts`.
 
 ## Web app Vitest project selection
 

@@ -102,6 +102,7 @@ prereq
 Prereqs
 presign
 prisma
+lintrc
 prismalintrc
 publint
 refetched
