@@ -1,4 +1,4 @@
-import type { IncomingMessage, Server } from "node:http";
+import type { Server } from "node:http";
 import { serve } from "@hono/node-server";
 import { trpcServer } from "@hono/trpc-server";
 import { createContext } from "@project/api/context";
@@ -7,15 +7,12 @@ import { appRouter } from "@project/api/router";
 import { auth } from "@project/auth";
 import { db } from "@project/db";
 import { env } from "@project/env/server";
-import {
-  applyWSSHandler,
-  type CreateWSSContextFnOptions,
-} from "@trpc/server/adapters/ws";
+import { applyWSSHandler } from "@trpc/server/adapters/ws";
 import { Hono } from "hono";
 import { cors } from "hono/cors";
 import { secureHeaders } from "hono/secure-headers";
 import { WebSocketServer } from "ws";
-import { createBullBoardAdapter } from "./admin/bull-board.js";
+import { BULL_BOARD_PATH, createBullBoardAdapter } from "./admin/bull-board.js";
 import { requireAdmin } from "./admin/middleware.js";
 import { logger } from "./logger.js";
 import { exampleWebhookRouter } from "./webhooks/example.js";
@@ -128,8 +125,7 @@ app.use(
 // other /admin/* route above this line.
 app.use("/admin/*", requireAdmin(auth));
 
-const bullBoardAdapter = createBullBoardAdapter();
-app.route("/admin/queues", bullBoardAdapter.registerPlugin());
+app.route(BULL_BOARD_PATH, createBullBoardAdapter().registerPlugin());
 
 // hostname "0.0.0.0" is mandatory for container runtimes — binding to the
 // default (localhost/::1) leaves the server unreachable from Traefik, Docker
@@ -142,34 +138,30 @@ const httpServer = serve(
   },
 );
 
-// WebSocket server for tRPC subscriptions.
-// Piggybacks on the same port as the HTTP server — the Node http.Server
-// dispatches "upgrade" events to the WebSocketServer before Hono sees them.
+// WebSocket server for tRPC subscriptions. See ADR-0008 for the
+// full path-prefix discipline; this block owns the `/trpc-ws` prefix.
+// Attached directly to the Node http.Server — tRPC's adapter owns the
+// upgrade lifecycle (raw `wss.handleUpgrade`), which is incompatible
+// with Hono v2's `serve({ websocket: { server } })` option: that path
+// routes upgrades through Hono's fetch pipeline and expects a Hono
+// route to call `upgradeWebSocket(c, events)` to set up a waiter.
+// Piggybacking on the http.Server directly bypasses that dance.
+// `serve()` returns `Server | Http2Server | Http2SecureServer`; we don't
+// use HTTP/2, so narrow to `http.Server` for `ws`'s constructor signature.
 const wss = new WebSocketServer({
   server: httpServer as Server,
   path: "/trpc-ws",
 });
 
-function incomingMessageToHeaders(req: IncomingMessage): Headers {
-  const headers = new Headers();
-  for (const [key, value] of Object.entries(req.headers)) {
-    if (value === undefined) continue;
-    if (Array.isArray(value)) {
-      for (const v of value) headers.append(key, v);
-    } else {
-      headers.set(key, value);
-    }
-  }
-  return headers;
-}
-
 const wsHandler = applyWSSHandler({
   wss,
   router: appRouter,
-  createContext: async ({ req }: CreateWSSContextFnOptions) => {
-    const session = await auth.api.getSession({
-      headers: incomingMessageToHeaders(req),
-    });
+  createContext: async ({ req }) => {
+    const headers = new Headers();
+    for (let i = 0; i < req.rawHeaders.length; i += 2) {
+      headers.append(req.rawHeaders[i]!, req.rawHeaders[i + 1]!);
+    }
+    const session = await auth.api.getSession({ headers });
     return createContext({ session });
   },
 });

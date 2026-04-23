@@ -188,3 +188,5 @@ Unkey
 dedups
 procs
 Resumability
+XMPP
+bidirectionality
