@@ -3,8 +3,9 @@ title: "ADR-001 — Realtime architecture: user inbox channel + Live+Snapshot re
 status: Accepted
 applies-to: packages/api/src/domains/user, packages/api/src/domains/todo-list, packages/realtime, apps/web/src/features/user, apps/web/src/features/todo-list
 verified_by:
-  - packages/realtime/src/user-inbox.ts
-  - packages/api/src/domains/user/user-events.ts
+  - docs/adrs/0009-full-rewrite-onto-effect-ts.md
+  # packages/realtime/src/user-inbox.ts — deleted by ADR-0009 Phase 1 wipe; rebuild in Phase 3
+  # packages/api/src/domains/user/user-events.ts — deleted by ADR-0009 Phase 1 wipe; rebuild in Phase 3
   # apps/web/src/features/user/use-user-inbox.ts — deleted by ADR-0009 Phase 1 wipe; rebuild in Phase 3
 ---
 

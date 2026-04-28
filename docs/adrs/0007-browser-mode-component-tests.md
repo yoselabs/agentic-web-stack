@@ -6,7 +6,10 @@ deciders: [denis]
 verified_by:
   - apps/web/vitest.config.ts
   - apps/web/test/browser-render.tsx
-  - apps/web/test/authed-image.browser.test.tsx
+# Phase 1 of the Effect-TS rewrite removed apps/web/test/authed-image.browser.test.tsx
+# (it tested @project/media which was deleted). Phase 4 re-adds an exemplar
+# browser test as the third verified_by entry once a real browser-only invariant
+# returns. See docs/superpowers/specs/2026-04-28-effect-rewrite-phase-1-design.md
 ---
 
 # ADR-0007 — Browser-Mode Component Tests

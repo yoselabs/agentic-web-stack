@@ -3,11 +3,6 @@
   "references": [
     { "path": "packages/db" },
     { "path": "packages/env" },
-    { "path": "packages/api" },
-    { "path": "packages/auth" },
-    { "path": "packages/http" },
-    { "path": "packages/media" },
-    { "path": "packages/query" },
     { "path": "packages/test-infra" },
     { "path": "packages/ui" },
     { "path": "apps/web" }

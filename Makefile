@@ -92,8 +92,11 @@ fix: db-generate ## Auto-fix lint issues + typecheck
 # - @project/api uses `bun test` (Prisma-heavy, native DB speed)
 # - @project/web uses Vitest (Vite plugin reuse + React 19 + RTL interop)
 # See docs/adrs/0003-web-test-runner.md.
-test-unit: db-generate ## Unit tests: @project/api (Bun) + @project/web (Vitest) + @project/lint (Bun) in parallel
-	pnpm exec turbo run test --filter=@project/api --filter=@project/web --filter=@project/lint --log-order=grouped
+test-unit: db-generate ## Unit tests: @project/web (Vitest) + @project/lint (Bun) in parallel
+# Phase 1 of the Effect-TS rewrite (per design doc) deleted @project/api;
+# Phase 3 reintroduces it (or its Effect-native replacement) and re-adds
+# the filter here.
+	pnpm exec turbo run test --filter=@project/web --filter=@project/lint --log-order=grouped
 
 # Real-Chromium component tests. Opt-in per component via the
 # `*.browser.test.tsx` suffix. Separate from `make test-unit` — real

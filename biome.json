@@ -1,9 +1,6 @@
 {
   "$schema": "https://biomejs.dev/schemas/2.4.12/schema.json",
   "assist": { "actions": { "source": { "organizeImports": "on" } } },
-  "plugins": [
-    "./packages/lint/src/grit-plugins/import-type-for-app-router.grit"
-  ],
   "vcs": {
     "enabled": true,
     "clientKind": "git",

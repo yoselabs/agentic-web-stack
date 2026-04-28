@@ -186,6 +186,8 @@ not before.
 4. **Phase 4 — Realtime rewrite.** `Channel` interface re-expressed
    with `Effect.Stream`. Activity-feed stream rebuilt with structured
    concurrency. Composition contracts in `capabilities.md` updated.
+   The user-inbox channel + Live+Snapshot reconciliation contract
+   from ADR-0001 is rebuilt here, Effect-native.
 5. **Phase 5 — DB error model.** ADR-0013 decided. Either tagged
    errors over Prisma, or migration to `@effect/sql`.
 6. **Phase 6 — Schema decision.** ADR-0014 decided. Default: Zod
