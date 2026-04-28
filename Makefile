@@ -120,12 +120,30 @@ test-all: test-unit test-browser test-checks test ## Run unit + browser + checks
 #                 make test ARGS="--project desktop"
 #                 make test ARGS="--headed"
 # ARGS forwarded to `playwright test` verbatim. See `playwright test --help`.
+# Phase 1 of the Effect-TS rewrite gates `make test` and `make test-ui`
+# under WIPE_IN_PROGRESS=1 because:
+#   - e2e/steps/ has been deleted, so bddgen errors on "missing step
+#     bindings" (Task 1 finding B in the Phase 1 design doc)
+#   - e2e/playwright.config.ts launches @project/server + @project/web
+#     for the webServer config; @project/server is gone (Task 5)
+# Both gates are removed in Phase 3 once the first vertical slice
+# restores step defs + a runnable apps/server.
 test: db-generate ## BDD tests (isolated test DB, builds web app). ARGS forwarded to playwright.
-	@bun scripts/dev/kill-ports.ts --suite=e2e
-	cd e2e && pnpm exec bddgen && pnpm exec playwright test $(ARGS)
+	@set -a; . .config/lint.env; set +a; \
+	  if [ "$$WIPE_IN_PROGRESS" = "1" ]; then \
+	    echo "[make test] skipped — wipe in progress (Phase 1 design doc)"; \
+	    exit 0; \
+	  fi; \
+	  bun scripts/dev/kill-ports.ts --suite=e2e && \
+	  cd e2e && pnpm exec bddgen && pnpm exec playwright test $(ARGS)
 test-ui: db-generate ## BDD tests in Playwright interactive UI mode
-	@bun scripts/dev/kill-ports.ts --suite=e2e
-	cd e2e && pnpm exec bddgen && pnpm exec playwright test --ui $(ARGS)
+	@set -a; . .config/lint.env; set +a; \
+	  if [ "$$WIPE_IN_PROGRESS" = "1" ]; then \
+	    echo "[make test-ui] skipped — wipe in progress (Phase 1 design doc)"; \
+	    exit 0; \
+	  fi; \
+	  bun scripts/dev/kill-ports.ts --suite=e2e && \
+	  cd e2e && pnpm exec bddgen && pnpm exec playwright test --ui $(ARGS)
 
 # Smoke subset — scenarios tagged @smoke in Gherkin. Runs against whatever
 # target BASE_URL points at (local dev by default, deployed env when set in
