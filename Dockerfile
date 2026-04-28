@@ -4,6 +4,9 @@
 # web) via YAML anchors in docker-compose.yml.
 #
 # Runtime is bun-only; node is used at build time for vite and pnpm.
+# Production runtime governed by ADR-0010 (Node 24 prod) — pending Phase 1
+# of the Effect-TS rewrite (ADR-0009), this file still ships Bun runtime;
+# the swap to node:24-slim runtime stage lands in that phase.
 # See docs/superpowers/specs/2026-04-18-demo-mode-design.md for the full
 # design rationale.
 

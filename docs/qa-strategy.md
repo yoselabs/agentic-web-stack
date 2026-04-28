@@ -1,6 +1,6 @@
 # QA Strategy — Testing Pyramid
 
-> This document is ground truth for **what tests run when, why, and who they catch for**. Consult before adding a new test or a new test surface. Conventions that describe *how* to write the tests themselves live in [`testing-guidelines.md`](testing-guidelines.md).
+> This document is ground truth for **what tests run when, why, and who they catch for**. Consult before adding a new test or a new test surface. Conventions that describe *how* to write the tests themselves live in [`testing-guidelines.md`](testing-guidelines.md). The full inventory of tooling that powers each gate (versions, invocation, what survives a stack swap) is in [`dev-tooling.md`](dev-tooling.md).
 
 ## 1. Design principle
 
@@ -34,18 +34,19 @@ Every invariant the template relies on is enforced by **types, static checks, or
 
 **When it runs:**
 - Every file save (editor `biome lsp` + `tsc --watch`)
-- Pre-commit hook (routes through `make lint`; turbo-cached)
+- Pre-commit hook (prek-managed; routes through `make lint`; turbo-cached, read-only)
+- Pre-push hook (prek-managed; runs `make fix` then `make lint` — fails the push if fix produced a diff)
 - CI on every push
-- Stop hook at end of each agent turn
+- Claude Code Stop / SubagentStop hook auto-runs `make fix` at end of each agent turn
 
 **Why it's first:** ~0.3s warm cache, ~6s cold. Any bug catchable here MUST be caught here — zero justification for pushing to a slower layer.
 
-**Tools** (30 parallel turbo tasks as of 2026-04):
+**Tools** (~34 parallel turbo tasks; see [`dev-tooling.md`](dev-tooling.md) for the live roster):
 - `lint:biome` — formatting + lint (Biome 2.4, including `noFloatingPromises` + `useSortedClasses` for Tailwind + nursery expansion)
 - `lint:tsc` — incremental build (`tsc -b`)
 - `lint:markdown`, `lint:links`, `lint:spell`, `lint:shell` — doc/shell hygiene
 - `lint:prisma`, `lint:knip`, `lint:jscpd`, `lint:sherif`, `lint:publint`, `lint:depcruise`, `lint:secretlint`, `lint:actionlint` — external linters
-- `lint:check:<name>` (14 and counting) — custom `packages/lint/src/check-*.ts` enforcing repo-specific invariants
+- `lint:check:<name>` — custom `packages/lint/src/check-*.ts` enforcing repo-specific invariants (16 checks at last count — full table in [`dev-tooling.md`](dev-tooling.md#custom-checks-packageslintsrccheck-ts))
 
 **Invariant → tool map** (selected):
 
@@ -94,7 +95,7 @@ Every invariant the template relies on is enforced by **types, static checks, or
 **Historical / longitudinal value:** every commit that touches a widget keeps all its stories green or deliberately updates one. Over the project's life, the stories file becomes a living state registry.
 
 **Tools:**
-- Storybook 9 `@storybook/react-vite`
+- Storybook 10 `@storybook/react-vite`
 - `@storybook/addon-vitest` — converts stories to Vitest tests (runs under same config, same workers)
 - `@storybook/addon-a11y` — axe-core audit per story at `error` severity
 - CSF3 format — typed stories, AI-friendly
@@ -170,7 +171,100 @@ Every invariant the template relies on is enforced by **types, static checks, or
 
 **Why:** BDD covers journey logic; smoke proves the deployed artifact serves those journeys against real infrastructure (DNS, TLS, CDN, database migration state).
 
-## 4. Ownership — "which gate catches my bug class?"
+## 4. Decision tree — "I'm about to write a test, which kind?"
+
+The pyramid is the reverse view (gate → what it covers). This is the
+forward view: walk top-to-bottom, stop at the first **YES**, write the
+test there.
+
+```
+START: what am I trying to verify?
+│
+├─ A repo-wide structural rule? (naming, imports, file layout, type
+│  contracts, "every X must have Y", schema parity, ADR back-refs)
+│   YES → #1 Static analysis
+│         - Type-level? rely on tsc (`make lint`)
+│         - Style/format? Biome
+│         - Repo invariant? add a `packages/lint/src/check-*.ts`
+│   NO ↓
+│
+├─ Pure logic? (function, hook, service — no DOM, no network, no UI)
+│   YES → #2 Unit / integration test
+│         - Web hook → Vitest sibling `*.test.tsx` (happy-dom)
+│         - Web hook with timers → use `apps/web/test/time.ts` harness
+│         - Backend service → Bun test, real Postgres, real Prisma
+│         - Mutation under test? signature must take `Prisma.TransactionClient`
+│         - Error recovery / retry / fallback path? **also #2** (NOT E2E)
+│   NO ↓
+│
+├─ A component that renders differently per state?
+│  (empty / loading / error / variant / authed-vs-unauthed)
+│   YES → #3 Story (CSF3 + Storybook)
+│         - One story per meaningful state — mounting IS the test
+│         - a11y is free (axe-addon runs per story)
+│         - Stateful interaction? add a `play()` function
+│         - Don't multiply Gherkin scenarios for these — stories own state-enum
+│   NO ↓
+│
+├─ Behavior that jsdom can't see?
+│  (real CSS layout, ResizeObserver, IntersectionObserver, image
+│  `naturalWidth`, cross-origin credentials/cookies, clipboard, real
+│  pointer/touch events for drag-and-drop)
+│   YES → #4 Real-browser component test
+│         - Suffix `*.browser.test.tsx` (opt-in)
+│         - Same `renderWithTRPC` / `withFakeTimers` helpers as jsdom
+│   NO ↓
+│
+├─ A user journey that crosses users, tabs, or processes?
+│  (multi-user collaboration, realtime fan-out across browser contexts,
+│  full auth flow, email round-trip via Mailpit, login → action →
+│  another user sees update)
+│   YES → #5 E2E / BDD
+│         - Write Gherkin first (`e2e/features/<domain>/*.feature`)
+│         - Multi-user → multi-browser-context pattern (see `testing-guidelines.md`)
+│         - Tag `@state-machine(...)` if it's a state-machine flow
+│   NO ↓
+│
+├─ Pixel-perfect rendering / CSS regression / font drift?
+│   YES → #6 Visual regression (`make visual-regression`)
+│         - Baseline PNG committed to `e2e/visual-baselines/`
+│         - First run on a new component commits its baseline
+│   NO ↓
+│
+└─ Verifying the **deployed artifact** itself?
+   (DNS, TLS, migration state, CDN, env-var wiring in production)
+    YES → #7 Smoke (`make smoke`, `@smoke`-tagged BDD against `BASE_URL`)
+    NO  → you may not need a test. Re-read the question. If the answer
+          is "I just want a sanity check that this still works," the
+          existing pyramid probably already covers it.
+```
+
+### Tie-breakers when two gates seem to fit
+
+| Situation | Rule | Reason |
+|---|---|---|
+| Catchable by a static check **and** by a unit test | Always #1 | ~0.3s cached vs seconds; structural enforcement scales to every PR |
+| Component state branch (empty / loading / error) | #3 story, **not** #5 BDD scenario | Stories enumerate cheaply; Gherkin scenarios are journey contracts, not state matrices |
+| "Should retry on transient failure" / "should fall back when X fails" | #2 unit (Vitest), **not** #5 E2E | E2E can't reliably induce transient failures; Vitest can mock them deterministically |
+| Cross-user visibility (User A acts → User B sees it) | #5 E2E only | Unit and story environments are single-user by construction |
+| Email delivery round-trip | #5 E2E (Mailpit) | The point is verifying the SMTP seam — only E2E touches it |
+| "Does this CSS class actually apply?" | #3 story (assertion) **or** #6 visual | jsdom has no CSS engine; pick #3 for prop-to-class mapping, #6 for layout drift |
+| Component uses `<img>` from a cross-origin URL | #4 browser | jsdom doesn't enforce CORS or cookie partitioning |
+| "Does my hook tear down its subscription on unmount?" | #2 unit with timers | Stories don't unmount; E2E is too slow to assert lifecycle |
+| Adding a new domain / vertical slice | #5 BDD spec **first**, then #2 services, then #3 stories | BDD-first discipline (see CLAUDE.md "Development Workflow") |
+
+### "Lower layer first" rule
+
+If a bug is catchable at gate N, **it MUST be caught at gate N** — not
+pushed to N+1. Reasons it sometimes drifts upward:
+
+- Lazy ratchet ("we'll add a check later") — add the check now while context is loaded.
+- "Easier to write an E2E" — usually means the lower layer needs better fixtures, not a more expensive test.
+- "Unit can't see this" — sometimes true (cross-user, real CSS), often a missing helper. Try `renderWithTRPC` / `withFakeTimers` / `setupTestDatabase` before reaching higher.
+
+---
+
+## 5. Ownership — "which gate catches my bug class?"
 
 | Bug class | Primary gate | Secondary |
 |---|---|---|
@@ -191,7 +285,7 @@ Every invariant the template relies on is enforced by **types, static checks, or
 | Prose-spec UI element never tested | #1 `check-pitch-coverage` | #3 story |
 | Deployment breakage (DNS, TLS, migration) | #7 smoke | — |
 
-## 5. What deliberately isn't here
+## 6. What deliberately isn't here
 
 - **Snapshot-based DOM tests** (`toMatchSnapshot`) — high false-positive rate, low signal. Stories + Lost Pixel replace them.
 - **End-to-end browser tests inside Vitest** — that's what `make test-browser` (scoped) and `make test` (full journey) are for; duplicating inside regular unit tests inflates the edit-loop budget.
@@ -199,7 +293,7 @@ Every invariant the template relies on is enforced by **types, static checks, or
 - **Commit-message linting** — no release-notes pipeline yet; re-evaluate if one lands.
 - **Bundle-size budgets** — meaningful for a deployed app, not a template.
 
-## 6. Adding a new test surface
+## 7. Adding a new test surface
 
 The pyramid is not closed. New genres of bug may warrant new gates. Before adding one:
 
@@ -208,7 +302,7 @@ The pyramid is not closed. New genres of bug may warrant new gates. Before addin
 3. **What's its place in the pyramid?** If slower than #5, it belongs at on-demand / post-deploy tier. If faster than #2, it's probably a static check — add a `packages/lint/src/check-*.ts`.
 4. **Document here first, wire second.** Bump this table before the first task lands.
 
-## 7. References
+## 8. References
 
 - [`docs/testing-guidelines.md`](testing-guidelines.md) — **how** to write the tests (multi-context realtime pattern, fake-timer gotchas, service-vs-router split).
 - [`docs/adrs/0003-web-test-runner.md`](adrs/0003-web-test-runner.md) — why Vitest for web, Bun for api.

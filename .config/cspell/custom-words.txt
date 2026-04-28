@@ -190,3 +190,12 @@ procs
 Resumability
 XMPP
 bidirectionality
+passwordless
+reimplementation
+dbname
+pytest
+negotiables
+nitropack
+Rollbar
+JOOQ
+sqlx

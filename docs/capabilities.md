@@ -4,9 +4,16 @@ A catalog of **reusable primitives already shipped** in this template.
 Read this before writing new code: most "I need to handle X" questions
 have an existing answer here.
 
-Complement to [`package-taxonomy.md`](./package-taxonomy.md) — that file
-answers *"where does new code go?"*; this one answers *"what can I
-already use?"*.
+This document is the cross-stack contract preserved by the Effect-TS
+rewrite (see ADR-0009). Each entry's *behavior* must survive a substrate
+swap; the *implementation* may change.
+
+Companion docs:
+- [`package-taxonomy.md`](./package-taxonomy.md) — *where does new code go?*
+- [`tech-stack.md`](./tech-stack.md) — *which runtime libraries implement these capabilities* (cross-linked from each entry's See line where relevant).
+- [`dev-tooling.md`](./dev-tooling.md) — build/test/lint tooling (stack-agnostic).
+
+This file answers *"what can I already use?"*.
 
 Each entry follows the same shape:
 
@@ -33,6 +40,27 @@ Each entry follows the same shape:
   `publicProcedure`. Don't access `ctx.session.user` in public
   procedures — it's nullable.
 - **See** — `packages/api/CLAUDE.md`, `packages/auth/src/index.ts`.
+
+### Sign-in flows (password, magic-link, password reset)
+
+- **What** — Three Better-Auth-backed entry points: (1) email/password
+  (default form on `/sign-in`), (2) magic-link as Pattern 2 secondary
+  option below the password form (5-min single-use link), (3) forgot/reset
+  password via `/forgot-password` → emailed token → `/reset-password`.
+  All three share Better-Auth's session model and the same
+  `protectedProcedure` guard.
+- **Import** — Plugin config in `packages/auth/src/index.ts`
+  (`magicLink(...)` plugin). Frontend hooks: `useMagicLink`,
+  `useForgotPassword`, `useResetPassword` from
+  `apps/web/src/features/auth/`. Email templates: `magic-link.ts`,
+  `password-reset.ts` under `packages/email/src/templates/`.
+- **When** — adding a new auth surface or a passwordless entry point;
+  reuse the existing flows rather than invent a parallel one.
+- **When not** — OAuth / SSO / WebAuthn — those are separate Better-Auth
+  plugins not yet enabled here. Don't bypass Better-Auth and roll a
+  custom token flow.
+- **See** — `apps/web/src/routes/sign-in/`, `apps/web/src/routes/forgot-password.tsx`,
+  `apps/web/src/routes/reset-password.tsx`, `packages/auth/src/index.ts`.
 
 ### CASL-style authorization
 
@@ -143,8 +171,10 @@ Each entry follows the same shape:
 - **When** — sensitive mutations (create-list, invite, password reset),
   webhook handlers, any user-supplied endpoint with abuse potential.
 - **When not** — read-only queries — they're cache-friendly and cheap.
-  Don't pick thresholds by guess; borrow from the reference consumer.
-- **See** — `todoList.create` reference.
+  Don't pick thresholds by guess; borrow from the reference consumer
+  (`todoList.create` in `packages/api/src/domains/todo-list/router.ts`).
+- **See** — `packages/api/src/rate-limit-middleware.ts`,
+  `packages/api/src/domains/todo-list/router.ts` (consumer).
 
 ### Background jobs + crons
 
@@ -174,6 +204,52 @@ Each entry follows the same shape:
 - **When not** — transactional confirmations the UI already shows —
   don't double-notify.
 - **See** — `packages/email/`, `password-reset.ts` reference.
+
+### Bull Board admin dashboard
+
+- **What** — Bull Board UI for inspecting, retrying, and deleting BullMQ
+  jobs. Mounted at `/admin/queues`, gated by an admin session check. Both
+  email and maintenance queues are visible.
+- **Import** — `createBullBoardAdapter`, `BULL_BOARD_PATH` from
+  `apps/server/src/admin/bull-board.ts`. Mounted in
+  `apps/server/src/index.ts`.
+- **When** — debugging stuck jobs, retrying failed deliveries, monitoring
+  queue depth in production. Admin-only surface.
+- **When not** — public observability — this is for operators, not users.
+  Don't expose to non-admin sessions.
+- **See** — `apps/server/src/admin/bull-board.ts`, `apps/server/CLAUDE.md`.
+
+### Structured logging
+
+- **What** — Pino logger singleton + Hono request-logging middleware that
+  records method/path/status/duration. Log level driven by env; pretty
+  transport in dev, JSON in prod.
+- **Import** — `logger` from `apps/server/src/logger.ts`. Request middleware
+  is wired automatically in `apps/server/src/index.ts`.
+- **When** — anywhere on the server you'd otherwise reach for `console.log`.
+  Worker handlers and BullMQ failure listeners should log via the same
+  Pino instance.
+- **When not** — frontend code (browser console is fine). Don't log PII or
+  tokens. No correlation/request-id propagation yet — if a job triggers
+  a downstream call, pass identifiers explicitly.
+- **See** — `apps/server/src/logger.ts`,
+  `apps/server/src/index.ts` (request middleware).
+
+### Graceful shutdown
+
+- **What** — SIGTERM/SIGINT handlers in each long-running process drain
+  open connections before exit: HTTP server stops accepting new
+  connections + closes WebSockets; worker calls `worker.close()` to let
+  in-flight jobs finish; SMTP transport closes its pool.
+- **Import** — Pattern lives in `apps/server/src/index.ts` and
+  `apps/worker/src/index.ts`. Reuse the shape when adding a new
+  long-running process.
+- **When** — every process that owns external resources (DB pool, Redis
+  connection, queue worker, WebSocket pool).
+- **When not** — short-lived scripts (seeds, migrations) — they exit
+  naturally.
+- **See** — `apps/server/src/index.ts`, `apps/worker/src/index.ts`,
+  `packages/email/src/handler.ts` (transport pool close).
 
 ### Direct HTTP (non-tRPC) routes
 
@@ -296,6 +372,257 @@ Each entry follows the same shape:
 
 ---
 
+## Composition patterns
+
+These aren't libraries — they're **how the primitives bind together**.
+A reimplementation in another stack must reproduce these chains, not just
+the parts.
+
+### Admin role wiring (end-to-end)
+
+- **What** — A single `user.role === "admin"` flag (Better-Auth user model)
+  threads through every layer that needs admin gating. The chain:
+
+  ```
+  Better-Auth signup           → defaults role="user" (Prisma model default)
+  Manual promotion             → scripts/seed/seed-admin.ts <email> sets role="admin"
+  Hono session extraction      → auth.api.getSession() in apps/server/src/index.ts
+  tRPC context injection       → ctx.session.user.role flows in via createContext
+  CASL ability rules           → packages/api/src/authz/rules/admin.ts grants
+                                 manage("AdminDashboard", ...) when role==="admin"
+  Hono admin middleware        → apps/server/src/admin/middleware.ts calls
+                                 abilityFor(user) and rejects if cannot("access", …)
+  Bull Board mount             → /admin/queues mounted AFTER the requireAdmin
+                                 middleware in apps/server/src/index.ts
+  ```
+
+- **Import** — `requireAdmin` middleware from
+  `apps/server/src/admin/middleware.ts`. Admin CASL rules in
+  `packages/api/src/authz/rules/admin.ts`. Promotion script:
+  `scripts/seed/seed-admin.ts`.
+- **When** — adding any admin-only surface (a new admin route, an admin
+  tRPC procedure, an admin-only mutation). Reuse the chain — don't
+  bypass CASL with an inline `if (user.role !== "admin")`.
+- **When not** — feature-level permissions (per-resource ownership) —
+  use a domain CASL rule, not the admin role. Don't conflate "admin
+  bypass" with normal authz.
+- **See** — `packages/api/src/authz/rules/admin.ts`,
+  `apps/server/src/admin/middleware.ts`,
+  `apps/server/src/index.ts` (mount order matters), ADR on authz.
+
+### Mutation flow (transaction → activity → realtime)
+
+- **What** — The canonical write path. Every mutation that other clients
+  should see follows this chain in order:
+
+  ```
+  tRPC procedure
+   └─ .input(zodSchema)              ← validation
+   └─ protectedProcedure              ← auth gate
+   └─ ctx.db.$transaction(async tx => {
+        await service.mutate(tx, …)   ← writes + recordActivityEvent(tx, …)
+        return event                  ← service returns the event object
+      })
+   └─ AFTER commit: channel.publish(event)
+                              └─ subscribers receive via tRPC subscription
+                              └─ frontend handler patches React Query cache
+  ```
+
+  Two non-obvious rules: (a) `recordActivityEvent` is called *inside* the
+  transaction so the activity row commits atomically with the change;
+  (b) `channel.publish` is called *after* commit so subscribers never see
+  events for rolled-back writes.
+
+- **Import** — Pattern lives across
+  `packages/api/src/domains/<name>/router.ts` (transaction boundary) and
+  `service.ts` (writes + event emit). Activity helper:
+  `recordActivityEvent` from `@project/api/domains/activity-feed`.
+  Channel publish: `provider(...).publish(event)` after commit.
+- **When** — every mutation that (a) other tabs/users should see live, or
+  (b) needs an audit trail.
+- **When not** — pure reads, idempotent local UI state, single-user
+  computed values.
+- **See** — `packages/api/src/domains/todo-list/todo-service.ts` (canonical),
+  `packages/api/src/domains/activity-feed/`, `packages/api/CLAUDE.md`
+  (transaction rules).
+
+### Realtime stack composition
+
+- **What** — Multi-tab live updates are five layers deep, and the binding
+  is what makes it work without N WebSocket connections per user:
+
+  ```
+  Frontend tab N            useTodoListLiveUpdates(listId)
+                              ↓
+  Leader election           useLeaderTab() via navigator.locks
+                              ↓ (only the leader subscribes)
+  tRPC subscription         WebSocket /trpc-ws (path-prefix discipline, ADR-0008)
+                              ↓
+  Server resolver           channel(channelKey).subscribe()
+                              ↓
+  Channel implementation    MemoryChannel (dev/test) | RedisChannel (prod)
+                              ↓
+  Pub/sub fan-out           Redis pub/sub multiplexes across server replicas
+                              ↓
+  Leader receives           onData → BroadcastChannel.postMessage to peers
+                              ↓
+  All tabs update           event handler patches React Query cache
+  ```
+
+- **Import** — `useLeaderTab` from `apps/web/src/features/<feature>/`,
+  Channel factory from `@project/realtime`, subscription procedures
+  defined in domain routers.
+- **When** — any feature that benefits from live updates across tabs +
+  users (todo edits, activity feed, presence). Reuse leader-tab to keep
+  N tabs to one WS.
+- **When not** — UI that only matters to the actor (a draft form). Don't
+  multiplex events you don't need to share.
+- **See** — `packages/realtime/`, ADR-0001 (realtime architecture),
+  ADR-0008 (WebSocket path discipline),
+  `apps/web/src/features/todo-list/use-todo-list-live-updates.ts`.
+
+### Email enqueue discipline
+
+- **What** — Email is a 4-hop chain with strict seam rules:
+
+  ```
+  Service code              calls sendEmail({ template, to, vars })
+                              ↓ (services NEVER call nodemailer directly)
+  Email service             enqueues a typed job onto the email BullMQ queue
+                              ↓ (services NEVER enqueue to other queues by hand)
+  Worker                    dequeues, looks up template by name, renders
+                              ↓
+  Nodemailer transport      Mailpit (dev, smtp://localhost:1025)
+                            SES / Postmark (prod, via SMTP_URL)
+  ```
+
+  Seam rules: services use only `sendEmail`; templates are internal to
+  `packages/email`; transport is swapped at the worker boundary, not at
+  the service. Enqueue is *always* fire-and-forget — never block the
+  request on email delivery.
+
+- **Import** — `sendEmail` from `@project/email/service`. Templates under
+  `packages/email/src/templates/<name>.ts`.
+- **When** — adding a new outbound email (verification, notification,
+  digest). Add a template + a typed `sendEmail({ template: "newOne",
+  ... })` call.
+- **When not** — synchronous receipts the UI already shows (don't
+  double-notify). Don't reach into `packages/email/src/handler.ts` from
+  domain code.
+- **See** — `packages/email/`, password-reset and magic-link as
+  references.
+
+### Activity-feed gap-fill + live + dedup
+
+- **What** — Resumable activity streams have to bridge "history before
+  reconnect" with "live events from now on" *without* losing or
+  double-yielding events. The stream subscribes to the live channel
+  **before** querying historical rows, so anything published during
+  gap-fill is buffered, then the two phases are merged with id-based
+  dedup at the seam. Authz cascade closes the stream if the viewer is
+  removed mid-stream.
+
+  ```
+  Client reconnects with lastEventId
+                ↓
+  Phase 0: subscribe to Channel (buffer live events arriving from now)
+                ↓
+  Phase 1: gap-fill from DB
+    ├─ if gap > ACTIVITY_REPLAY_GAP_MAX → yield "resync" sentinel + stop
+    ├─ if oldest event older than ACTIVITY_REPLAY_MAX_AGE_MS → resync
+    └─ else fetch missing rows ordered by id, yield each, track lastYieldedId
+                ↓
+  Phase 2: drain buffered + go live
+    ├─ for each buffered/incoming event: skip if id ≤ lastYieldedId (dedup)
+    ├─ yield event, advance lastYieldedId
+    └─ on member-removed event naming this viewer → close stream (authz cascade)
+  ```
+
+  The order matters: subscribe-first prevents the gap. The dedup boundary
+  prevents double-yields when an event lands in DB *and* in the live
+  buffer during the handoff.
+
+- **Import** — `streamActivityEvents` from
+  `@project/api/domains/activity-feed`. Constants:
+  `ACTIVITY_REPLAY_GAP_MAX`, `ACTIVITY_REPLAY_MAX_AGE_MS` from the same
+  domain.
+- **When** — any resumable subscription where clients reconnect with a
+  cursor (activity feeds, audit logs, chat history). Same pattern any
+  time you bridge "DB historical" with "live pub/sub."
+- **When not** — pure live streams without resume semantics — just
+  subscribe. Don't add gap-fill if the client isn't sending a cursor.
+- **See** — `packages/api/src/domains/activity-feed/service.ts`
+  (`streamActivityEvents`),
+  `packages/api/src/domains/activity-feed/router.ts`,
+  `docs/conventions.md#when-to-use-tracked-resumable-subscriptions`.
+
+### Test-DB bootstrap (per-worktree isolated Postgres)
+
+- **What** — Tests run against a real Postgres, not mocks, and the
+  harness derives a unique container + port per **worktree** so multiple
+  branches can run tests in parallel without colliding. The composition:
+
+  ```
+  Project root path
+                ↓
+  testDbEnv(suite: "unit" | "e2e")
+    ├─ MD5(PROJECT_ROOT) → hash8 (container name suffix)
+    ├─ MD5(PROJECT_ROOT) → hash16 % 100 (port offset from base 5400)
+    └─ TEST_DATABASE_URL = postgres://localhost:<base+offset>/<dbname>
+                ↓
+  setupTestDatabase(suite)
+    ├─ docker compose up agentic-postgres-<hash8>
+    ├─ wait for healthy
+    └─ prisma db push --force-reset (schema reset on every run)
+                ↓
+  Runner spawns bun test / playwright with env inherited
+                ↓
+  Child sees TEST_DATABASE_URL → @project/env Zod parses → typed env
+  ```
+
+  Critical bindings: subscribing to the channel (in tests, `MemoryChannel`)
+  before the harness boots the DB would race; env injection has to
+  happen before Zod validation runs in the child; the same hash function
+  has to be reused across `make test` and `make test-unit` so they pick
+  collision-free ports when run together.
+
+- **Import** — `testDbEnv`, `setupTestDatabase` from `@project/test-infra`.
+  Used by `packages/api/scripts/test-runner.ts` (unit) and
+  `e2e/global-setup.ts` (e2e).
+- **When** — any new test suite that needs an isolated DB. Always go
+  through `setupTestDatabase("<suite-name>")`; never hardcode a port.
+- **When not** — pure unit tests with no DB — they don't need the
+  harness. Don't add a test suite that talks to the *dev* DB.
+- **See** — `packages/test-infra/`, `e2e/global-setup.ts`,
+  `packages/api/scripts/test-runner.ts`, `e2e/CLAUDE.md`.
+
+### Dev-mode swappable transports
+
+- **What** — Three primitives ship a code-level interface with two
+  implementations: a dev/test version with no infra, and a prod version
+  backed by external services. Switching is a factory choice, not a
+  conditional.
+
+  | Capability | Interface | Dev/test | Prod |
+  |---|---|---|---|
+  | Realtime fan-out | `Channel` | `MemoryChannel` | `RedisChannel` |
+  | Email transport | nodemailer createTransport | Mailpit (`SMTP_URL`) | SES/Postmark (`SMTP_URL`) |
+  | Auth session | `SessionProvider` | injected via Storybook/Vitest | `RealSessionBridge` (Better-Auth) |
+
+  When introducing a new external dependency, follow the same pattern:
+  define an interface, ship a dev-loop implementation that needs zero
+  infra, swap via factory at process boot.
+
+- **When** — adding a new external integration (S3, search, push, …).
+  Don't make `make dev` require a cloud account.
+- **When not** — for things where a dev fake would diverge dangerously
+  from prod semantics (don't fake your own DB).
+- **See** — `packages/realtime/src/channel.ts`,
+  `packages/email/src/handler.ts`,
+  `apps/web/src/features/auth/session-context.tsx`.
+
+---
+
 ## Cross-cutting patterns
 
 ### Vertical slice (domain group)
@@ -347,7 +674,14 @@ Each entry follows the same shape:
   registers a root script + turbo task with narrow `inputs`, appends
   to `TURBO_LINT_TASKS` in the Makefile. Per-check granularity means
   only your check reruns when its scope changes.
-- **See** — root `CLAUDE.md#adding-a-linter--adding-a-package-—-the-zero-drift-rules`.
+- **Existing checks** — domain-names, no-barrel, server-bind,
+  trpc-patterns, test-infra-integrity, feature-emails, duplicate-names,
+  no-cwd, test-siblings, stories-siblings, env-example, adrs,
+  state-machines, pitch-coverage, scoped-landmarks,
+  perspective-boundary. See [`dev-tooling.md#custom-checks`](./dev-tooling.md#custom-checks-packageslintsrccheck-ts)
+  for one-line purposes.
+- **See** — root `CLAUDE.md#adding-a-linter--adding-a-package-—-the-zero-drift-rules`,
+  [`dev-tooling.md`](./dev-tooling.md) for the full lint/format inventory.
 
 ---
 

@@ -1,4 +1,7 @@
 # syntax=docker/dockerfile:1-labs
+#
+# Worker runtime governed by ADR-0010 (Node 24 prod). Currently on Node 22;
+# bumps to node:24-slim in Phase 1 of the Effect-TS rewrite (ADR-0009).
 FROM node:22-slim AS builder
 WORKDIR /app
 COPY pnpm-workspace.yaml pnpm-lock.yaml package.json ./
