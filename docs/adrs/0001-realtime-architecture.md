@@ -5,7 +5,7 @@ applies-to: packages/api/src/domains/user, packages/api/src/domains/todo-list, p
 verified_by:
   - packages/realtime/src/user-inbox.ts
   - packages/api/src/domains/user/user-events.ts
-  - apps/web/src/features/user/use-user-inbox.ts
+  # apps/web/src/features/user/use-user-inbox.ts — deleted by ADR-0009 Phase 1 wipe; rebuild in Phase 3
 ---
 
 # ADR-001 — User Inbox Channel + Live+Snapshot Reconciliation

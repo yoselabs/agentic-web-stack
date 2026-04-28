@@ -2,10 +2,19 @@
 import type { Decorator, Preview } from "@storybook/react-vite";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import type { ReactNode } from "react";
-import {
-  type AppSession,
-  SessionProvider,
-} from "#/features/auth/session-context";
+// PHASE-1 STUB: `#/features/auth/session-context` was deleted by the
+// ADR-0009 Effect-TS rewrite wipe. Phase 3 reintroduces a real
+// SessionProvider; until then we ship inline placeholders so the
+// Storybook config keeps parsing. See ADR-0009.
+type AppSession = { data: null | { user: unknown }; isPending: boolean };
+function SessionProvider({
+  children,
+}: {
+  value: AppSession;
+  children: ReactNode;
+}) {
+  return <>{children}</>;
+}
 
 /**
  * Per-story `QueryClient`. Mirrors `apps/web/test/render.tsx` exactly:

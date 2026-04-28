@@ -5,7 +5,7 @@ date: 2026-04-21
 deciders: [denis]
 verified_by:
   - apps/web/.storybook/preview.tsx
-  - apps/web/src/widgets/navbar.stories.tsx
+  # apps/web/src/widgets/navbar.stories.tsx — deleted by ADR-0009 Phase 1 wipe; rebuild in Phase 3
   - apps/web/lostpixel.config.ts
 ---
 

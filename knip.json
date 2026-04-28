@@ -35,7 +35,27 @@
       ],
       "project": ["src/**/*.{ts,tsx}", "test/**/*.{ts,tsx}"],
       "ignore": ["src/routeTree.gen.ts"],
-      "ignoreDependencies": ["@testing-library/user-event", "@project/query"]
+      "ignoreDependencies": [
+        "@testing-library/user-event",
+        "@project/query",
+        "@dnd-kit/core",
+        "@dnd-kit/sortable",
+        "@dnd-kit/utilities",
+        "@project/api",
+        "@project/auth",
+        "@project/env",
+        "@project/http",
+        "@project/ui",
+        "@tanstack/react-form",
+        "@trpc/client",
+        "@trpc/server",
+        "@trpc/tanstack-react-query",
+        "better-auth",
+        "hono",
+        "lucide-react",
+        "sonner",
+        "zod"
+      ]
     },
     "packages/api": {
       "entry": [

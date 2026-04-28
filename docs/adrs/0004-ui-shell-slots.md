@@ -4,9 +4,8 @@ status: accepted
 date: 2026-04-21
 deciders: [denis]
 verified_by:
-  - apps/web/src/widgets/navbar.tsx
-  - apps/web/src/widgets/mobile-nav.tsx
-  - apps/web/src/widgets/app-shell.tsx
+  # apps/web/src/widgets/{navbar,mobile-nav,app-shell}.tsx — deleted by ADR-0009 Phase 1 wipe; rebuild in Phase 3
+  - docs/superpowers/specs/2026-04-21-template-prevention-foundation-design.md
 ---
 
 # ADR-0004 — UI shell components take typed slots, never `children`
