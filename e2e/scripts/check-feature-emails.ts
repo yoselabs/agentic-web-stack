@@ -104,15 +104,6 @@ export function checkFeatureEmails(): Promise<CheckResult> {
 }
 
 if (import.meta.main) {
-  // TODO(Phase-3): remove WIPE_IN_PROGRESS guard once e2e/features/**/*.feature files are restored.
-  // See docs/superpowers/specs/2026-04-28-effect-rewrite-phase-1-design.md
-  if (process.env.WIPE_IN_PROGRESS === "1") {
-    console.log(
-      "[check-feature-emails] skipped — wipe in progress (Phase 1 design doc)",
-    );
-    process.exit(0);
-  }
-
   const result = await checkFeatureEmails();
   if (!result.ok) {
     console.error(`FAIL: ${result.errors.length} email collision(s).`);
