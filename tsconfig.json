@@ -10,7 +10,6 @@
     { "path": "packages/query" },
     { "path": "packages/test-infra" },
     { "path": "packages/ui" },
-    { "path": "apps/server" },
     { "path": "apps/web" }
   ]
 }

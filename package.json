@@ -4,7 +4,7 @@
   "license": "Apache-2.0",
   "type": "module",
   "scripts": {
-    "dev": "pnpm --parallel --filter @project/web --filter @project/server --filter @project/worker dev",
+    "dev": "pnpm --parallel --filter @project/web dev",
     "new:feature": "turbo gen feature",
     "build": "pnpm -r build",
     "typecheck": "tsc -b",

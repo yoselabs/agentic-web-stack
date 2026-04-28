@@ -76,8 +76,6 @@
         "**/vite.config.ts",
         "**/playwright.config.ts",
         "packages/db/prisma.config.ts",
-        "apps/server/src/logger.ts",
-        "apps/worker/src/**",
         "e2e/steps/**",
         "e2e/global-setup.ts",
         "e2e/test-env.ts",

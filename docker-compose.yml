@@ -66,20 +66,21 @@ services:
       redis:
         condition: service_healthy
 
+  # WIPE: re-enabled in Phase 3 of the Effect-TS rewrite
   # server + web inherit the image-level HEALTHCHECK defined in Dockerfile.
   # Both expose /health; the healthcheck script probes http://127.0.0.1:${PORT}/health.
-  server:
-    image: *app-image
-    build: *app-build
-    command: ["bun", "/app/apps/server/src/index.ts"]
-    environment:
-      <<: *app-env
-      PORT: "3001"
-    ports:
-      - "127.0.0.1:3001:3001"
-    depends_on:
-      migrate:
-        condition: service_completed_successfully
+  # server:
+  #   image: *app-image
+  #   build: *app-build
+  #   command: ["bun", "/app/apps/server/src/index.ts"]
+  #   environment:
+  #     <<: *app-env
+  #     PORT: "3001"
+  #   ports:
+  #     - "127.0.0.1:3001:3001"
+  #   depends_on:
+  #     migrate:
+  #       condition: service_completed_successfully
 
   web:
     image: *app-image

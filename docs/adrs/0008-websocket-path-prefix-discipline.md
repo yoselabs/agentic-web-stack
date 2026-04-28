@@ -4,8 +4,11 @@ status: accepted
 date: 2026-04-23
 deciders: [denis]
 verified_by:
-  - apps/server/src/index.ts
-  - apps/server/CLAUDE.md
+  # Original entries (apps/server/src/index.ts, apps/server/CLAUDE.md)
+  # were removed during the Phase 1 wipe of the Effect-TS rewrite.
+  # The wipe plan itself cites ADR-0008 and is the temporary verifier
+  # until Phase 3 rebuilds the server and restores the real entries.
+  - docs/capabilities.md
 ---
 
 # ADR-0008 — WebSocket Path-Prefix Discipline

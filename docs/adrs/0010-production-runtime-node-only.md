@@ -7,7 +7,6 @@ supersedes:
   - implicit-bun-runtime-for-apps-server
 verified_by:
   - Dockerfile
-  - apps/worker/Dockerfile
 ---
 
 # ADR-0010 — Production Runtime: Node 24 Only
@@ -90,6 +89,12 @@ Bun is **not** used for:
   unchanged.
 
 ## Implementation
+
+Note: `apps/worker/Dockerfile` is removed during the Phase 1 wipe (along
+with `apps/worker/` itself) and re-added in Phase 3 of the rewrite when
+the worker is rebuilt against Node 24. The `verified_by` list reflects
+only files that exist post-wipe; the worker Dockerfile re-enters that
+list when it returns.
 
 Lands in **Phase 1** of the rewrite (per ADR-0009):
 

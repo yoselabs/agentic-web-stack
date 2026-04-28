@@ -37,13 +37,6 @@
       "ignore": ["src/routeTree.gen.ts"],
       "ignoreDependencies": ["@testing-library/user-event", "@project/query"]
     },
-    "apps/server": {
-      "entry": ["src/index.ts"]
-    },
-    "apps/worker": {
-      "entry": ["src/index.ts"],
-      "ignoreDependencies": ["@project/env", "ioredis"]
-    },
     "packages/api": {
       "entry": [
         "src/router.ts",
