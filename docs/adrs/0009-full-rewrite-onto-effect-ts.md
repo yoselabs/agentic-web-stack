@@ -12,6 +12,16 @@ verified_by:
 
 # ADR-0009 — Full Rewrite onto Effect-TS
 
+> **Note (2026-04-28):** Phase 1 of the §Implementation phases was
+> reshaped from "incremental smoke-test" to "wipe + reassess + slice +
+> walk" in a follow-up brainstorm. See
+> [`docs/superpowers/specs/2026-04-28-effect-rewrite-phase-1-design.md`](../superpowers/specs/2026-04-28-effect-rewrite-phase-1-design.md).
+> The headline decision (full rewrite onto Effect-TS) and Phases 2–7
+> are unchanged. The "decide each follow-up ADR when its phase lands"
+> rule still applies — Phase 1 design proposes drafting them in
+> `docs/adrs/draft/` during a stack-assessment phase, then promoting
+> to numbered slots when the implementing code lands.
+
 ## Context
 
 The template (snapshot tagged `stable-pre-effect`, commit `80f0684`)
