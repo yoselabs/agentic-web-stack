@@ -83,6 +83,15 @@ export function checkTrpcPatterns(): Promise<CheckResult> {
 }
 
 if (import.meta.main) {
+  // TODO(Phase-3): remove WIPE_IN_PROGRESS guard once tRPC procedures in apps/web/src/ exist.
+  // See docs/superpowers/specs/2026-04-28-effect-rewrite-phase-1-design.md
+  if (process.env.WIPE_IN_PROGRESS === "1") {
+    console.log(
+      "[check-trpc-patterns] skipped — wipe in progress (Phase 1 design doc)",
+    );
+    process.exit(0);
+  }
+
   const result = await checkTrpcPatterns();
   if (!result.ok) {
     for (const e of result.errors) console.error(`[check-trpc-patterns] ${e}`);

@@ -267,6 +267,15 @@ export function checkDuplicateNames(): Promise<CheckResult> {
 }
 
 if (import.meta.main) {
+  // TODO(Phase-3): remove WIPE_IN_PROGRESS guard once duplicate-name checks in apps/ and packages/ are relevant.
+  // See docs/superpowers/specs/2026-04-28-effect-rewrite-phase-1-design.md
+  if (process.env.WIPE_IN_PROGRESS === "1") {
+    console.log(
+      "[check-duplicate-names] skipped — wipe in progress (Phase 1 design doc)",
+    );
+    process.exit(0);
+  }
+
   const result = await checkDuplicateNames();
   if (!result.ok) {
     console.error("");

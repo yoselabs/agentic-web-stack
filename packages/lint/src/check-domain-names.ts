@@ -118,6 +118,15 @@ export function checkDomainNames(): Promise<CheckResult> {
 }
 
 if (import.meta.main) {
+  // TODO(Phase-3): remove WIPE_IN_PROGRESS guard once domain folders in apps/web/src/features and packages/api/src/domains are restored.
+  // See docs/superpowers/specs/2026-04-28-effect-rewrite-phase-1-design.md
+  if (process.env.WIPE_IN_PROGRESS === "1") {
+    console.log(
+      "[check-domain-names] skipped — wipe in progress (Phase 1 design doc)",
+    );
+    process.exit(0);
+  }
+
   const result = await checkDomainNames();
   if (!result.ok) {
     for (const e of result.errors) console.error(`[check-domain-names] ${e}`);

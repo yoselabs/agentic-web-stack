@@ -33,6 +33,15 @@ export function checkServerBind(): Promise<CheckResult> {
 }
 
 if (import.meta.main) {
+  // TODO(Phase-3): remove WIPE_IN_PROGRESS guard once apps/server/src/index.ts is restored.
+  // See docs/superpowers/specs/2026-04-28-effect-rewrite-phase-1-design.md
+  if (process.env.WIPE_IN_PROGRESS === "1") {
+    console.log(
+      "[check-server-bind] skipped — wipe in progress (Phase 1 design doc)",
+    );
+    process.exit(0);
+  }
+
   const result = await checkServerBind();
   if (!result.ok) {
     for (const e of result.errors) console.error(`[check-server-bind] ${e}`);

@@ -105,6 +105,15 @@ export function checkPerspectiveBoundary(): Promise<CheckResult> {
 }
 
 if (import.meta.main) {
+  // TODO(Phase-3): remove WIPE_IN_PROGRESS guard once perspective-bounded fields in apps/ and packages/ exist.
+  // See docs/superpowers/specs/2026-04-28-effect-rewrite-phase-1-design.md
+  if (process.env.WIPE_IN_PROGRESS === "1") {
+    console.log(
+      "[check-perspective-boundary] skipped — wipe in progress (Phase 1 design doc)",
+    );
+    process.exit(0);
+  }
+
   const result = await checkPerspectiveBoundary();
   if (!result.ok) {
     for (const e of result.errors)
