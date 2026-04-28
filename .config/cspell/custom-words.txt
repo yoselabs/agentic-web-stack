@@ -199,3 +199,7 @@ nitropack
 Rollbar
 JOOQ
 sqlx
+lelabo
+Pipeable
+Arnaldi
+Roza
