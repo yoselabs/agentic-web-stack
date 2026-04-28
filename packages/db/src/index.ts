@@ -1,28 +1,13 @@
-import { PrismaPg } from "@prisma/adapter-pg";
-import { env } from "@project/env/server";
-import { PrismaClient } from "./generated/client";
+// Phase-1 stub of the Effect-TS rewrite.
+//
+// During the rewrite (see
+// docs/superpowers/specs/2026-04-28-effect-rewrite-phase-1-design.md),
+// this file is reduced to a bare re-export of the generated Prisma
+// client so kept consumers (notably packages/test-infra/src/fixtures/
+// users.ts which imports `PrismaClient` as a type) continue to resolve.
+//
+// The singleton `db` instance + PrismaPg adapter + globalThis dev cache
+// were removed; Phase 3 rebuilds them as part of the Effect `Db` Layer
+// per ADR slot 0013.
 
-const globalForPrisma = globalThis as unknown as {
-  prisma: PrismaClient | undefined;
-};
-
-// Prisma 7 replaced the `datasources: { db: { url } }` constructor override
-// with driver adapters. PrismaPg wraps node-postgres (pg) and handles the
-// connection pool. Passing `env.DATABASE_URL` (from @project/env/server)
-// keeps the zero-conf default path working — the Zod default fires when no
-// shell env / .env is present, same as before.
-export const db =
-  globalForPrisma.prisma ??
-  new PrismaClient({
-    adapter: new PrismaPg({ connectionString: env.DATABASE_URL }),
-  });
-
-if (env.NODE_ENV !== "production") {
-  globalForPrisma.prisma = db;
-}
-
-// Re-export all generated types (enums, input types, Prisma namespace, PrismaClient, etc.)
-// so consumers can `import { Prisma, MyEnum } from "@project/db"` without reaching into
-// the generated output. The new `prisma-client` generator emits a standalone ESM client
-// under src/generated/ — the output path is internal; consumers always go through @project/db.
 export * from "./generated/client";
