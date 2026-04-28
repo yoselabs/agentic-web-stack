@@ -1,5 +1,6 @@
 {
   "$schema": "https://turbo.build/schema.json",
+  "globalPassThroughEnv": ["WIPE_IN_PROGRESS"],
   "globalDependencies": [
     "biome.json",
     "tsconfig.base.json",

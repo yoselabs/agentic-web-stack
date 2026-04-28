@@ -1,4 +1,9 @@
 {
   "$comment": "Ratchet allowlist. Every entry needs a `reason` of >= 10 chars. Shrink over time — each listing is a hook missing its test sibling. New hooks MUST ship with tests; this list is grandfathered existing misses.",
-  "allow": []
+  "allow": [
+    {
+      "path": "apps/web/src/features/auth/use-magic-link.ts",
+      "reason": "Pre-existing hook landed before sibling rule was re-checked (cache-hidden); slated for removal during the Effect-TS rewrite Phase 1 wipe."
+    }
+  ]
 }

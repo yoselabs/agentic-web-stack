@@ -65,11 +65,11 @@ TURBO_LINT_TASKS = lint:biome lint:tsc lint:prisma lint:knip lint:jscpd lint:she
 
 check: lint ## Alias for lint — full quality gate
 lint: db-generate ## Full lint gate (turbo-cached; silent on success, errors only)
-	@pnpm exec turbo run $(TURBO_LINT_TASKS) --output-logs=errors-only --log-order=grouped
+	@set -a; . .config/lint.env; set +a; pnpm exec turbo run $(TURBO_LINT_TASKS) --output-logs=errors-only --log-order=grouped
 lint-verbose: db-generate ## Lint with full output (for debugging)
-	@pnpm exec turbo run $(TURBO_LINT_TASKS) --log-order=grouped
+	@set -a; . .config/lint.env; set +a; pnpm exec turbo run $(TURBO_LINT_TASKS) --log-order=grouped
 lint-force: db-generate ## Bypass turbo cache, force a fresh run
-	@pnpm exec turbo run $(TURBO_LINT_TASKS) --output-logs=errors-only --log-order=grouped --force
+	@set -a; . .config/lint.env; set +a; pnpm exec turbo run $(TURBO_LINT_TASKS) --output-logs=errors-only --log-order=grouped --force
 
 # Deep-scan lint — typed-linting rules from ESLint / typescript-eslint that
 # Biome doesn't have parity for yet. Runs on-demand (not in make lint, not in

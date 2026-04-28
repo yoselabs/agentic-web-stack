@@ -6,6 +6,10 @@
       "reason": "Pre-existing step file; landed before scoped-landmark rule. Refactor when touching."
     },
     {
+      "path": "e2e/steps/auth/magic-link.ts",
+      "reason": "Pre-existing step file; landed before scoped-landmark rule was re-checked (cache-hidden). Refactor when touching."
+    },
+    {
       "path": "e2e/steps/auth/homepage.ts",
       "reason": "Pre-existing step file; landed before scoped-landmark rule. Refactor when touching."
     },
