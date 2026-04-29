@@ -67,13 +67,22 @@ function listSubdirs(rel: string): string[] {
 
 type Layer = "frontend" | "backend" | "e2e-feat" | "e2e-steps";
 
+// `Set<Layer>` is the set of layers where this domain is *allowed to be
+// missing*. Layers not listed here are required.
 const ALLOWLIST: Record<string, Set<Layer>> = {
-  auth: new Set(["backend"]),
-  admin: new Set(["frontend", "backend"]),
-  "mobile-nav": new Set(["frontend", "backend"]),
+  // Auth's UI lives in apps/web/src/routes/sign-{in,up}.tsx (route shells)
+  // — no features/auth/ folder. Backend is wrapped in @project/auth, not a
+  // packages/api/src/domains/auth folder. e2e steps live in steps/auth/.
+  auth: new Set(["frontend", "backend"]),
+  admin: new Set(["frontend", "backend", "e2e-steps"]),
+  "mobile-nav": new Set(["frontend", "backend", "e2e-steps"]),
   user: new Set(["e2e-feat", "e2e-steps"]),
   dashboard: new Set(["backend", "e2e-feat", "e2e-steps"]),
   landing: new Set(["backend", "e2e-feat", "e2e-steps"]),
+  // Phase 4 capabilities — Gherkin contract preserved, implementation
+  // returns in the capability-walk. Drop entries from this list as each
+  // domain lands in apps/web + packages/api + e2e/steps.
+  "activity-feed": new Set(["frontend", "backend", "e2e-steps"]),
 };
 
 const layerPath: Record<Layer, string> = {
@@ -118,15 +127,6 @@ export function checkDomainNames(): Promise<CheckResult> {
 }
 
 if (import.meta.main) {
-  // TODO(Phase-3): remove WIPE_IN_PROGRESS guard once domain folders in apps/web/src/features and packages/api/src/domains are restored.
-  // See docs/superpowers/specs/2026-04-28-effect-rewrite-phase-1-design.md
-  if (process.env.WIPE_IN_PROGRESS === "1") {
-    console.log(
-      "[check-domain-names] skipped — wipe in progress (Phase 1 design doc)",
-    );
-    process.exit(0);
-  }
-
   const result = await checkDomainNames();
   if (!result.ok) {
     for (const e of result.errors) console.error(`[check-domain-names] ${e}`);

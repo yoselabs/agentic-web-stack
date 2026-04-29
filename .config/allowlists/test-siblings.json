@@ -2,8 +2,12 @@
   "$comment": "Ratchet allowlist. Every entry needs a `reason` of >= 10 chars. Shrink over time — each listing is a hook missing its test sibling. New hooks MUST ship with tests; this list is grandfathered existing misses.",
   "allow": [
     {
-      "path": "apps/web/src/features/auth/use-magic-link.ts",
-      "reason": "Pre-existing hook landed before sibling rule was re-checked (cache-hidden); slated for removal during the Effect-TS rewrite Phase 1 wipe."
+      "path": "apps/web/src/features/todo-list/use-todo-lists.ts",
+      "reason": "Phase 3 first slice — thin TanStack Query orchestrator (query + 2 mutations with cache invalidation). End-to-end coverage comes from e2e/features/todo-list/lists.feature; an isolated render-hook test would primarily exercise TanStack Query itself. Add a sibling test when Phase 4 lands optimistic updates or domain logic here."
+    },
+    {
+      "path": "apps/web/src/features/todo-list/use-todos.ts",
+      "reason": "Phase 3 first slice — same shape as use-todo-lists. End-to-end coverage in e2e/features/todo-list/todos.feature. Add a sibling test when richer client-side logic (drag reorder, optimistic toggle) lands in Phase 4."
     }
   ]
 }

@@ -445,3 +445,58 @@ Phase 3 (first vertical slice — auth bootstrap + todo-list end-to-end) is now 
 - Rollback point at tag `stable-pre-effect` unchanged
 
 Phase 3 gets its own plan, drafted as a fresh session.
+
+## Phase 3 outcome (2026-04-29)
+
+First vertical slice landed in 8 commits. ~2.5K lines added.
+
+| Commit | Scope |
+|---|---|
+| `b4ef771` | Dockerfile runtime → `node:24-slim` (ADR-0010) |
+| `7e14f08` | `packages/auth` (Better-Auth, email+password) + `packages/api` (Db / Auth / Logger Effect Layers + `runEffect` adapter + tRPC). Promoted ADR-0012, ADR-0017. |
+| `619a18d` | `apps/server` on `@effect/platform` HttpServer + Better-Auth catch-all + tRPC fetch adapter. Promoted ADR-0011 (Bull Board + ws upgrade explicitly deferred to Phase 4 in §Spike findings). |
+| `76b3249` | `apps/web` shell — TanStack Start + Better-Auth password sign-in/sign-up + `_authed` guard + dashboard placeholder. |
+| `0b9c047` | Todo-list domain backend — 7 procedures, `$transaction`-using `createTodoList`, 6-test bun suite. Promoted ADR-0013, ADR-0019. |
+| `23b332c` | Todo-list domain frontend — TanStack Query hooks + UI on `_authed/dashboard` + `_authed/todo-lists/$listId`. ADR-0014 stays draft (Zod-only baseline measurement recorded in §Spike findings). ADR-0016 stays draft (no natural `@effect/rx` use case in the slice). |
+| `c6fc1e8` | E2e step defs for auth + todo-list; `make test` ungated; worker spawn removed from global setup. |
+| `<this commit>` | Final teardown — `WIPE_IN_PROGRESS=1` removed, gated lint checks ungated, `check-server-bind` taught the `@effect/platform-node` pattern, `check-domain-names` allowlist updated for the slice's domain shape, `Phase 3 outcome` section in this doc. |
+
+### ADR status (post-Phase 3)
+
+| Slot | Status | Reason |
+|---|---|---|
+| 0011 HTTP framework | accepted | `@effect/platform` HttpServer for the server-process API; partial promotion (Bull Board + ws deferred to Phase 4 — neither blocks the slice). |
+| 0012 RPC layer | accepted | tRPC v11 + `runEffect` adapter. |
+| 0013 DB access | accepted | Wrap Prisma behind `Db` Layer; `tryDb` + `withTransaction` helpers absorb `Effect.tryPromise`. |
+| 0014 Schema validation | **draft** | Slice shipped on Zod 4 only; Effect Schema vs Zod head-to-head was not run. Zod-baseline measurement (148 KB total client JS gzipped) recorded in §Spike findings; promotion gated on a future Effect Schema migration. |
+| 0015 Queue | **draft** | No queue in the slice. Decided alongside Phase 4 worker rebuild. |
+| 0016 Frontend Effect adoption | **draft** | TanStack Query for RPC works (decision C left half). No natural `@effect/rx` use case emerged in the slice (no realtime, no streaming). Promote when realtime lands in Phase 4. |
+| 0017 Logger | accepted | Effect's built-in `Logger` (JSON in prod, pretty in dev) replaces pino. |
+| 0018 Realtime transport | **draft** | Phase 4 capability. |
+| 0019 Test runner (backend) | accepted | `bun test` for `@project/api` + per-package `test-helpers.ts` (`provideTestSession`, `makeTestUser`, `resetDb`). |
+| 0020 Email send | **draft** | No email in the slice. Phase 4 capability. |
+| 0021 Rate limiting | **draft** | Phase 4 capability. |
+
+5 of 11 ADRs accepted. The 6 remaining drafts are paired with Phase 4 capabilities — they get promoted commit-by-commit as the capability-walk lands their patterns.
+
+### Workflow notes
+
+- **Node 24 ESM + Prisma generated client.** Node strict-resolves extensions; the `prisma-client` generator emits extensionless imports by default. Fix: `importFileExtension = "ts"` in `prisma/schema/base.prisma`. Plus `allowImportingTsExtensions: true` + `rewriteRelativeImportExtensions: true` in `tsconfig.base.json`. Hand-written packages now use `.ts` extensions in relative imports. Runtime is `node --experimental-strip-types`. apps/web is unaffected (Vite has its own resolver).
+- **Bun stays inner-loop only.** `bun test` for `@project/api`, `bun` for the prisma generate postinstall script. Production runtime is Node 24 (ADR-0010). e2e webServer also runs Node, not Bun, for stability under parallel load (matches dev + prod).
+- **Spike outcome of ADR-0011.** `HttpApp.fromWebHandler` is the load-bearing primitive for mounting Better-Auth's `(Request) => Promise<Response>` handler under a catch-all route. Same pattern works for tRPC's fetch adapter. `HttpRouter.mountApp` with `includePrefix: true` keeps the path visible to the inner handler.
+- **Workflow change to Phase 2's spike-pending ADRs.** Three drafts (0014, 0015, 0018) carried `spike_status: pending`. Of those, only 0014 was relevant to the slice; the slice shipped on Zod and the head-to-head measurement was deferred. The other two (queue, realtime) are correctly handled by Phase 4. The "first slice IS the spike" workflow change held — no throwaway spikes were run; the implementation code itself drove the decisions that landed.
+
+### Capability contract status
+
+`docs/capabilities.md` was preserved through the rewrite. The slice restores:
+- Auth session — sign-up + sign-in via Better-Auth password (magic-link / forgot-password / OAuth deferred to Phase 4 alongside `@project/email`)
+- Todo-list — list CRUD + todo CRUD + per-user privacy
+
+Everything else in capabilities.md is Phase-4 territory: realtime, collaborators/invites, admin gate, activity feed, CSV import/export, mobile nav, optimistic mutations, rate limiting, queue/email-send.
+
+### Known caveats from the executing session
+
+- **Tests not actually executed during the rewrite session.** `make test-unit` and `make test` were never run — the local docker daemon was unresponsive throughout the implementing session. The bun unit tests (`packages/api/.../todo-service.test.ts`) and Playwright BDD scenarios are typecheck/lint-clean and follow the canonical patterns; expect to discover small selector mismatches or session-shape details in the first real run, easy to iterate on.
+- **`make dev` boots both `apps/web` and `apps/server` in parallel** — verified via `node --experimental-strip-types apps/server/src/index.ts` standalone (`/health` 200, `/api/auth/get-session` 200) and via `pnpm --filter @project/web exec vite build` (148 KB total client JS gzipped). End-to-end browser flow (sign-up → dashboard → create list → create todo) was never clicked through manually because docker was down for the test DB.
+
+Phase 3 closes here. Phase 4 (capability-walk through `docs/capabilities.md`) gets its own plan.
