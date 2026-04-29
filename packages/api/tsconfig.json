@@ -8,5 +8,9 @@
     "types": ["node"]
   },
   "include": ["src"],
-  "references": [{ "path": "../env" }]
+  "references": [
+    { "path": "../auth" },
+    { "path": "../db" },
+    { "path": "../env" }
+  ]
 }

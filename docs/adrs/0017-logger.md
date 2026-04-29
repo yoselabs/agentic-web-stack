@@ -1,9 +1,10 @@
 ---
-title: "ADR 0017 — Logger (proposed)"
-status: proposed
+title: "ADR 0017 — Logger"
+status: accepted
 date: 2026-04-29
 deciders: [denis]
-draft_for_promotion_in_phase: 3
+verified_by:
+  - packages/api/src/runtime/logger-layer.ts
 ---
 
 # ADR 0017 — Logger

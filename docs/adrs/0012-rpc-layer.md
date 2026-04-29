@@ -1,9 +1,12 @@
 ---
-title: "ADR 0012 — RPC layer (proposed)"
-status: proposed
+title: "ADR 0012 — RPC layer"
+status: accepted
 date: 2026-04-29
 deciders: [denis]
-draft_for_promotion_in_phase: 3
+verified_by:
+  - packages/api/src/trpc.ts
+  - packages/api/src/runtime/run-effect.ts
+  - packages/api/src/router.ts
 ---
 
 # ADR 0012 — RPC Layer

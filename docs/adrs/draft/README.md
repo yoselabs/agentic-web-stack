@@ -16,16 +16,18 @@ line 65), so drafts can land without `verified_by` files existing.
 | Slot | Topic | Decision (proposed) | Spike |
 |---|---|---|---|
 | 0011 | HTTP framework — server-process | `@effect/platform` HttpServer (cond. on Phase 3 Better-Auth + Bull Board + ws spike) | **pending** — runs in Phase 3 first slice |
-| 0012 | RPC layer | tRPC v11 + `runEffect` adapter (Q5b research validated) | none |
 | 0013 | DB access | wrap Prisma behind `Db` Layer | optional — first slice IS the spike |
 | 0014 | Schema validation | Effect Schema everywhere (cond. on bundle ≤70 KB delta in Phase 3 frontend build) | **pending** — measured in Phase 3 build |
 | 0015 | Queue | wrap BullMQ behind `Queue` Layer; `Effect.Schedule` for retries | none |
 | 0016 | Frontend Effect adoption | split per data shape — TanStack Query for RPC, `@effect/rx` for streams | optional — first slice IS the spike |
-| 0017 | Logger | replace pino with Effect `Logger` | none |
 | 0018 | Realtime transport | `@effect/platform/Socket` + `Effect.Stream` (cond. on Phase 4 spike) | **pending** — runs in Phase 4 realtime walk |
 | 0019 | Test runner (backend) | keep `bun test` + Effect helpers (per ADR-0003 60× speed) | optional — first slice tests ARE the spike |
 | 0020 | Email send | wrap nodemailer behind `Mailer` Layer | none |
 | 0021 | Rate limiting | wrap rate-limiter-flexible behind `RateLimiter` Layer | none |
+
+Promoted to numbered slots in Phase 3:
+- **0012** (RPC layer) — `docs/adrs/0012-rpc-layer.md`
+- **0017** (Logger) — `docs/adrs/0017-logger.md`
 
 **All 11 drafts present.** 5 are no-spike ADRs (research-validated or
 synthesis from the Phase 1 design doc Q4). 6 carry an explicit

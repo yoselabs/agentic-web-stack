@@ -8,5 +8,5 @@
     "types": ["node"]
   },
   "include": ["src"],
-  "references": [{ "path": "../env" }]
+  "references": [{ "path": "../db" }, { "path": "../env" }]
 }

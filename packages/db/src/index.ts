@@ -1,13 +1,23 @@
-// Phase-1 stub of the Effect-TS rewrite.
-//
-// During the rewrite (see
-// docs/superpowers/specs/2026-04-28-effect-rewrite-phase-1-design.md),
-// this file is reduced to a bare re-export of the generated Prisma
-// client so kept consumers (notably packages/test-infra/src/fixtures/
-// users.ts which imports `PrismaClient` as a type) continue to resolve.
-//
-// The singleton `db` instance + PrismaPg adapter + globalThis dev cache
-// were removed; Phase 3 rebuilds them as part of the Effect `Db` Layer
-// per ADR slot 0013.
+import { PrismaPg } from "@prisma/adapter-pg";
+import { env } from "@project/env/server";
+import { PrismaClient } from "./generated/client";
+
+// Singleton PrismaClient. The Effect `Db` Layer in @project/api wraps
+// this instance — Phase 3 of the Effect-TS rewrite (ADR-0009 / ADR-0013).
+// Better-Auth's prismaAdapter consumes the same client directly, since
+// Better-Auth is non-Effect.
+const globalForPrisma = globalThis as unknown as {
+  prisma: PrismaClient | undefined;
+};
+
+export const db =
+  globalForPrisma.prisma ??
+  new PrismaClient({
+    adapter: new PrismaPg({ connectionString: env.DATABASE_URL }),
+  });
+
+if (env.NODE_ENV !== "production") {
+  globalForPrisma.prisma = db;
+}
 
 export * from "./generated/client";

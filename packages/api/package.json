@@ -1,0 +1,46 @@
+{
+  "name": "@project/api",
+  "version": "0.0.0",
+  "private": true,
+  "type": "module",
+  "exports": {
+    "./errors": {
+      "default": "./src/errors.ts"
+    },
+    "./trpc": {
+      "default": "./src/trpc.ts"
+    },
+    "./context": {
+      "default": "./src/context.ts"
+    },
+    "./router": {
+      "default": "./src/router.ts"
+    },
+    "./runtime/run-effect": {
+      "default": "./src/runtime/run-effect.ts"
+    },
+    "./runtime/db-layer": {
+      "default": "./src/runtime/db-layer.ts"
+    },
+    "./runtime/auth-layer": {
+      "default": "./src/runtime/auth-layer.ts"
+    },
+    "./runtime/logger-layer": {
+      "default": "./src/runtime/logger-layer.ts"
+    },
+    "./runtime/app-layer": {
+      "default": "./src/runtime/app-layer.ts"
+    }
+  },
+  "scripts": {},
+  "dependencies": {
+    "@project/auth": "workspace:*",
+    "@project/db": "workspace:*",
+    "@project/env": "workspace:*",
+    "@trpc/server": "catalog:",
+    "effect": "catalog:"
+  },
+  "devDependencies": {
+    "@types/node": "catalog:"
+  }
+}
