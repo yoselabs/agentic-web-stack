@@ -22,6 +22,31 @@
       "reason": "Parent/child CRUD in the todo-list domain: TodoList is the container, Todo is the item. Same CRUD verbs apply to both; the names correctly distinguish which entity is being operated on."
     },
     {
+      "names": ["createTodoInput", "createTodoListInput"],
+      "reason": "Schema pair: createTodoInput validates createTodo input, createTodoListInput validates createTodoList input. Mirrors the service-pair convention."
+    },
+    {
+      "names": ["createTodoInput", "createTodoList"],
+      "reason": "Schema/service near-collision: createTodoInput is the Zod schema; createTodoList is the Effect service for the parent entity. Distinct intent."
+    },
+    {
+      "names": ["createTodoInput", "createTodo", "createTodoList"],
+      "reason": "Schema and parent/child service trio in the todo-list domain. Mirroring is the convention."
+    },
+    {
+      "names": [
+        "createTodoInput",
+        "createTodoListInput",
+        "createTodo",
+        "createTodoList"
+      ],
+      "reason": "Schema/service quartet — createTodoInput and createTodoListInput are Zod input schemas; createTodo and createTodoList are the Effect services they validate."
+    },
+    {
+      "names": ["SessionData", "Session"],
+      "reason": "Session is Better-Auth's full session+user shape (server-side type from packages/auth). SessionData is the SSR-loader return type from apps/web — same payload, different boundary identity (createServerFn return vs library type)."
+    },
+    {
       "names": ["deleteTodo", "deleteTodoList"],
       "reason": "Parent/child CRUD — see createTodo/createTodoList."
     },

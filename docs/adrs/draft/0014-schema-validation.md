@@ -130,6 +130,51 @@ When the first slice's frontend builds:
 - [ ] Cross-reference in ADR slot 0016 (frontend Effect adoption)
       since the schema choice influences client-side Effect surface
 
+## Spike findings — Phase 3 step 6 (2026-04-29, partial)
+
+The first-slice frontend shipped with **Zod 4 only** for both server
+input validation (tRPC `.input(zodSchema)`) and client form validation.
+A head-to-head Effect Schema build was **not** run — pragmatic
+deferral.
+
+**Zod-baseline measurement** (`pnpm --filter @project/web exec vite
+build`, all client JS gzipped):
+
+```
+148 KB total client JS, gzipped
+  largest chunks:
+    index (app + router + react-query)  114.7 KB gz
+    auth-client (Better-Auth)            10.0 KB gz
+    useStore                              7.2 KB gz
+    preload-helper                        5.2 KB gz
+    useMutation, useRouter                7.0 KB gz combined
+    per-route chunks (4 routes)           2.8 KB gz combined
+```
+
+The schema shapes in the slice are tiny (5 input objects:
+`createTodoListInput`, `todoListIdInput`, `createTodoInput`,
+`todoIdInput`, `todosOfListInput`). Zod's contribution is bounded by
+how many constraints it carries — under ~3 KB gz for these shapes
+specifically.
+
+**Decision deferred.** The 70 KB delta threshold can't be evaluated
+without an Effect Schema variant. The slice works fine on Zod, so
+forcing a head-to-head measurement at this stage burns time the
+capability-walk could spend on actual capabilities. When a future
+session wants to revisit:
+
+1. Migrate `packages/api/src/domains/todo-list/todo-schema.ts` to
+   Effect Schema (replace Zod object literals with `Schema.Struct`).
+2. Update tRPC procedures to use a `.input(...)` adapter that calls
+   `Schema.decodeUnknownEither`.
+3. Update client forms to validate via `Schema.decodeUnknownEither`.
+4. Run `make build`, recompute the per-chunk gzipped sizes above, and
+   compare totals.
+5. Decision B if delta ≤70 KB, C if larger.
+
+The draft frontmatter stays `proposed`; promotion happens when the
+comparison is actually run.
+
 ## References
 
 - ADR-0009 — full rewrite onto Effect-TS
