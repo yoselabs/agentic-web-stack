@@ -54,13 +54,12 @@ export default defineConfig({
     },
   ],
   webServer: [
-    // Hono server runs via `bun src/index.ts` directly — no tsx, no watch,
-    // no build. Bun executes TS natively and the server compiles all routes
-    // once at import (no on-demand compilation like SSR), so it's inherently
-    // stable under parallel test load. ~300ms faster cold start than
-    // `tsx watch` and removes the test-time watcher overhead.
+    // @effect/platform server on Node 24 (--experimental-strip-types,
+    // matches dev + prod runtime per ADR-0010 / ADR-0011). One-shot boot
+    // — no watcher — so it's stable under parallel test load.
     {
-      command: "pnpm --filter @project/server exec bun src/index.ts",
+      command:
+        "pnpm --filter @project/server exec node --experimental-strip-types src/index.ts",
       port: TEST_API_PORT,
       reuseExistingServer: !process.env.CI,
       // All env vars (DATABASE_URL, BETTER_AUTH_URL, BETTER_AUTH_SECRET,
