@@ -13,29 +13,34 @@ line 65), so drafts can land without `verified_by` files existing.
 
 ## Drafts (in plan order)
 
-| Slot | Topic | Status | Spike |
+| Slot | Topic | Decision (proposed) | Spike |
 |---|---|---|---|
-| 0011 | HTTP framework — server-process | **pending** | required (≤4h: `@effect/platform` HttpServer + Better-Auth + Bull Board mountability) |
-| 0012 | RPC layer — tRPC + adapter vs `@effect/rpc` | drafted | none (Q5b research) |
-| 0013 | DB access — Prisma wrapped vs `@effect/sql` | **pending** | optional (≤2h: 2-procedure example with `Db` Layer) |
-| 0014 | Schema validation — Zod 4 vs Effect Schema | **pending** | required (≤4h: representative form bundle measurement) |
-| 0015 | Queue — BullMQ wrapped vs `ClusterQueue` | drafted | none (ecosystem state confirmation) |
-| 0016 | Frontend Effect adoption — `@effect/rx` vs TanStack Query | **pending** | optional (≤2h: `@effect/rx` ergonomics feel) |
-| 0017 | Logger — pino vs Effect `Logger` | drafted | none |
-| 0018 | Realtime transport — ws + Channel vs `@effect/platform` Stream | **pending** | required (≤4h: Socket end-to-end with browser ws client) |
-| 0019 | Test runner (backend) — Bun vs `@effect/vitest` | **pending** | optional (≤2h: timing same suite under both runners) |
-| 0020 | Email send — nodemailer wrapped | drafted | none |
-| 0021 | Rate limiting — rate-limiter-flexible wrapped | drafted | none |
+| 0011 | HTTP framework — server-process | `@effect/platform` HttpServer (cond. on Phase 3 Better-Auth + Bull Board + ws spike) | **pending** — runs in Phase 3 first slice |
+| 0012 | RPC layer | tRPC v11 + `runEffect` adapter (Q5b research validated) | none |
+| 0013 | DB access | wrap Prisma behind `Db` Layer | optional — first slice IS the spike |
+| 0014 | Schema validation | Effect Schema everywhere (cond. on bundle ≤70 KB delta in Phase 3 frontend build) | **pending** — measured in Phase 3 build |
+| 0015 | Queue | wrap BullMQ behind `Queue` Layer; `Effect.Schedule` for retries | none |
+| 0016 | Frontend Effect adoption | split per data shape — TanStack Query for RPC, `@effect/rx` for streams | optional — first slice IS the spike |
+| 0017 | Logger | replace pino with Effect `Logger` | none |
+| 0018 | Realtime transport | `@effect/platform/Socket` + `Effect.Stream` (cond. on Phase 4 spike) | **pending** — runs in Phase 4 realtime walk |
+| 0019 | Test runner (backend) | keep `bun test` + Effect helpers (per ADR-0003 60× speed) | optional — first slice tests ARE the spike |
+| 0020 | Email send | wrap nodemailer behind `Mailer` Layer | none |
+| 0021 | Rate limiting | wrap rate-limiter-flexible behind `RateLimiter` Layer | none |
 
-**5 drafted in this Phase 2 first batch** (no-spike ADRs whose decisions
-are research-validated or follow naturally from the Phase 1 design doc's
-Q4 commitment).
+**All 11 drafts present.** 5 are no-spike ADRs (research-validated or
+synthesis from the Phase 1 design doc Q4). 6 carry an explicit
+`spike_status: pending` or `spike_status: optional` in their frontmatter
+— the spike now runs *as part of Phase 3 / Phase 4 implementation*
+(the slice's code becomes the spike rather than throwaway). Each
+pending draft's promotion checklist enumerates the spike outcomes that
+must be confirmed before the draft can be flipped to `accepted`.
 
-**6 pending** — the 4 spike-required ones (0011 HTTP, 0014 Schema, 0018
-Realtime) and the 2 optional-spike ones (0013 DB, 0016 Frontend, 0019
-Test runner) where the spike findings would materially improve the
-draft. These get drafted in a follow-up Phase 2 batch when the spike
-time is invested.
+This is a deliberate workflow change from the original plan. Writing
+all 11 ADRs in isolation upfront with throwaway spikes turned out to be
+the wrong shape: the spikes are better paired with the code that uses
+them. The drafts here capture defensible default leans + measurable
+promotion criteria; the final accept happens commit-by-commit alongside
+the implementing code.
 
 ## Promotion process (Phase 3)
 
