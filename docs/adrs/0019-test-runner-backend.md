@@ -1,10 +1,12 @@
 ---
-title: "ADR 0019 — Test runner — backend (proposed, optional spike)"
-status: proposed
+title: "ADR 0019 — Test runner — backend"
+status: accepted
 date: 2026-04-29
 deciders: [denis]
-draft_for_promotion_in_phase: 3
-spike_status: optional — runs alongside first-slice backend tests
+verified_by:
+  - packages/api/src/test-helpers.ts
+  - packages/api/src/domains/todo-list/__tests__/todo-service.test.ts
+  - packages/api/scripts/test-runner.ts
 ---
 
 # ADR 0019 — Test Runner (Backend)

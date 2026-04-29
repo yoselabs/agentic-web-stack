@@ -4,6 +4,18 @@
   "private": true,
   "type": "module",
   "exports": {
+    "./domains/todo-list/todo-router": {
+      "default": "./src/domains/todo-list/todo-router.ts"
+    },
+    "./domains/todo-list/todo-service": {
+      "default": "./src/domains/todo-list/todo-service.ts"
+    },
+    "./domains/todo-list/todo-schema": {
+      "default": "./src/domains/todo-list/todo-schema.ts"
+    },
+    "./domains/todo-list/todo-constants": {
+      "default": "./src/domains/todo-list/todo-constants.ts"
+    },
     "./errors": {
       "default": "./src/errors.ts"
     },
@@ -32,15 +44,20 @@
       "default": "./src/runtime/app-layer.ts"
     }
   },
-  "scripts": {},
+  "scripts": {
+    "test": "bun run scripts/test-runner.ts"
+  },
   "dependencies": {
     "@project/auth": "workspace:*",
     "@project/db": "workspace:*",
     "@project/env": "workspace:*",
     "@trpc/server": "catalog:",
-    "effect": "catalog:"
+    "effect": "catalog:",
+    "zod": "catalog:"
   },
   "devDependencies": {
+    "@project/test-infra": "workspace:*",
+    "@types/bun": "^1.3.13",
     "@types/node": "catalog:"
   }
 }
