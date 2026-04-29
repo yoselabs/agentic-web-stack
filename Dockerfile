@@ -3,10 +3,10 @@
 # Single Dockerfile, five stages, reused across 3 services (migrate, server,
 # web) via YAML anchors in docker-compose.yml.
 #
-# Runtime is bun-only; node is used at build time for vite and pnpm.
-# Production runtime governed by ADR-0010 (Node 24 prod) — pending Phase 1
-# of the Effect-TS rewrite (ADR-0009), this file still ships Bun runtime;
-# the swap to node:24-slim runtime stage lands in that phase.
+# Build-time toolchain is node + pnpm + bun (bun runs the prisma generate
+# postinstall script in packages/db). Runtime stage is node:24-slim
+# (ADR-0010): Bun stays inner-loop only. The Effect-TS rewrite (ADR-0009)
+# Phase 3 landed this swap.
 # See docs/superpowers/specs/2026-04-18-demo-mode-design.md for the full
 # design rationale.
 
@@ -72,19 +72,26 @@ ENV VITE_API_URL=$VITE_API_URL
 RUN pnpm --filter @project/db generate \
     && pnpm --filter @project/web build
 
-# --- Runtime: bun-only ---
-FROM oven/bun:1-slim AS runtime
+# --- Runtime: node:24-slim (ADR-0010) ---
+FROM node:24-slim AS runtime
 WORKDIR /app
 
+# openssl: required by prisma at runtime (auto-detects libssl).
+# hadolint ignore=DL3008
+RUN apt-get update \
+    && apt-get install -y --no-install-recommends openssl ca-certificates \
+    && rm -rf /var/lib/apt/lists/*
+
 # Universal healthcheck: every service in this image exposes /health.
-# - apps/server: Hono route (apps/server/src/index.ts)
+# - apps/server: @effect/platform HttpServer route (ADR-0011)
 # - apps/web:    TanStack Start server-only route (apps/web/src/routes/health.ts)
 # - migrate (one-shot sidecar): overrides via `healthcheck: { disable: true }`
 #
 # Compose services set PORT only; shell-form CMD expands it at container runtime.
+# Node 24 strips TS types natively for direct .ts execution.
 HEALTHCHECK --interval=30s --timeout=5s --retries=3 \
             --start-period=30s --start-interval=1s \
-            CMD bun /app/scripts/dev/healthcheck.ts "http://127.0.0.1:${PORT}/health"
+            CMD node --experimental-strip-types /app/scripts/dev/healthcheck.ts "http://127.0.0.1:${PORT}/health"
 
 # Start from the prod-only workspace (correct symlink tree, minimal deps).
 COPY --from=prod-deps /app ./
