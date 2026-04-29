@@ -1,6 +1,6 @@
 import { auth, type Session } from "@project/auth";
 import { Context, Effect, Layer, Option } from "effect";
-import { UnauthorizedError } from "../errors.js";
+import { UnauthorizedError } from "../errors.ts";
 
 // ADR-0011 / Phase 3 first slice: Better-Auth wrapped in an `Auth` Layer.
 // Better-Auth is a non-Effect provider (Q5 floor); the wrap exposes:

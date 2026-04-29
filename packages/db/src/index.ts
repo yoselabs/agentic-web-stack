@@ -1,6 +1,6 @@
 import { PrismaPg } from "@prisma/adapter-pg";
 import { env } from "@project/env/server";
-import { PrismaClient } from "./generated/client";
+import { PrismaClient } from "./generated/client.ts";
 
 // Singleton PrismaClient. The Effect `Db` Layer in @project/api wraps
 // this instance — Phase 3 of the Effect-TS rewrite (ADR-0009 / ADR-0013).
@@ -20,4 +20,4 @@ if (env.NODE_ENV !== "production") {
   globalForPrisma.prisma = db;
 }
 
-export * from "./generated/client";
+export * from "./generated/client.ts";

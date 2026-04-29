@@ -2,7 +2,7 @@ import { db } from "@project/db";
 import { env } from "@project/env/server";
 import { betterAuth } from "better-auth";
 import { prismaAdapter } from "better-auth/adapters/prisma";
-import { MIN_PASSWORD_LENGTH } from "./constants.js";
+import { MIN_PASSWORD_LENGTH } from "./constants.ts";
 
 // Phase 3 first slice: email + password only. Magic-link, password-reset,
 // and email-template-driven flows return in Phase 4 alongside @project/email.
@@ -11,6 +11,8 @@ import { MIN_PASSWORD_LENGTH } from "./constants.js";
 // canonical pattern.
 
 export const auth = betterAuth({
+  baseURL: env.BETTER_AUTH_URL,
+  secret: env.BETTER_AUTH_SECRET,
   database: prismaAdapter(db, {
     provider: "postgresql",
   }),

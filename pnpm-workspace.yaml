@@ -8,6 +8,8 @@ catalog:
   "@casl/react": ^6.0.0
   "@cucumber/gherkin": ^39.0.0
   "@cucumber/messages": ^32.3.1
+  "@effect/platform": ^0.96.1
+  "@effect/platform-node": ^0.106.0
   "@prisma/client": ^7.8.0
   "@trpc/server": ^11.16.0
   effect: ^3.21.2

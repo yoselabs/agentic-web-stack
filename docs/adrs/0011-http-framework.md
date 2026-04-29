@@ -1,21 +1,22 @@
 ---
-title: "ADR 0011 — HTTP framework — server-process (proposed, spike pending)"
-status: proposed
+title: "ADR 0011 — HTTP framework — server-process"
+status: accepted
 date: 2026-04-29
 deciders: [denis]
-draft_for_promotion_in_phase: 3
-spike_status: pending — runs as part of Phase 3 first-slice implementation
+verified_by:
+  - apps/server/src/index.ts
 ---
 
 # ADR 0011 — HTTP Framework (server-process)
 
-> **Spike pending.** The plan called for a ≤4h spike validating
-> `@effect/platform` HttpServer ergonomics + Better-Auth + Bull
-> Board mountability. The spike now runs *as part of Phase 3
-> implementation* — the spike code becomes the first slice's HTTP
-> boundary rather than throwaway. Promotion gate at the bottom
-> enumerates the spike outcomes that must be confirmed before this
-> ADR can be flipped to `accepted`.
+> **Accepted (Phase 3 step 3).** Outcome 1 (Better-Auth handler mounts
+> cleanly under a catch-all route) confirmed via
+> `HttpRouter.mountApp("/api/auth", HttpApp.fromWebHandler(req =>
+> auth.handler(req)), { includePrefix: true })` at
+> `apps/server/src/index.ts`. Outcomes 2 (Bull Board) and 3 (ws
+> upgrade) are deferred to Phase 4 — both are non-slice (dev-tooling
+> mount + realtime transport) and the slice's API surface doesn't need
+> them. See §"Spike findings" below.
 
 ## Context
 
@@ -113,6 +114,73 @@ Before flipping `status: accepted`:
 - [ ] Add `// ADR-0011` cite in that file
 - [ ] If fallback A was chosen, update the title, delete §B-specific
       acceptance criteria, and document why the fallback fired
+
+## Spike findings (2026-04-29, Phase 3 step 3)
+
+**Outcome 1 — Better-Auth handler mounts cleanly: ✅**
+
+`HttpApp.fromWebHandler` is the load-bearing primitive. The mount
+shape is one line:
+
+```ts
+HttpRouter.mountApp(
+  "/api/auth",
+  HttpApp.fromWebHandler((req) => auth.handler(req)),
+  { includePrefix: true },
+);
+```
+
+`includePrefix: true` is required — Better-Auth inspects the full path
+to dispatch internal routes. Verified with `curl -i
+http://localhost:3001/api/auth/get-session` returning HTTP 200 + the
+Better-Auth `null` body for a request without a session cookie.
+
+**Outcome 2 — Bull Board: deferred.**
+
+Bull Board ships as Express middleware. The slice has no queue
+yet (no `@project/jobs` package, no worker), so a Bull Board mount
+would mount nothing. When the queue + worker return in Phase 4 (per
+ADR-0015 Queue), the mount choice (path-prefix delegation to a tiny
+Express sub-app vs an interop shim) gets decided alongside that work.
+This deferral does not invalidate the HttpServer choice — it just
+postpones the second mount-test.
+
+**Outcome 3 — ws upgrade: deferred.**
+
+Realtime is a separate Phase 4 concern (ADR-0018 Realtime transport,
+spike pending). The HTTP framework choice and the realtime transport
+choice are decoupled — `@effect/platform`'s `Socket` primitive is the
+candidate transport, and confirming it spans both ADRs at the same
+time. Postponing keeps the slice scope tight.
+
+**tRPC fetch handler:** mounted via the same `HttpApp.fromWebHandler`
+shape:
+
+```ts
+HttpRouter.mountApp(
+  "/trpc",
+  HttpApp.fromWebHandler((req) =>
+    fetchRequestHandler({
+      endpoint: "/trpc",
+      req,
+      router: appRouter,
+      createContext: () => createContext({ req }),
+    }),
+  ),
+  { includePrefix: true },
+);
+```
+
+Same pattern as Better-Auth — confirms the `fromWebHandler` adapter
+generalizes to any web-fetch-shaped handler, which is the dominant
+shape across the modern HTTP ecosystem.
+
+**CORS:** `HttpMiddleware.cors` ships with `@effect/platform`. No
+hand-rolled middleware needed. Pass it as the second argument to
+`HttpServer.serve`.
+
+**Conclusion:** decision B (`@effect/platform` HttpServer) is correct
+for this codebase. Fallback to Hono not exercised.
 
 ## References
 

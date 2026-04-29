@@ -1,6 +1,6 @@
 import { db, type PrismaClient } from "@project/db";
 import { Context, Effect, Layer } from "effect";
-import { DbError } from "../errors.js";
+import { DbError } from "../errors.ts";
 
 // ADR-0013 — DB access via a `Db` Effect Layer wrapping the Prisma
 // singleton from @project/db. Service procedures consume `Db` and call

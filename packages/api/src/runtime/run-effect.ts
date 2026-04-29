@@ -7,11 +7,11 @@ import type {
   NotFoundError,
   UnauthorizedError,
   ValidationError,
-} from "../errors.js";
-import { AppLayer } from "./app-layer.js";
-import type { Auth } from "./auth-layer.js";
-import { CurrentSession } from "./auth-layer.js";
-import type { Db } from "./db-layer.js";
+} from "../errors.ts";
+import { AppLayer } from "./app-layer.ts";
+import type { Auth } from "./auth-layer.ts";
+import { CurrentSession } from "./auth-layer.ts";
+import type { Db } from "./db-layer.ts";
 
 // ADR-0012 — RPC layer: tRPC v11 stays; Effect-returning services are
 // adapted to tRPC's Promise-based handlers via this single helper. This

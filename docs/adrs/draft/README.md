@@ -15,7 +15,6 @@ line 65), so drafts can land without `verified_by` files existing.
 
 | Slot | Topic | Decision (proposed) | Spike |
 |---|---|---|---|
-| 0011 | HTTP framework — server-process | `@effect/platform` HttpServer (cond. on Phase 3 Better-Auth + Bull Board + ws spike) | **pending** — runs in Phase 3 first slice |
 | 0013 | DB access | wrap Prisma behind `Db` Layer | optional — first slice IS the spike |
 | 0014 | Schema validation | Effect Schema everywhere (cond. on bundle ≤70 KB delta in Phase 3 frontend build) | **pending** — measured in Phase 3 build |
 | 0015 | Queue | wrap BullMQ behind `Queue` Layer; `Effect.Schedule` for retries | none |
@@ -26,6 +25,7 @@ line 65), so drafts can land without `verified_by` files existing.
 | 0021 | Rate limiting | wrap rate-limiter-flexible behind `RateLimiter` Layer | none |
 
 Promoted to numbered slots in Phase 3:
+- **0011** (HTTP framework — server-process) — `docs/adrs/0011-http-framework.md`
 - **0012** (RPC layer) — `docs/adrs/0012-rpc-layer.md`
 - **0017** (Logger) — `docs/adrs/0017-logger.md`
 

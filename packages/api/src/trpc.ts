@@ -1,6 +1,6 @@
 import { initTRPC, TRPCError } from "@trpc/server";
 import { Option } from "effect";
-import type { Context } from "./context.js";
+import type { Context } from "./context.ts";
 
 // ADR-0012 — RPC layer: tRPC v11 + runEffect adapter. Single
 // `initTRPC.create()` call for the whole server; adding more would
