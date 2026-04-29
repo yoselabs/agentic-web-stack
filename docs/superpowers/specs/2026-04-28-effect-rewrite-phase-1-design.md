@@ -383,3 +383,65 @@ skill to draft the concrete file-by-file Phase 1 (clear the deck) and
 Phase 2 (stack-assessment ADR drafting) implementation plan. Phases 3
 and 4 get their own plans drafted as Phase 2 lands and the slice scope
 becomes concrete.
+
+## Phase 1 + Phase 2 outcome (2026-04-29)
+
+Both phases shipped to `main`. Summary of what landed and one workflow
+revision discovered along the way.
+
+### Phase 1 — clear the deck (DONE)
+
+8 commits between `1169764` and `ff94913`. ~9000 lines deleted.
+
+| Commit | Scope |
+|---|---|
+| `1169764` | `WIPE_IN_PROGRESS` lint-guard infra (`.config/lint.env`, Makefile lint targets, `turbo.json` `globalPassThroughEnv`) |
+| `2d8dae9` → `0aefc92` | Add WIPE_IN_PROGRESS guards to lint checks; remove 3 over-gated guards on review |
+| `3308e44` | Delete `apps/server/` + `apps/worker/` |
+| `1536715` | Delete `apps/web/src/`; add `__root.tsx` stub |
+| `363155f` | Delete `packages/{api,auth,email,jobs,rate-limit,realtime,http,media,query}` + grit plugin + dead seed scripts |
+| `c842f71` | Reduce `packages/db/src/index.ts` to PrismaClient re-export stub |
+| `ff94913` | Delete `e2e/steps/`; gate `make test` + `make test-ui` under `WIPE_IN_PROGRESS` |
+
+Final repo state: `apps/web/` (stub) + `packages/{db,env,lint,test-infra,ui}` + `e2e/features/` Gherkin contract preserved + tooling layer preserved. `make lint` + `make test-unit` green; `make test` skips with the wipe-in-progress message.
+
+ADR `verified_by` reconciliations needed along the way (entries pointing at deleted files): ADR-0001, ADR-0004, ADR-0006, ADR-0007, ADR-0008, ADR-0010 — each repointed to surviving anchors or had the deleted entry dropped, with a Phase-3-restoration note in the ADR body.
+
+### Phase 2 — Effect-ecosystem stack assessment (DONE in spirit)
+
+2 commits: `c5801f1` (index + 5 no-spike drafts) and `4a37d1e` (6 spike-pending drafts). All 11 ADR drafts present at `docs/adrs/draft/`.
+
+**Per-slot proposed decisions:**
+
+| Slot | Topic | Proposed decision | Spike status |
+|---|---|---|---|
+| 0011 | HTTP framework (server-process) | `@effect/platform` HttpServer | pending — first slice |
+| 0012 | RPC layer | tRPC v11 + `runEffect` adapter | none (Q5b validated) |
+| 0013 | DB access | wrap Prisma behind `Db` Layer | optional — first slice IS the spike |
+| 0014 | Schema validation | Effect Schema everywhere (cond. on bundle ≤70 KB delta) | pending — first-slice frontend build |
+| 0015 | Queue | wrap BullMQ; `Effect.Schedule` for retries | none |
+| 0016 | Frontend Effect | TanStack Query for RPC, `@effect/rx` for streams | optional — first slice IS the spike |
+| 0017 | Logger | replace pino with Effect `Logger` | none |
+| 0018 | Realtime | `@effect/platform/Socket` + `Effect.Stream` | pending — Phase 4 realtime walk |
+| 0019 | Test runner (backend) | keep `bun test` + helpers (per ADR-0003) | optional — first-slice tests |
+| 0020 | Email send | wrap nodemailer behind `Mailer` Layer | none |
+| 0021 | Rate limiting | wrap `rate-limiter-flexible` behind `RateLimiter` Layer | none |
+
+**Workflow revision:** the original plan had Phase 2 = "all 11 ADRs decided + accepted before Phase 3 starts," with ≤4h spikes per ADR. In execution this proved the wrong shape — running 4 throwaway spikes whose findings would be revised by real implementation contact wastes time. The pivot:
+
+- Phase 2 produces *defensible default-lean drafts* (what we'd pick if we ran the spike)
+- Each draft carries an explicit `spike_status: pending | optional` frontmatter and a promotion checklist enumerating the spike outcomes that must hold
+- Phase 3 / Phase 4 implementations *contain* the spikes — the slice's HTTP boundary code is the HTTP spike; the slice's frontend build IS the bundle measurement; etc.
+- Drafts get promoted from `docs/adrs/draft/NNNN-*.md` to `docs/adrs/NNNN-*.md` (status `accepted`, `verified_by` filled) commit-by-commit alongside the implementing code
+
+This matches ADR-0009's original "decide each follow-up ADR when its phase lands" spirit better than the upfront-batch shape did.
+
+### Ready for Phase 3
+
+Phase 3 (first vertical slice — auth bootstrap + todo-list end-to-end) is now unblocked. Inputs:
+- 11 default-lean ADR drafts at `docs/adrs/draft/` covering every replaceable layer
+- Capability contract in `docs/capabilities.md` preserved (the slice restores the "todo-list" + "auth" entries first)
+- Gherkin scenarios in `e2e/features/` preserved (the slice restores step defs for `auth/auth.feature` + `todo-list/lists.feature` + `todo-list/todos.feature`)
+- Rollback point at tag `stable-pre-effect` unchanged
+
+Phase 3 gets its own plan, drafted as a fresh session.
