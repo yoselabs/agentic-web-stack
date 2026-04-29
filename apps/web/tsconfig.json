@@ -24,5 +24,10 @@
     "declarationMap": true,
     "outDir": "dist"
   },
-  "references": [{ "path": "../../packages/ui" }]
+  "references": [
+    { "path": "../../packages/api" },
+    { "path": "../../packages/auth" },
+    { "path": "../../packages/env" },
+    { "path": "../../packages/ui" }
+  ]
 }

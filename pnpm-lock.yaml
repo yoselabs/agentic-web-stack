@@ -207,6 +207,12 @@ importers:
       '@dnd-kit/utilities':
         specifier: ^3.2.2
         version: 3.2.2(react@19.2.5)
+      '@project/api':
+        specifier: workspace:*
+        version: link:../../packages/api
+      '@project/auth':
+        specifier: workspace:*
+        version: link:../../packages/auth
       '@project/env':
         specifier: workspace:*
         version: link:../../packages/env

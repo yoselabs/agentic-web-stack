@@ -4,8 +4,8 @@
   "private": true,
   "type": "module",
   "scripts": {
-    "dev": "sh -c '[ -f ../../.env ] && exec node --watch --env-file=../../.env src/index.ts || exec node --watch src/index.ts'",
-    "start": "node src/index.ts"
+    "dev": "sh -c '[ -f ../../.env ] && exec node --watch --env-file=../../.env --experimental-strip-types src/index.ts || exec node --watch --experimental-strip-types src/index.ts'",
+    "start": "node --experimental-strip-types src/index.ts"
   },
   "dependencies": {
     "@effect/platform": "catalog:",

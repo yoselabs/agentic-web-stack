@@ -7,6 +7,9 @@
     ".": {
       "default": "./src/index.ts"
     },
+    "./server": {
+      "default": "./src/index.ts"
+    },
     "./constants": {
       "default": "./src/constants.ts"
     }

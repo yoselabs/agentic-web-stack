@@ -22,6 +22,8 @@
     "@dnd-kit/core": "^6.3.1",
     "@dnd-kit/sortable": "^10.0.0",
     "@dnd-kit/utilities": "^3.2.2",
+    "@project/api": "workspace:*",
+    "@project/auth": "workspace:*",
     "@project/env": "workspace:*",
     "@project/ui": "workspace:*",
     "@tailwindcss/vite": "^4.2.4",

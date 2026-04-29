@@ -27,11 +27,9 @@ routes: ## Regenerate TanStack router route tree
 	@echo "Generating route tree..."
 	@bun scripts/dev/generate-routes.ts
 
-# Start dev processes
-# WIPE: server + worker deleted in Phase 1 of the Effect-TS rewrite;
-# re-added in Phase 3/4. For now `make dev` only starts web.
-dev: db-generate ## Start web (3000) in watch mode
-	@bun scripts/dev/kill-ports.ts 3000
+# Start dev processes (web + API server in parallel).
+dev: db-generate ## Start web (3000) + server (3001) in watch mode
+	@bun scripts/dev/kill-ports.ts 3000 3001
 	pnpm -w run dev
 
 # Database
