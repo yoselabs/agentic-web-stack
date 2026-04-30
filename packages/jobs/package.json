@@ -1,0 +1,29 @@
+{
+  "name": "@project/jobs",
+  "version": "0.0.0",
+  "private": true,
+  "type": "module",
+  "exports": {
+    "./queues": {
+      "default": "./src/queues.ts"
+    },
+    "./queue-layer": {
+      "default": "./src/queue-layer.ts"
+    },
+    "./redis-layer": {
+      "default": "./src/redis-layer.ts"
+    },
+    "./process-job": {
+      "default": "./src/process-job.ts"
+    }
+  },
+  "dependencies": {
+    "@project/env": "workspace:*",
+    "bullmq": "^5.76.4",
+    "effect": "catalog:",
+    "ioredis": "^5.10.1"
+  },
+  "devDependencies": {
+    "@types/node": "catalog:"
+  }
+}
