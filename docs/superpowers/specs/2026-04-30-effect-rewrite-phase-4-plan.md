@@ -39,23 +39,24 @@ defs → BDD).
 
 | # | Capability group | ADRs promoted | Re-enables scenarios |
 |---|---|---|---|
-| 1 | Background jobs + crons + Bull Board | 0015 | (admin gate, mostly) |
+| 1 | Background jobs + crons | 0015 | — |
 | 2 | Email send + magic-link sign-in + password reset | 0020 | magic-link.feature |
 | 3 | Realtime fan-out (per-entity + user-inbox) | 0018, 0016 (partial) | collaborator-realtime-todos, realtime-{dashboard,navigate-back,reorder} |
 | 4 | Activity feed (resumable append-only stream) | 0016 (full) | activity-feed.feature |
 | 5 | Collaborators + invitations | — (uses 0018, 0020 already accepted) | collaborators.feature, collaborators-visibility, invitations |
 | 6 | Rate limiting | 0021 | (no scenarios — backend primitive) |
-| 7 | CASL authorization + admin role | — (uses 0015 mount) | admin/gate.feature |
+| 7 | CASL authorization + admin role + Bull Board mount | — (uses 0015 queues, ADR-0011 outcome 2) | admin/gate.feature |
 | 8 | Mobile navigation widget | — | mobile-nav.feature |
 | 9 | Schema validation reckoning | 0014 (final promotion or rejection) | — |
 
 ### Rationale
 
 **Queue first** because it's the lowest-risk Effect-Layer pattern (wrap
-a mature library behind a `Queue` `Context.Tag`), and it unlocks Bull
-Board (the deferred ADR-0011 outcome 2). Restoring `apps/worker/` and
-`@project/jobs/` re-establishes the cron + worker layout that several
-later capabilities depend on.
+a mature library behind a `Queue` `Context.Tag`). Restoring
+`apps/worker/` and `@project/jobs/` re-establishes the cron + worker
+layout that several later capabilities depend on. The Bull Board mount
+(ADR-0011 §Spike findings outcome 2) was originally slated here but
+moves to capability #7 — see "Mid-walk revisions" below.
 
 **Email second** because magic-link + password reset are the highest-
 visibility user-facing capabilities still pending, and Email rides on
@@ -83,9 +84,10 @@ because it has no BDD scenarios — the test surface is unit / integration
 only, and unblocking it doesn't accelerate any other capability.
 
 **CASL + admin seventh.** Admin gate scenarios depend on Bull Board
-(Queue, #1) being mounted. Authorization itself is small (a single
-`Authz` `Context.Tag` checking `subject.canPerform(action, resource)`)
-but the role-wiring composition pattern is what the BDD validates.
+being mounted. Authorization itself is small (a single `Authz`
+`Context.Tag` checking `subject.canPerform(action, resource)`) but the
+role-wiring composition pattern is what the BDD validates. Bull Board
+mount lands here too — see #7 acceptance criteria.
 
 **Mobile-nav eighth.** Single-file widget, smallest possible commit.
 Slotted last so it doesn't gate anything.
@@ -96,6 +98,28 @@ client capabilities are in (auth + todo-list + collaborators +
 realtime + activity feed + invitations) and decides Zod-stays vs
 Effect-Schema-replaces. Doing this last means the bundle measurement
 covers the full client surface, not a fraction.
+
+## Mid-walk revisions
+
+Q3 discipline allows the plan to evolve as execution surfaces facts
+the planning didn't have. Each revision lands in a commit alongside
+the change it justifies.
+
+### Bull Board mount: #1 → #7 (commit-during-#1)
+
+Original placement put the mount in capability #1 (queue + worker)
+because both ADR-0011 §Spike findings outcome 2 and the Phase 4
+plan's first draft listed Bull Board with the queue layer.
+
+Revised: mount lands in capability #7 (CASL + admin role).
+
+Reason: Bull Board is dev/admin tooling that has no useful behavior
+without an admin-role gate in front of it. Mounting it ungated in #1
+ships a security smell that has to be torn down and re-mounted in #7
+anyway. The interop shim itself (Hono sub-app + `HttpApp.fromWebHandler`)
+is also non-trivial — better paid once with the auth check than twice
+without. The `QueueTag.raw()` escape hatch landed in #1 for the future
+mount; #7 consumes it.
 
 ## Per-capability template
 
@@ -138,27 +162,35 @@ commit.
 
 ## Per-capability acceptance criteria
 
-### #1 — Background jobs + crons + Bull Board
+### #1 — Background jobs + crons
 
 - `apps/worker/` exists and runs `node --experimental-strip-types
   src/index.ts`. One-shot boot (no watcher), matches the apps/server
   shape per ADR-0010.
-- `@project/jobs/` exposes typed queue definitions
-  (`emailQueue`, `todoPurgeCron`, `maintenanceCron` from the
-  pre-rewrite contract). Each export is a `Queue<Job>` from a `Queue`
-  `Context.Tag`.
+- `@project/jobs/` exposes the `Queue` `Context.Tag` with `enqueue`,
+  `schedule`, `cancel` methods + a `raw()` escape hatch for the future
+  Bull Board mount. `QueueLive` is `Layer.scoped` — opens one BullMQ
+  Queue per `QUEUE_NAMES` at boot and closes them on scope release.
 - `@project/jobs/` retry policies use `Effect.Schedule` (exponential
   backoff + jitter + max-elapsed), not BullMQ's static
   `attempts`/`backoff` config. ADR-0015 §Decision A.
 - Worker handlers are `Effect<A, E, R>` connected to BullMQ via a thin
-  `processJob(handler)` adapter living in `@project/jobs/`.
-- Bull Board mounts on `apps/server` under `/admin/queues` via either
-  (a) an Express interop shim or (b) a path-prefix delegation to a
-  tiny Express sub-app. ADR-0011 §Spike findings outcome 2.
+  `processJob(handler)` adapter in `@project/jobs/process-job`.
+- One concrete cron handler shipped: `purge-stale-todos` (delete
+  completed todos with `updatedAt` older than 30 days). Bun unit test
+  exercises the cutoff boundary.
 - `e2e/global-setup.ts` spawns the worker (this was removed in Phase
   3 step 7 with a TODO — restored here).
 - ADR-0015 promoted to `accepted`, `verified_by:
-  apps/worker/src/index.ts`. `// ADR-0015` cite added.
+  apps/worker/src/index.ts` and `packages/jobs/src/queue-layer.ts`.
+  `// ADR-0015` cites added.
+
+**Bull Board mount moved to capability #7** (CASL + admin role). The
+admin gate is the natural home for the mount: ungated Bull Board
+between #1 and #7 is a security smell, the cleanest mount lives
+behind the auth check, and the Hono interop shim that the mount
+needs is one new dep — better paid once with the gate than twice
+without. See "Mid-walk revisions" below.
 
 ### #2 — Email send + magic-link sign-in + password reset
 
@@ -242,14 +274,20 @@ commit.
 - ADR-0021 promoted to `accepted`, `verified_by:
   packages/rate-limit/src/rate-limiter.ts`.
 
-### #7 — CASL authorization + admin role
+### #7 — CASL authorization + admin role + Bull Board mount
 
 - `@project/api/src/domains/auth/authz.ts` exposes an `Authz`
   `Context.Tag` with `canPerform(subject, action, resource)`. CASL is
   the underlying engine, wrapped behind the Layer.
 - Admin role (`role: "admin"` on User) is seeded in test setup.
-- `/admin/queues` route on `apps/server` checks `Authz` before
-  proxying to Bull Board.
+- Bull Board mount: `apps/server/src/admin.ts` builds a Hono sub-app
+  with `@bull-board/hono`, wires it to the queues from
+  `QueueTag.raw()`, and mounts via `HttpRouter.mountApp` +
+  `HttpApp.fromWebHandler(honoApp.fetch)`. Hono's `.fetch` is a
+  native Web fetch handler — no custom Express adapter needed. ADR-0011
+  §Spike findings outcome 2 closes here.
+- `/admin/queues` route runs the `Authz` check before delegating to
+  the Hono mount; non-admins get 403, anonymous get redirect.
 - Scenarios green: `admin/gate.feature` (3 scenarios — anon
   redirect, non-admin 403, admin sees queues).
 
