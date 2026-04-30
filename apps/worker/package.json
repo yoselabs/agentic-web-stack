@@ -1,0 +1,19 @@
+{
+  "name": "@project/worker",
+  "version": "0.0.0",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "dev": "sh -c '[ -f ../../.env ] && exec node --watch --env-file=../../.env --experimental-strip-types src/index.ts || exec node --watch --experimental-strip-types src/index.ts'",
+    "start": "node --experimental-strip-types src/index.ts"
+  },
+  "dependencies": {
+    "@effect/platform-node": "catalog:",
+    "@project/api": "workspace:*",
+    "@project/jobs": "workspace:*",
+    "effect": "catalog:"
+  },
+  "devDependencies": {
+    "@types/node": "catalog:"
+  }
+}
