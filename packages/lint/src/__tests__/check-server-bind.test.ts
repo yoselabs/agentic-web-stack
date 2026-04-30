@@ -25,7 +25,8 @@ describe("runServerBind", () => {
     `;
     const errors = runServerBind(src, "apps/server/src/index.ts");
     expect(errors.length).toBe(1);
-    expect(errors[0]).toMatch(/hostname: "0\.0\.0\.0"/);
+    expect(errors[0]).toMatch(/hostname:"0\.0\.0\.0"/);
+    expect(errors[0]).toMatch(/host:"0\.0\.0\.0"/);
   });
 
   it("fails when hostname is loopback", () => {
@@ -35,6 +36,11 @@ describe("runServerBind", () => {
 
   it("passes when quoted with single quotes", () => {
     const src = `serve({ fetch: app.fetch, hostname: '0.0.0.0', port: 3001 });`;
+    expect(runServerBind(src)).toEqual([]);
+  });
+
+  it("passes when @effect/platform-node binds host: 0.0.0.0", () => {
+    const src = `NodeHttpServer.layer(() => createServer(), { port: 3001, host: "0.0.0.0" })`;
     expect(runServerBind(src)).toEqual([]);
   });
 });

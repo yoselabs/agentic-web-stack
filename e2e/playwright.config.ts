@@ -18,6 +18,13 @@ const desktopTestDir = defineBddConfig({
   steps: "steps/**/*.ts",
   outputDir: ".features-gen/desktop",
   tags: "not @mobile",
+  // Phase 3 restored step defs only for the auth + todo-list slice
+  // (sign-in, create list, create todo, delete todo). Realtime,
+  // collaborators, invitations, magic-link, admin gate, mobile-nav,
+  // and activity-feed scenarios stay pending until Phase 4 ships
+  // the underlying capabilities. Skip them at gen time instead of
+  // aborting the whole run.
+  missingSteps: "skip-scenario",
 });
 
 const mobileTestDir = defineBddConfig({
@@ -25,6 +32,7 @@ const mobileTestDir = defineBddConfig({
   steps: "steps/**/*.ts",
   outputDir: ".features-gen/mobile",
   tags: "@mobile",
+  missingSteps: "skip-scenario",
 });
 
 export default defineConfig({
