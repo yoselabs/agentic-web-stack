@@ -1,5 +1,5 @@
 // Queue Effect Layer — wraps BullMQ behind a `Queue` Context.Tag.
-// ADR-0015 §Decision A. The Live implementation maintains one BullMQ
+// ADR-0015 (accepted). The Live implementation maintains one BullMQ
 // `Queue` instance per name in QUEUE_NAMES, opened at scope-acquisition
 // and closed at scope-release. Tests can swap `Queue` for an in-memory
 // implementation by providing a different Layer.

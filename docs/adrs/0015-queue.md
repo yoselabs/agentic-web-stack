@@ -1,12 +1,24 @@
 ---
-title: "ADR 0015 — Background job queue (proposed)"
-status: proposed
-date: 2026-04-29
+title: "ADR 0015 — Background job queue"
+status: accepted
+date: 2026-04-30
 deciders: [denis]
-draft_for_promotion_in_phase: 3
+verified_by:
+  - packages/jobs/src/queue-layer.ts
+  - packages/jobs/src/process-job.ts
+  - apps/worker/src/index.ts
 ---
 
 # ADR 0015 — Background Job Queue
+
+> **Accepted (Phase 4 capability #1).** BullMQ wrapped behind a `Queue`
+> Effect Layer (`Layer.scoped` — opens BullMQ Queue instances at boot,
+> closes on scope release). Worker handlers are
+> `Effect<unknown, unknown, R>` connected to BullMQ via `processJob`.
+> Retry composition deferred to handler-level `Effect.Schedule` per
+> §Decision A. Bull Board mount moved to capability #7 (CASL + admin
+> role) — see §Spike findings below and the Phase 4 plan's "Mid-walk
+> revisions" §.
 
 ## Context
 
@@ -104,13 +116,60 @@ becomes load-bearing.
 - Job-handler signatures change shape (return `Effect`, not `Promise`)
   but Phase 4 capability-walk handles this per-handler
 
-## Promotion checklist (Phase 3)
+## Promotion checklist (closed)
 
-- [ ] Move file to `docs/adrs/0015-queue.md`
-- [ ] Flip `status: proposed` → `status: accepted`
-- [ ] Fill `verified_by:` with `packages/jobs/src/queue-layer.ts` (or
-      whatever the wrapper module is named) and `apps/worker/src/index.ts`
-- [ ] Add `// ADR-0015` cites in those files
+- [x] Move file to `docs/adrs/0015-queue.md`
+- [x] Flip `status: proposed` → `status: accepted`
+- [x] Fill `verified_by:` with `packages/jobs/src/queue-layer.ts`,
+      `packages/jobs/src/process-job.ts`, `apps/worker/src/index.ts`
+- [x] Add `// ADR-0015` cites in those files
+
+## Spike findings (Phase 4 capability #1)
+
+**`Queue` Layer shape.** `QueueTag` is a single Context.Tag exposing
+`enqueue`, `schedule`, `cancel`, and a `raw()` escape hatch. `QueueLive`
+is `Layer.scoped` — `buildQueues()` opens one BullMQ Queue per name in
+`QUEUE_NAMES` (the SSOT) at scope-acquire and closes them all on
+scope-release. Test isolation is straightforward: provide an in-memory
+implementation as a different Layer that satisfies the same tag.
+
+**Retry composition lives at the handler.** `Effect.Schedule` inside
+the handler Effect is the ergonomic win the wrapper enables — handlers
+compose their own policies (`Schedule.exponential` +
+`Schedule.jittered` + `Schedule.upTo`) instead of declaring
+`{ attempts, backoff }` on the queue. BullMQ's job-level retry is
+intentionally untouched (default `attempts: 1`); BullMQ only sees a
+job as failed when the Effect's outermost retry surface gives up,
+which then surfaces in Bull Board's Failed tab and the dead-letter
+queue.
+
+**`processJob` adapter.** `processJob({ queue, handlers, runtimeLayer })`
+builds a BullMQ Worker that dispatches `job.name` to a registry of
+`Effect<unknown, unknown, R>` handlers, providing the runtimeLayer
+(typically `AppLayer` — Db + Auth + Logger) per call. Failures are
+formatted via `Cause.pretty` and rethrown so BullMQ's retry/dead-letter
+machinery still fires. Tagged failures, defects, and interrupts surface
+uniformly in worker logs.
+
+**One concrete cron shipped.** `purge-stale-todos` runs at 03:00 daily,
+deleting completed todos with `updatedAt` older than 30 days.
+Idempotent registration via BullMQ's `repeat` + stable `jobId`. Smoke
+test: worker boot logs the registration + start; the repeatable job
+lands in `bull:maintenance:repeat:*` in Redis.
+
+**Bull Board: deferred to capability #7.** Original plan placed the
+mount in capability #1, but the mount is dev-tooling only useful
+behind an admin-role gate, and capability #7 (CASL + admin role) is
+the natural home. The `QueueTag.raw()` method exposes the underlying
+BullMQ Queue map for the future mount to consume — no rework needed
+on the queue side. ADR-0011 §Spike findings outcome 2 closes when
+capability #7 lands. See Phase 4 plan §"Mid-walk revisions".
+
+**Email queue: declared, no consumer.** `EMAIL_QUEUE` is in
+`QUEUE_NAMES` so `QueueLive` opens it at boot, but no worker consumes
+from it yet. `@project/email` lands in capability #2 with its handler.
+Enqueueing without a consumer is fine (jobs queue up; nobody enqueues
+yet either).
 
 ## References
 

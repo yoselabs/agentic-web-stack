@@ -1,5 +1,5 @@
 // Worker process entrypoint. Boots the BullMQ workers + repeatable
-// cron registry under an Effect runtime.
+// cron registry under an Effect runtime. ADR-0015 (accepted).
 //
 // Lifecycle (managed by NodeRuntime.runMain — handles SIGTERM/SIGINT):
 //   1. Acquire QueueLive scope (opens BullMQ Queue instances)

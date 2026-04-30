@@ -1,4 +1,4 @@
-// Effect → BullMQ Worker adapter. ADR-0015 §Decision A.
+// Effect → BullMQ Worker adapter. ADR-0015 (accepted) §Decision A.
 //
 // `processJob` builds a BullMQ Worker for a queue, dispatching each job
 // to a per-job-name Effect handler. The adapter:
