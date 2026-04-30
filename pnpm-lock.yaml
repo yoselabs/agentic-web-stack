@@ -249,9 +249,6 @@ importers:
       better-auth:
         specifier: ^1.6.7
         version: 1.6.7(@opentelemetry/api@1.9.1)(@prisma/client@7.8.0(prisma@7.8.0(@types/react-dom@19.2.3(@types/react@19.2.14))(@types/react@19.2.14)(react-dom@19.2.5(react@19.2.5))(react@19.2.5)(typescript@6.0.3))(typescript@6.0.3))(@tanstack/react-start@1.167.42(crossws@0.4.5(srvx@0.11.15))(react-dom@19.2.5(react@19.2.5))(react@19.2.5)(vite@8.0.9(@types/node@25.6.0)(esbuild@0.24.0)(jiti@2.6.1)(tsx@4.21.0)(yaml@2.8.3)))(mysql2@3.15.3)(pg@8.20.0)(prisma@7.8.0(@types/react-dom@19.2.3(@types/react@19.2.14))(@types/react@19.2.14)(react-dom@19.2.5(react@19.2.5))(react@19.2.5)(typescript@6.0.3))(react-dom@19.2.5(react@19.2.5))(react@19.2.5)(vitest@4.1.5)
-      hono:
-        specifier: ^4.12.14
-        version: 4.12.14
       lucide-react:
         specifier: ^1.8.0
         version: 1.8.0(react@19.2.5)

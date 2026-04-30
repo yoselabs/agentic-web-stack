@@ -15,9 +15,10 @@
 //   - auth       backend lives in packages/auth/ (not @project/api);
 //                frontend + e2e present
 //                → allowed-missing: backend
-//   - admin      admin UI is Hono-mounted Bull Board (apps/server), not
-//                apps/web; admin auth lives in apps/server/src/admin/
-//                middleware, not @project/api
+//   - admin      admin UI mounts Bull Board on apps/server (Phase 4
+//                capability, ADR-0015 queue + ADR-0011 HttpRouter), not
+//                apps/web; admin auth lives in apps/server middleware,
+//                not @project/api
 //                → allowed-missing: frontend, backend
 //   - mobile-nav navigation is a WIDGET (apps/web/src/widgets/navbar.tsx),
 //                not a feature, so no features/mobile-nav/ folder exists.
