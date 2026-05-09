@@ -7,7 +7,7 @@
 // in the type system, not just the success/error split.
 
 import { execSync } from "node:child_process";
-import { readFileSync, readdirSync, statSync } from "node:fs";
+import { readdirSync, readFileSync, statSync } from "node:fs";
 import { join } from "node:path";
 import { Project, type SourceFile } from "ts-morph";
 import { type CheckResult, timeCheck } from "./checks-types.ts";
