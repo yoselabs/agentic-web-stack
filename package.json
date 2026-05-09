@@ -47,6 +47,7 @@
     "lint:check:tagged-errors": "bun packages/lint/src/check-tagged-errors.ts",
     "lint:check:effect-service-form": "bun packages/lint/src/check-effect-service-form.ts",
     "lint:check:contract-before-impl": "bun packages/lint/src/check-contract-before-impl.ts",
+    "lint:check:totality": "bun packages/lint/src/check-totality.ts",
     "db:generate": "pnpm --filter @project/db generate",
     "db:push": "pnpm --filter @project/db push",
     "db:studio": "pnpm --filter @project/db studio"

@@ -22,6 +22,9 @@
     "./checks/contract-before-impl": {
       "default": "./src/check-contract-before-impl.ts"
     },
+    "./checks/totality": {
+      "default": "./src/check-totality.ts"
+    },
     "./checks/duplicate-names": {
       "default": "./src/check-duplicate-names.ts"
     },
