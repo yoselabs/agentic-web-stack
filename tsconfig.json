@@ -4,6 +4,7 @@
     { "path": "packages/api" },
     { "path": "packages/auth" },
     { "path": "packages/db" },
+    { "path": "packages/email" },
     { "path": "packages/env" },
     { "path": "packages/jobs" },
     { "path": "packages/test-infra" },

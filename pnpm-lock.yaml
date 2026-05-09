@@ -435,6 +435,19 @@ importers:
         specifier: ^8.20.0
         version: 8.20.0
 
+  packages/email:
+    dependencies:
+      effect:
+        specifier: 'catalog:'
+        version: 3.21.2
+    devDependencies:
+      '@types/node':
+        specifier: 'catalog:'
+        version: 25.6.0
+      typescript:
+        specifier: 'catalog:'
+        version: 6.0.3
+
   packages/env:
     dependencies:
       '@t3-oss/env-core':

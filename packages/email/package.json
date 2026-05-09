@@ -1,0 +1,27 @@
+{
+  "name": "@project/email",
+  "version": "0.0.0",
+  "private": true,
+  "type": "module",
+  "exports": {
+    "./contract": {
+      "default": "./src/email-contract.ts"
+    },
+    "./schema": {
+      "default": "./src/email-schema.ts"
+    },
+    "./errors": {
+      "default": "./src/email-errors.ts"
+    },
+    "./service": {
+      "default": "./src/email-service.ts"
+    }
+  },
+  "dependencies": {
+    "effect": "catalog:"
+  },
+  "devDependencies": {
+    "@types/node": "catalog:",
+    "typescript": "catalog:"
+  }
+}
