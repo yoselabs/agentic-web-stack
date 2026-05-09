@@ -337,6 +337,9 @@ importers:
       '@project/api':
         specifier: workspace:*
         version: link:../../packages/api
+      '@project/email':
+        specifier: workspace:*
+        version: link:../../packages/email
       '@project/jobs':
         specifier: workspace:*
         version: link:../../packages/jobs

@@ -8,16 +8,13 @@
 //   4. Effect.never — keep the process alive
 //   5. On signal: workers close, Queue scope releases, process exits
 //
-// Email worker registration is intentionally absent — @project/email
-// lands in Phase 4 capability #2 alongside its handler. Enqueueing
-// without a consumer is fine (jobs queue up; nobody enqueues yet).
-
 import { NodeRuntime } from "@effect/platform-node";
 import { AppLayer } from "@project/api/runtime/app-layer";
 import { processJob } from "@project/jobs/process-job";
 import { Queue } from "@project/jobs/queue-layer";
-import { MAINTENANCE_QUEUE } from "@project/jobs/queues";
+import { EMAIL_QUEUE, MAINTENANCE_QUEUE } from "@project/jobs/queues";
 import { Effect, Layer } from "effect";
+import { emailHandlers } from "./handlers/email.ts";
 import { maintenanceHandlers } from "./handlers/maintenance.ts";
 import { registerSchedules } from "./schedule.ts";
 
@@ -35,7 +32,20 @@ const main = Effect.gen(function* () {
     (worker) => Effect.promise(() => worker.close()).pipe(Effect.asVoid),
   );
 
-  yield* Effect.logInfo(`[worker] started (queues: ${MAINTENANCE_QUEUE})`);
+  yield* Effect.acquireRelease(
+    Effect.sync(() =>
+      processJob({
+        queue: EMAIL_QUEUE,
+        handlers: emailHandlers,
+        runtimeLayer: AppLayer,
+      }),
+    ),
+    (worker) => Effect.promise(() => worker.close()).pipe(Effect.asVoid),
+  );
+
+  yield* Effect.logInfo(
+    `[worker] started (queues: ${MAINTENANCE_QUEUE}, ${EMAIL_QUEUE})`,
+  );
   yield* Effect.never;
 });
 
