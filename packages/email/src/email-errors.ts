@@ -1,3 +1,4 @@
+// Tagged errors for the Mailer service. ADR-0020.
 import { Data } from "effect";
 
 export class MailerError extends Data.TaggedError("MailerError")<{

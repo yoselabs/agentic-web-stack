@@ -1,3 +1,4 @@
+// MailerService Live impl (nodemailer adapter). ADR-0020.
 import { Effect } from "effect";
 import * as nodemailer from "nodemailer";
 import type * as EmailErrors from "./email-errors.ts";

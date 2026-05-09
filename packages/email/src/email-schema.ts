@@ -1,3 +1,4 @@
+// Mailer IO schemas — Effect Schema (ADR-0014). Consumed by ADR-0020's MailerService.
 import { Schema } from "effect";
 
 export const EmailAddress = Schema.String.pipe(

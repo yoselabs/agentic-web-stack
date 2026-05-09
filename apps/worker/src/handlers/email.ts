@@ -1,3 +1,4 @@
+// ADR-0020 (Mailer service consumer) + ADR-0015 (worker handler retry).
 // Handler registry for the `email` queue. The job payload is an
 // Effect-Schema-validated SendEmailInput from @project/email/schema —
 // the wire-level value arrives as `unknown` (BullMQ doesn't know the
