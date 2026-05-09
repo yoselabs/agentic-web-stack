@@ -1,20 +1,10 @@
+import { env } from "@project/env/server";
 import { Effect } from "effect";
-import type * as EmailErrors from "./email-errors.ts";
-import type * as EmailSchema from "./email-schema.ts";
+import { makeMailerServiceMethods } from "./email-service.ts";
 
 export class MailerService extends Effect.Service<MailerService>()(
   "@project/email/MailerService",
   {
-    succeed: {
-      send: (
-        _input: EmailSchema.SendEmailInput,
-      ): Effect.Effect<
-        EmailSchema.SendEmailReceipt,
-        | EmailErrors.MailerError
-        | EmailErrors.MailerTransportError
-        | EmailErrors.MailerInvalidAddressError,
-        never
-      > => Effect.die("not implemented"),
-    },
+    sync: () => makeMailerServiceMethods({ smtpUrl: env.SMTP_URL }),
   },
 ) {}

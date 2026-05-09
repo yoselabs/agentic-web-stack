@@ -18,10 +18,13 @@
     }
   },
   "dependencies": {
-    "effect": "catalog:"
+    "@project/env": "workspace:*",
+    "effect": "catalog:",
+    "nodemailer": "^8.0.7"
   },
   "devDependencies": {
     "@types/node": "catalog:",
+    "@types/nodemailer": "^8.0.0",
     "typescript": "catalog:"
   }
 }
