@@ -36,9 +36,14 @@ const mapNodemailerError = (
   return new MailerError({ cause });
 };
 
-export const makeMailerServiceMethods = (config: MailerConfig) => {
+export const makeMailerServiceMethods = (
+  config: MailerConfig,
+  // Test escape hatch — production wires nodemailer.createTransport(smtpUrl).
+  transportOverride?: nodemailer.Transporter,
+) => {
   // One transport per Mailer instance. createTransport is synchronous.
-  const transport = nodemailer.createTransport(config.smtpUrl);
+  const transport =
+    transportOverride ?? nodemailer.createTransport(config.smtpUrl);
 
   return {
     send: (
@@ -63,9 +68,12 @@ export const makeMailerServiceMethods = (config: MailerConfig) => {
       }).pipe(
         Effect.map((info) => ({
           messageId: info.messageId,
-          // info.accepted is string[] for SMTP; normalize defensively to string[]
+          // info.accepted is string[] for SMTP transports; stream/json transports
+          // omit it — fall back to the input `to` address in that case.
           acceptedRecipients: (
-            info.accepted as ReadonlyArray<string | { address: string }>
+            (info.accepted ?? [input.to]) as ReadonlyArray<
+              string | { address: string }
+            >
           ).map((a) => (typeof a === "string" ? a : a.address)),
         })),
       ),
