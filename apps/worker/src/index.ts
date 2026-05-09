@@ -2,11 +2,11 @@
 // cron registry under an Effect runtime. ADR-0015 (accepted).
 //
 // Lifecycle (managed by NodeRuntime.runMain — handles SIGTERM/SIGINT):
-//   1. Acquire QueueLive scope (opens BullMQ Queue instances)
+//   1. Acquire Queue scope (opens BullMQ Queue instances)
 //   2. Run registerSchedules (registers repeatable cron jobs)
 //   3. Start each queue's BullMQ Worker via processJob
 //   4. Effect.never — keep the process alive
-//   5. On signal: workers close, QueueLive scope releases, process exits
+//   5. On signal: workers close, Queue scope releases, process exits
 //
 // Email worker registration is intentionally absent — @project/email
 // lands in Phase 4 capability #2 alongside its handler. Enqueueing
@@ -15,7 +15,7 @@
 import { NodeRuntime } from "@effect/platform-node";
 import { AppLayer } from "@project/api/runtime/app-layer";
 import { processJob } from "@project/jobs/process-job";
-import { QueueLive } from "@project/jobs/queue-layer";
+import { Queue } from "@project/jobs/queue-layer";
 import { MAINTENANCE_QUEUE } from "@project/jobs/queues";
 import { Effect, Layer } from "effect";
 import { maintenanceHandlers } from "./handlers/maintenance.ts";
@@ -40,5 +40,8 @@ const main = Effect.gen(function* () {
 });
 
 NodeRuntime.runMain(
-  main.pipe(Effect.scoped, Effect.provide(Layer.mergeAll(QueueLive, AppLayer))),
+  main.pipe(
+    Effect.scoped,
+    Effect.provide(Layer.mergeAll(Queue.Default, AppLayer)),
+  ),
 );

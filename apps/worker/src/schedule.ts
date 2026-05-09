@@ -10,9 +10,9 @@
 // Add a new cron:
 //   1. Declare the job name + payload type in @project/jobs/queues
 //   2. Add a handler entry in handlers/<queue>.ts
-//   3. Append a `QueueTag.schedule(...)` call below
+//   3. Append a `Queue.schedule(...)` call below
 
-import { QueueTag } from "@project/jobs/queue-layer";
+import { Queue } from "@project/jobs/queue-layer";
 import {
   MAINTENANCE_QUEUE,
   PURGE_STALE_TODOS_JOB,
@@ -25,7 +25,7 @@ const PURGE_STALE_TODOS_PAYLOAD: PurgeStaleTodosPayload = {
 };
 
 export const registerSchedules = Effect.gen(function* () {
-  const queue = yield* QueueTag;
+  const queue = yield* Queue;
 
   yield* queue.schedule(
     MAINTENANCE_QUEUE,

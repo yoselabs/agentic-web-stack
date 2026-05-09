@@ -1,6 +1,5 @@
-// lint-disable-file check-effect-service-form — Day-1 migration in progress (Task 6)
 import { db, type PrismaClient } from "@project/db";
-import { Context, Effect, Layer } from "effect";
+import { Effect } from "effect";
 import { DbError } from "../errors.ts";
 
 // ADR-0013 — DB access via a `Db` Effect Layer wrapping the Prisma
@@ -8,9 +7,9 @@ import { DbError } from "../errors.ts";
 // methods through the `tryPromise` helper, which converts Prisma's
 // promise rejections to a tagged `DbError`.
 
-export class Db extends Context.Tag("@project/api/Db")<Db, PrismaClient>() {}
-
-export const DbLive = Layer.succeed(Db, db);
+export class Db extends Effect.Service<Db>()("@project/api/Db", {
+  succeed: db as PrismaClient,
+}) {}
 
 // Per-domain helpers absorb the `Effect.tryPromise` boilerplate. Use this
 // inside services rather than duplicating the catch shape at every call
@@ -36,7 +35,7 @@ export const withTransaction = <A, E>(
       try: () =>
         client.$transaction((tx) =>
           Effect.runPromise(
-            eff.pipe(Effect.provideService(Db, tx as PrismaClient)),
+            eff.pipe(Effect.provideService(Db, new Db(tx as PrismaClient))),
           ),
         ),
       catch: (cause) => new DbError({ cause }),

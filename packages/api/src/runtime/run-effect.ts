@@ -81,7 +81,10 @@ export const runEffect = async <A, E>(
   ctx: { session: Option.Option<Session> },
 ): Promise<A> => {
   const provided = effect.pipe(
-    Effect.provideService(CurrentSession, ctx.session),
+    Effect.provideService(
+      CurrentSession,
+      new CurrentSession({ session: ctx.session }),
+    ),
     Effect.provide(AppLayer),
   );
   const exit = await Effect.runPromiseExit(provided);
