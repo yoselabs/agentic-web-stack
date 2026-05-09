@@ -61,7 +61,7 @@ db-seed:
 # `make fix` is SEPARATE — lint is read-only (reports what's wrong);
 # fix is the explicit transform step (auto-formatters, import sorters).
 # Never run auto-fix as part of lint.
-TURBO_LINT_TASKS = lint:biome lint:tsc lint:prisma lint:knip lint:jscpd lint:sherif lint:publint lint:depcruise lint:eslint-e2e lint:gherkin lint:secretlint lint:actionlint lint:markdown lint:links lint:spell lint:shell lint:check:no-barrel lint:check:server-bind lint:check:domain-names lint:check:trpc-patterns lint:check:test-infra-integrity lint:check:feature-emails lint:check:duplicate-names lint:check:no-cwd lint:check:test-siblings lint:check:stories-siblings lint:check:env-example lint:check:adrs lint:check:state-machines lint:check:pitch-coverage lint:check:scoped-landmarks lint:check:perspective-boundary lint:check:explicit-return-types lint:check:tagged-errors lint:check:effect-service-form
+TURBO_LINT_TASKS = lint:biome lint:tsc lint:prisma lint:knip lint:jscpd lint:sherif lint:publint lint:depcruise lint:eslint-e2e lint:gherkin lint:secretlint lint:actionlint lint:markdown lint:links lint:spell lint:shell lint:check:no-barrel lint:check:server-bind lint:check:domain-names lint:check:trpc-patterns lint:check:test-infra-integrity lint:check:feature-emails lint:check:duplicate-names lint:check:no-cwd lint:check:test-siblings lint:check:stories-siblings lint:check:env-example lint:check:adrs lint:check:state-machines lint:check:pitch-coverage lint:check:scoped-landmarks lint:check:perspective-boundary lint:check:explicit-return-types lint:check:tagged-errors lint:check:effect-service-form lint:check:contract-before-impl
 
 check: lint ## Alias for lint — full quality gate
 lint: db-generate ## Full lint gate (turbo-cached; silent on success, errors only)

@@ -19,6 +19,9 @@
     "./checks/effect-service-form": {
       "default": "./src/check-effect-service-form.ts"
     },
+    "./checks/contract-before-impl": {
+      "default": "./src/check-contract-before-impl.ts"
+    },
     "./checks/duplicate-names": {
       "default": "./src/check-duplicate-names.ts"
     },

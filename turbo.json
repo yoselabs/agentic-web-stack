@@ -375,6 +375,14 @@
         "packages/**/*.tsx"
       ],
       "outputs": []
+    },
+    "//#lint:check:contract-before-impl": {
+      "inputs": [
+        "packages/lint/src/check-contract-before-impl.ts",
+        "packages/lint/src/checks-types.ts",
+        "packages/api/src/domains/**"
+      ],
+      "outputs": []
     }
   }
 }
