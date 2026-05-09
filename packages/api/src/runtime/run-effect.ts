@@ -1,6 +1,6 @@
 import type { Session } from "@project/auth";
 import { TRPCError } from "@trpc/server";
-import { Cause, Effect, Exit, Option } from "effect";
+import { Cause, Effect, Exit, Layer, Option } from "effect";
 import type {
   DbError,
   ForbiddenError,
@@ -8,6 +8,14 @@ import type {
   UnauthorizedError,
   ValidationError,
 } from "../errors.ts";
+import type {
+  TodoListError,
+  TodoListNotFoundError,
+  TodoNotFoundError,
+  TodoNotOwnedError,
+  TodoSkippedError,
+} from "../domains/todo-list/todo-errors.ts";
+import { TodoListService } from "../domains/todo-list/todo-contract.ts";
 import { AppLayer } from "./app-layer.ts";
 import type { Auth } from "./auth-layer.ts";
 import { CurrentSession } from "./auth-layer.ts";
@@ -22,7 +30,12 @@ import type { Db } from "./db-layer.ts";
 // service, then maps tagged errors to TRPCError codes. Unexpected
 // defects surface as INTERNAL_SERVER_ERROR.
 
-type AppRequirements = Db | Auth | CurrentSession;
+type AppRequirements = Db | Auth | CurrentSession | TodoListService;
+
+// Full runtime layer: AppLayer (Db + Auth + Logger) merged with TodoListService.Default.
+// TodoListService uses succeed: so its layer has no requirements at composition time —
+// the Db + CurrentSession requirements live inside each method's returned Effect.
+const FullLayer = Layer.merge(AppLayer, TodoListService.Default);
 
 const tagToCode = (
   e:
@@ -30,7 +43,12 @@ const tagToCode = (
     | NotFoundError
     | UnauthorizedError
     | ForbiddenError
-    | ValidationError,
+    | ValidationError
+    | TodoListError
+    | TodoListNotFoundError
+    | TodoNotFoundError
+    | TodoNotOwnedError
+    | TodoSkippedError,
 ): TRPCError => {
   switch (e._tag) {
     case "NotFoundError":
@@ -53,6 +71,32 @@ const tagToCode = (
         message: "database error",
         cause: e.cause,
       });
+    case "TodoListError":
+      return new TRPCError({
+        code: "INTERNAL_SERVER_ERROR",
+        message: "todo list operation failed",
+        cause: e.cause,
+      });
+    case "TodoListNotFoundError":
+      return new TRPCError({
+        code: "NOT_FOUND",
+        message: `TodoList not found: ${e.id}`,
+      });
+    case "TodoNotFoundError":
+      return new TRPCError({
+        code: "NOT_FOUND",
+        message: `Todo not found: ${e.id}`,
+      });
+    case "TodoNotOwnedError":
+      return new TRPCError({
+        code: "FORBIDDEN",
+        message: "you do not own this list",
+      });
+    case "TodoSkippedError":
+      return new TRPCError({
+        code: "INTERNAL_SERVER_ERROR",
+        message: "todo skipped during processing",
+      });
   }
 };
 
@@ -63,7 +107,12 @@ const isTaggedAppError = (
   | NotFoundError
   | UnauthorizedError
   | ForbiddenError
-  | ValidationError =>
+  | ValidationError
+  | TodoListError
+  | TodoListNotFoundError
+  | TodoNotFoundError
+  | TodoNotOwnedError
+  | TodoSkippedError =>
   typeof err === "object" &&
   err !== null &&
   "_tag" in err &&
@@ -74,6 +123,11 @@ const isTaggedAppError = (
     "UnauthorizedError",
     "ForbiddenError",
     "ValidationError",
+    "TodoListError",
+    "TodoListNotFoundError",
+    "TodoNotFoundError",
+    "TodoNotOwnedError",
+    "TodoSkippedError",
   ].includes((err as { _tag: string })._tag);
 
 export const runEffect = async <A, E>(
@@ -85,7 +139,7 @@ export const runEffect = async <A, E>(
       CurrentSession,
       new CurrentSession({ session: ctx.session }),
     ),
-    Effect.provide(AppLayer),
+    Effect.provide(FullLayer),
   );
   const exit = await Effect.runPromiseExit(provided);
 
