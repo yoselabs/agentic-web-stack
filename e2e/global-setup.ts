@@ -34,7 +34,6 @@ export default async function globalSetup() {
   // queue-backed scenarios to time out at 10s with no diagnostic.
   child.on("exit", (code, signal) => {
     if (signal !== "SIGTERM" && code !== 0 && code !== null) {
-      // biome-ignore lint/suspicious/noConsole: globalSetup runs outside the Effect runtime; console is the only sink.
       console.error(`[e2e] worker exited unexpectedly: code=${code}`);
     }
   });

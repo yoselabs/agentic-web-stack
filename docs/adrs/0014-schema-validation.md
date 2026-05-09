@@ -1,11 +1,23 @@
 ---
-title: "ADR 0014 — Schema validation (proposed, spike pending)"
-status: proposed
+title: "ADR 0014 — Schema validation"
+status: accepted
 date: 2026-04-29
+accepted_date: 2026-05-09
 deciders: [denis]
-draft_for_promotion_in_phase: 3
-spike_status: pending — bundle measurement runs as part of first-slice frontend build
+verified_by:
+  - packages/api/src/domains/todo-list/todo-schema.ts
+  - packages/api/src/runtime/effect-schema-input.ts
+  - docs/conventions/effect-contract-first.md
 ---
+
+> **Status: accepted** as Option C (Effect Schema on server, Zod on
+> client forms). Promoted from draft on 2026-05-09 as part of Day 2 of
+> the contract-first rewrite — see
+> `docs/superpowers/specs/2026-05-07-effect-contract-first-design.md`
+> §D4 and `docs/superpowers/plans/2026-05-09-effect-contract-first-day2.md`
+> commit 5. The bundle-measurement spike was sidestepped: by keeping
+> Effect Schema purely server-side, no Effect-Schema bytes reach the
+> client, so the gzipped-overhead concern is moot.
 
 # ADR 0014 — Schema Validation
 

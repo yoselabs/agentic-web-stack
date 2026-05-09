@@ -24,7 +24,9 @@ export const provideTestSession = <A, E, R>(
   effect.pipe(
     Effect.provideService(
       CurrentSession,
-      session ? Option.some(session) : Option.none(),
+      new CurrentSession({
+        session: session ? Option.some(session) : Option.none(),
+      }),
     ),
     Effect.provide(AppLayer),
   ) as unknown as Effect.Effect<A, E, never>;

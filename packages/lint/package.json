@@ -10,6 +10,21 @@
     "./checks/domain-names": {
       "default": "./src/check-domain-names.ts"
     },
+    "./checks/explicit-return-types": {
+      "default": "./src/check-explicit-return-types.ts"
+    },
+    "./checks/tagged-errors": {
+      "default": "./src/check-tagged-errors.ts"
+    },
+    "./checks/effect-service-form": {
+      "default": "./src/check-effect-service-form.ts"
+    },
+    "./checks/contract-before-impl": {
+      "default": "./src/check-contract-before-impl.ts"
+    },
+    "./checks/totality": {
+      "default": "./src/check-totality.ts"
+    },
     "./checks/duplicate-names": {
       "default": "./src/check-duplicate-names.ts"
     },

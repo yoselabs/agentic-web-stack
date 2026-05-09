@@ -6,10 +6,20 @@ import { db } from "@project/db";
 import { Effect } from "effect";
 import { AppLayer } from "../../../runtime/app-layer.ts";
 import { makeTestUser, resetDb } from "../../../test-helpers.ts";
-import { purgeStaleCompletedTodos } from "../todo-purge-service.ts";
+import { TodoListService } from "../todo-contract.ts";
 
 const runWithApp = <A, E>(eff: Effect.Effect<A, E, never>): Promise<A> =>
   Effect.runPromise(eff);
+
+const runPurge = (input: {
+  olderThanDays: number;
+}): Promise<{ deleted: number }> =>
+  runWithApp(
+    Effect.gen(function* () {
+      const svc = yield* TodoListService;
+      return yield* svc.purge(input);
+    }).pipe(Effect.provide(TodoListService.Default), Effect.provide(AppLayer)),
+  );
 
 beforeEach(async () => {
   await resetDb();
@@ -19,7 +29,7 @@ afterAll(async () => {
   await db.$disconnect();
 });
 
-describe("purgeStaleCompletedTodos", () => {
+describe("TodoListService.purge", () => {
   test("deletes completed todos whose updatedAt is older than the cutoff", async () => {
     const session = await makeTestUser();
     const list = await db.todoList.create({
@@ -55,13 +65,9 @@ describe("purgeStaleCompletedTodos", () => {
       },
     });
 
-    const deleted = await runWithApp(
-      purgeStaleCompletedTodos({ olderThanDays: 30 }).pipe(
-        Effect.provide(AppLayer),
-      ),
-    );
+    const report = await runPurge({ olderThanDays: 30 });
 
-    expect(deleted).toBe(1);
+    expect(report.deleted).toBe(1);
     const remaining = await db.todo.findMany({
       where: { todoListId: list.id },
       orderBy: { title: "asc" },
@@ -86,12 +92,8 @@ describe("purgeStaleCompletedTodos", () => {
       },
     });
 
-    const deleted = await runWithApp(
-      purgeStaleCompletedTodos({ olderThanDays: 30 }).pipe(
-        Effect.provide(AppLayer),
-      ),
-    );
+    const report = await runPurge({ olderThanDays: 30 });
 
-    expect(deleted).toBe(0);
+    expect(report.deleted).toBe(0);
   });
 });

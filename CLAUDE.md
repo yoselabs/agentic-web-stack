@@ -47,6 +47,12 @@ the relevant section before writing code that touches the area.
 - **Event kinds SSOT** — const tuple → derived type, never the reverse. See [docs/conventions.md#event-kinds-ssot](docs/conventions.md#event-kinds-ssot).
 - **Web app Vitest project selection** — `*.test.tsx` → unit (happy-dom); `*.stories.tsx` → storybook (chromium); `*.browser.test.tsx` → browser (chromium, opt-in for jsdom-invisible bugs). See [docs/conventions.md#web-app-vitest-project-selection](docs/conventions.md#web-app-vitest-project-selection) and `docs/qa-strategy.md` §3.4.
 
+## Effect Contract-First (rewrite/contract-first)
+
+The Effect contract-first rewrite — see [docs/conventions/effect-contract-first.md](docs/conventions/effect-contract-first.md) — defines ALWAYS/NEVER rules for the six-file capability layout (`<name>-{contract,schema,errors,service,router}.ts` + `__tests__/`). Five custom lint checks enforce it: `check-explicit-return-types`, `check-tagged-errors`, `check-effect-service-form`, `check-contract-before-impl`, `check-totality` (opt-in).
+
+Source spec: `docs/superpowers/specs/2026-05-07-effect-contract-first-design.md`.
+
 ## Commands
 
 - `make setup` — zero-conf: installs deps, starts Postgres, pushes schema, installs pre-commit hooks

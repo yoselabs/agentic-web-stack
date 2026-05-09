@@ -1,4 +1,4 @@
-// Queue Effect Layer — wraps BullMQ behind a `Queue` Context.Tag.
+// Queue Effect Layer — wraps BullMQ behind a `Queue` Effect.Service.
 // ADR-0015 (accepted). The Live implementation maintains one BullMQ
 // `Queue` instance per name in QUEUE_NAMES, opened at scope-acquisition
 // and closed at scope-release. Tests can swap `Queue` for an in-memory
@@ -11,7 +11,7 @@
 // configuration on the queue.
 
 import { Queue as BullQueue, type JobsOptions } from "bullmq";
-import { Context, Data, Effect, Layer } from "effect";
+import { Data, Effect } from "effect";
 import { QUEUE_NAMES, type QueueName } from "./queues.ts";
 import { createRedis } from "./redis-layer.ts";
 
@@ -47,11 +47,6 @@ export interface QueueService {
   readonly raw: () => ReadonlyMap<QueueName, BullQueue>;
 }
 
-export class QueueTag extends Context.Tag("@project/jobs/Queue")<
-  QueueTag,
-  QueueService
->() {}
-
 // Build a Map<QueueName, BullQueue> with one BullMQ Queue per declared
 // name. Uses a single shared Redis connection on the queue side per
 // BullMQ's recommendation (queues are cheap; workers need separate
@@ -72,9 +67,8 @@ const closeAll = (queues: Map<QueueName, BullQueue>) =>
       new QueueError({ queue: QUEUE_NAMES[0], op: "close", cause }),
   }).pipe(Effect.asVoid);
 
-export const QueueLive = Layer.scoped(
-  QueueTag,
-  Effect.gen(function* () {
+export class Queue extends Effect.Service<Queue>()("@project/jobs/Queue", {
+  scoped: Effect.gen(function* () {
     const queues = yield* Effect.acquireRelease(Effect.sync(buildQueues), (q) =>
       Effect.orDie(closeAll(q)),
     );
@@ -119,4 +113,4 @@ export const QueueLive = Layer.scoped(
 
     return { enqueue, schedule, cancel, raw };
   }),
-);
+}) {}

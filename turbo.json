@@ -347,6 +347,50 @@
         "!**/node_modules/**"
       ],
       "outputs": []
+    },
+    "//#lint:check:explicit-return-types": {
+      "inputs": [
+        "packages/lint/src/check-explicit-return-types.ts",
+        "packages/lint/src/checks-types.ts",
+        "packages/api/src/domains/**/*-contract.ts",
+        "packages/api/src/domains/**/*-service.ts"
+      ],
+      "outputs": []
+    },
+    "//#lint:check:tagged-errors": {
+      "inputs": [
+        "packages/lint/src/check-tagged-errors.ts",
+        "packages/lint/src/checks-types.ts",
+        "packages/api/src/domains/**/*-errors.ts"
+      ],
+      "outputs": []
+    },
+    "//#lint:check:effect-service-form": {
+      "inputs": [
+        "packages/lint/src/check-effect-service-form.ts",
+        "packages/lint/src/checks-types.ts",
+        "apps/**/*.ts",
+        "apps/**/*.tsx",
+        "packages/**/*.ts",
+        "packages/**/*.tsx"
+      ],
+      "outputs": []
+    },
+    "//#lint:check:contract-before-impl": {
+      "inputs": [
+        "packages/lint/src/check-contract-before-impl.ts",
+        "packages/lint/src/checks-types.ts",
+        "packages/api/src/domains/**"
+      ],
+      "outputs": []
+    },
+    "//#lint:check:totality": {
+      "inputs": [
+        "packages/lint/src/check-totality.ts",
+        "packages/lint/src/checks-types.ts",
+        "packages/api/src/domains/**/*-contract.ts"
+      ],
+      "outputs": []
     }
   }
 }
