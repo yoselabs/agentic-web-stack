@@ -1,3 +1,4 @@
+// lint-disable-file check-effect-service-form — Day-1 migration in progress (Task 6)
 import { db, type PrismaClient } from "@project/db";
 import { Context, Effect, Layer } from "effect";
 import { DbError } from "../errors.ts";

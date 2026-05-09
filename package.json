@@ -45,6 +45,7 @@
     "lint:check:perspective-boundary": "bun packages/lint/src/check-perspective-boundary.ts",
     "lint:check:explicit-return-types": "bun packages/lint/src/check-explicit-return-types.ts",
     "lint:check:tagged-errors": "bun packages/lint/src/check-tagged-errors.ts",
+    "lint:check:effect-service-form": "bun packages/lint/src/check-effect-service-form.ts",
     "db:generate": "pnpm --filter @project/db generate",
     "db:push": "pnpm --filter @project/db push",
     "db:studio": "pnpm --filter @project/db studio"

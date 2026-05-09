@@ -16,6 +16,9 @@
     "./checks/tagged-errors": {
       "default": "./src/check-tagged-errors.ts"
     },
+    "./checks/effect-service-form": {
+      "default": "./src/check-effect-service-form.ts"
+    },
     "./checks/duplicate-names": {
       "default": "./src/check-duplicate-names.ts"
     },

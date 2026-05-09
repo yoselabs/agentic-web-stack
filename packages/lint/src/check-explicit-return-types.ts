@@ -9,14 +9,14 @@ import { execSync } from "node:child_process";
 import { readdirSync, readFileSync, statSync } from "node:fs";
 import { join } from "node:path";
 import {
-  Project,
-  SyntaxKind,
   type ArrowFunction,
   type FunctionDeclaration,
   type FunctionExpression,
   type MethodDeclaration,
   type Node,
+  Project,
   type SourceFile,
+  SyntaxKind,
 } from "ts-morph";
 import { type CheckResult, timeCheck } from "./checks-types.ts";
 

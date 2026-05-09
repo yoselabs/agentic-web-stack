@@ -1,3 +1,4 @@
+// lint-disable-file check-effect-service-form — Day-1 migration in progress (Task 6)
 import { auth, type Session } from "@project/auth";
 import { Context, Effect, Layer, Option } from "effect";
 import { UnauthorizedError } from "../errors.ts";

@@ -6,13 +6,13 @@
 // discriminate. Plain Error classes break exhaustive .catchTag handling.
 
 import { execSync } from "node:child_process";
-import { readFileSync, readdirSync, statSync } from "node:fs";
+import { readdirSync, readFileSync, statSync } from "node:fs";
 import { join } from "node:path";
 import {
-  Project,
-  SyntaxKind,
   type ClassDeclaration,
+  Project,
   type SourceFile,
+  SyntaxKind,
 } from "ts-morph";
 import { type CheckResult, timeCheck } from "./checks-types.ts";
 

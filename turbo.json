@@ -364,6 +364,17 @@
         "packages/api/src/domains/**/*-errors.ts"
       ],
       "outputs": []
+    },
+    "//#lint:check:effect-service-form": {
+      "inputs": [
+        "packages/lint/src/check-effect-service-form.ts",
+        "packages/lint/src/checks-types.ts",
+        "apps/**/*.ts",
+        "apps/**/*.tsx",
+        "packages/**/*.ts",
+        "packages/**/*.tsx"
+      ],
+      "outputs": []
     }
   }
 }

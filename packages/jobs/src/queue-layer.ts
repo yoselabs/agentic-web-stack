@@ -1,3 +1,4 @@
+// lint-disable-file check-effect-service-form — Day-1 migration in progress (Task 6)
 // Queue Effect Layer — wraps BullMQ behind a `Queue` Context.Tag.
 // ADR-0015 (accepted). The Live implementation maintains one BullMQ
 // `Queue` instance per name in QUEUE_NAMES, opened at scope-acquisition
