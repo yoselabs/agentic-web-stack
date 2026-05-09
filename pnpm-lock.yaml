@@ -380,9 +380,6 @@ importers:
       effect:
         specifier: 'catalog:'
         version: 3.21.2
-      zod:
-        specifier: 'catalog:'
-        version: 4.3.6
     devDependencies:
       '@project/test-infra':
         specifier: workspace:*

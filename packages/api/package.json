@@ -55,8 +55,7 @@
     "@project/db": "workspace:*",
     "@project/env": "workspace:*",
     "@trpc/server": "catalog:",
-    "effect": "catalog:",
-    "zod": "catalog:"
+    "effect": "catalog:"
   },
   "devDependencies": {
     "@project/test-infra": "workspace:*",
