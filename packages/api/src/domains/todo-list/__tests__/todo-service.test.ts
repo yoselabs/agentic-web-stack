@@ -3,7 +3,6 @@
 import { afterAll, beforeEach, describe, expect, test } from "bun:test";
 import { db } from "@project/db";
 import { Effect } from "effect";
-import { ForbiddenError } from "../../../errors.ts";
 import {
   makeTestUser,
   provideTestSession,
@@ -118,7 +117,7 @@ describe("todo-list service", () => {
     expect(result._tag).toBe("Failure");
     if (result._tag === "Failure") {
       const failures = result.cause.toString();
-      expect(failures).toContain("ForbiddenError");
+      expect(failures).toContain("TodoNotOwnedError");
     }
     // Ensure list is still there.
     const ownerLists = await Effect.runPromise(
@@ -140,10 +139,5 @@ describe("todo-list service", () => {
       provideTestSession(listTodoLists, b),
     );
     expect(bLists).toEqual([]);
-  });
-
-  // Sanity: ForbiddenError import is not unused.
-  test("ForbiddenError remains importable", () => {
-    expect(ForbiddenError).toBeDefined();
   });
 });

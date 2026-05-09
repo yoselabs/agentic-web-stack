@@ -4,14 +4,14 @@
   "private": true,
   "type": "module",
   "exports": {
+    "./domains/todo-list/todo-contract": {
+      "default": "./src/domains/todo-list/todo-contract.ts"
+    },
     "./domains/todo-list/todo-router": {
       "default": "./src/domains/todo-list/todo-router.ts"
     },
     "./domains/todo-list/todo-service": {
       "default": "./src/domains/todo-list/todo-service.ts"
-    },
-    "./domains/todo-list/todo-purge-service": {
-      "default": "./src/domains/todo-list/todo-purge-service.ts"
     },
     "./domains/todo-list/todo-schema": {
       "default": "./src/domains/todo-list/todo-schema.ts"

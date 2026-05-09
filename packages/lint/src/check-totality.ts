@@ -9,7 +9,7 @@
 import { execSync } from "node:child_process";
 import { readdirSync, readFileSync, statSync } from "node:fs";
 import { join } from "node:path";
-import { Project, type SourceFile } from "ts-morph";
+import { Project, type SourceFile, SyntaxKind } from "ts-morph";
 import { type CheckResult, timeCheck } from "./checks-types.ts";
 
 const DEFAULT_ROOT = process.cwd();
@@ -45,6 +45,7 @@ function listFiles(root: string): string[] {
 function inspect(sf: SourceFile, rel: string): string[] {
   const errors: string[] = [];
   for (const cls of sf.getClasses()) {
+    // (1) Scan class prototype methods (e.g. class body method declarations).
     for (const m of cls.getMethods()) {
       const jsdocs = m.getJsDocs();
       const hasTotality = jsdocs.some((d) =>
@@ -53,13 +54,88 @@ function inspect(sf: SourceFile, rel: string): string[] {
       if (!hasTotality) continue;
       const rtNode = m.getReturnTypeNode();
       const rtText = rtNode?.getText() ?? "";
-      // Pull out the second type argument of Effect.Effect<A, E, R>.
-      // Cheap parse: split at `,` at depth 1 inside the outer <...>.
       const eChannel = extractEChannel(rtText);
       if (!eChannel || !SKIPPED_RE.test(eChannel)) {
         errors.push(
           `${rel}:${m.getStartLineNumber()}  ${cls.getName()}.${m.getName()} is @totality but its E channel does not include a *SkippedError variant (got: ${eChannel ?? "<no annotation>"})`,
         );
+      }
+    }
+
+    // (2) Scan property methods inside Effect.Service succeed:/sync:/effect:
+    // object literals. These appear when the service is defined as:
+    //   class Foo extends Effect.Service<Foo>()("key", { succeed: { method: ... } }) {}
+    // The methods are object literal properties, not class prototype methods,
+    // so getMethods() above doesn't find them. We walk the class heritage
+    // call expression arguments to find the options object.
+    for (const heritageClause of cls.getHeritageClauses()) {
+      for (const type of heritageClause.getTypeNodes()) {
+        // The heritage node for Effect.Service<Foo>()("key", opts) is a
+        // CallExpression. Walk the call chain to find the options argument.
+        const expr = type.getExpression();
+        if (!expr.isKind(SyntaxKind.CallExpression)) continue;
+        const callExpr = expr.asKind(SyntaxKind.CallExpression);
+        if (!callExpr) continue;
+        const args = callExpr.getArguments();
+        // Second argument (index 1) is the options object: { succeed: {...} }
+        const optsArg = args[1];
+        if (!optsArg || !optsArg.isKind(SyntaxKind.ObjectLiteralExpression))
+          continue;
+        const opts = optsArg.asKind(SyntaxKind.ObjectLiteralExpression);
+        if (!opts) continue;
+        for (const prop of opts.getProperties()) {
+          if (!prop.isKind(SyntaxKind.PropertyAssignment)) continue;
+          const propAssign = prop.asKind(SyntaxKind.PropertyAssignment);
+          if (!propAssign) continue;
+          const propName = propAssign.getName();
+          // Only scan succeed:/sync:/effect: option values
+          if (
+            propName !== "succeed" &&
+            propName !== "sync" &&
+            propName !== "effect"
+          )
+            continue;
+          const init = propAssign.getInitializer();
+          if (!init || !init.isKind(SyntaxKind.ObjectLiteralExpression))
+            continue;
+          const serviceObj = init.asKind(SyntaxKind.ObjectLiteralExpression);
+          if (!serviceObj) continue;
+          for (const methodProp of serviceObj.getProperties()) {
+            if (!methodProp.isKind(SyntaxKind.PropertyAssignment)) continue;
+            const methodAssign = methodProp.asKind(
+              SyntaxKind.PropertyAssignment,
+            );
+            if (!methodAssign) continue;
+            // PropertyAssignment nodes don't have getJsDocs(); use
+            // getLeadingCommentRanges() and scan the raw comment text.
+            const comments = methodAssign.getLeadingCommentRanges();
+            const hasTotality = comments.some((c) =>
+              /@totality/.test(c.getText()),
+            );
+            if (!hasTotality) continue;
+            // Inspect the return type of the method's arrow/function value.
+            const methodInit = methodAssign.getInitializer();
+            if (
+              !methodInit ||
+              (!methodInit.isKind(SyntaxKind.ArrowFunction) &&
+                !methodInit.isKind(SyntaxKind.FunctionExpression))
+            )
+              continue;
+            const fnNode = methodInit.isKind(SyntaxKind.ArrowFunction)
+              ? methodInit.asKind(SyntaxKind.ArrowFunction)
+              : methodInit.asKind(SyntaxKind.FunctionExpression);
+            if (!fnNode) continue;
+            const rtNode = fnNode.getReturnTypeNode();
+            const rtText = rtNode?.getText() ?? "";
+            const eChannel = extractEChannel(rtText);
+            const methodName = methodAssign.getName();
+            if (!eChannel || !SKIPPED_RE.test(eChannel)) {
+              errors.push(
+                `${rel}:${methodAssign.getStartLineNumber()}  ${cls.getName()}.${methodName} is @totality but its E channel does not include a *SkippedError variant (got: ${eChannel ?? "<no annotation>"})`,
+              );
+            }
+          }
+        }
       }
     }
   }
