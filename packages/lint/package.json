@@ -13,6 +13,9 @@
     "./checks/explicit-return-types": {
       "default": "./src/check-explicit-return-types.ts"
     },
+    "./checks/tagged-errors": {
+      "default": "./src/check-tagged-errors.ts"
+    },
     "./checks/duplicate-names": {
       "default": "./src/check-duplicate-names.ts"
     },

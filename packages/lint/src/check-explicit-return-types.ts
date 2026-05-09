@@ -8,7 +8,16 @@
 import { execSync } from "node:child_process";
 import { readdirSync, readFileSync, statSync } from "node:fs";
 import { join } from "node:path";
-import { type Node, Project, type SourceFile, SyntaxKind } from "ts-morph";
+import {
+  Project,
+  SyntaxKind,
+  type ArrowFunction,
+  type FunctionDeclaration,
+  type FunctionExpression,
+  type MethodDeclaration,
+  type Node,
+  type SourceFile,
+} from "ts-morph";
 import { type CheckResult, timeCheck } from "./checks-types.ts";
 
 const DEFAULT_ROOT = process.cwd();
@@ -16,6 +25,11 @@ const SCAN_GLOB =
   /^packages\/api\/src\/domains\/[^/]+\/[^/]+-(contract|service)\.ts$/;
 
 type Issue = { file: string; line: number; name: string; reason: string };
+type FnLike =
+  | FunctionDeclaration
+  | MethodDeclaration
+  | ArrowFunction
+  | FunctionExpression;
 
 function listFiles(root: string): string[] {
   // Tests use synthetic fixtures outside git; fall back to recursive walk
@@ -64,12 +78,19 @@ function returnTypeText(node: Node): string | undefined {
     node.isKind(SyntaxKind.FunctionExpression)
   ) {
     // ts-morph: getReturnTypeNode is non-null only when annotated.
-    // biome-ignore lint/suspicious/noExplicitAny: ts-morph union typing
-    const rtNode = (node as any).getReturnTypeNode?.();
+    // The isKind guards above prove node is one of the four FnLike kinds;
+    // the single cast is narrower than `any` and safe.
+    const rtNode = (node as FnLike).getReturnTypeNode();
     return rtNode ? rtNode.getText() : undefined;
   }
 }
 
+// Matches `Effect.Effect<…>` qualified-via-namespace imports (the project's
+// canonical form per CLAUDE.md). Aliased forms — `import { Effect as Eff }`
+// or bare `import type { Effect }` — are not recognized; this is a known
+// false-negative trade-off chosen over a permissive regex that would let
+// non-Effect-Effect types slip through. If the codebase ever adopts an
+// alias, expand here.
 function isEffectEffect(text: string): boolean {
   // Strip whitespace; accept Effect.Effect<...> (and its qualified or aliased forms).
   const t = text.replace(/\s+/g, "");
@@ -80,17 +101,8 @@ function inspectExport(sf: SourceFile): Issue[] {
   const rel = sf.getFilePath();
   const issues: Issue[] = [];
   for (const stmt of sf.getStatements()) {
-    if (
-      !stmt.isKind(SyntaxKind.VariableStatement) &&
-      !stmt.isKind(SyntaxKind.FunctionDeclaration) &&
-      !stmt.isKind(SyntaxKind.ClassDeclaration)
-    )
-      continue;
-    // biome-ignore lint/suspicious/noExplicitAny: union narrowing
-    const exported = (stmt as any).hasExportKeyword?.();
-    if (!exported) continue;
-
     if (stmt.isKind(SyntaxKind.FunctionDeclaration)) {
+      if (!stmt.hasExportKeyword()) continue;
       const rt = returnTypeText(stmt);
       const name = stmt.getName() ?? "<anonymous>";
       if (!rt || !isEffectEffect(rt)) {
@@ -104,6 +116,7 @@ function inspectExport(sf: SourceFile): Issue[] {
         });
       }
     } else if (stmt.isKind(SyntaxKind.VariableStatement)) {
+      if (!stmt.hasExportKeyword()) continue;
       for (const decl of stmt.getDeclarations()) {
         const init = decl.getInitializer();
         if (!init) continue;
@@ -125,6 +138,7 @@ function inspectExport(sf: SourceFile): Issue[] {
         }
       }
     } else if (stmt.isKind(SyntaxKind.ClassDeclaration)) {
+      if (!stmt.hasExportKeyword()) continue;
       for (const m of stmt.getMethods()) {
         const rt = returnTypeText(m);
         if (!rt || !isEffectEffect(rt)) {

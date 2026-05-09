@@ -44,6 +44,7 @@
     "lint:check:scoped-landmarks": "bun packages/lint/src/check-scoped-landmarks.ts",
     "lint:check:perspective-boundary": "bun packages/lint/src/check-perspective-boundary.ts",
     "lint:check:explicit-return-types": "bun packages/lint/src/check-explicit-return-types.ts",
+    "lint:check:tagged-errors": "bun packages/lint/src/check-tagged-errors.ts",
     "db:generate": "pnpm --filter @project/db generate",
     "db:push": "pnpm --filter @project/db push",
     "db:studio": "pnpm --filter @project/db studio"

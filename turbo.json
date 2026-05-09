@@ -356,6 +356,14 @@
         "packages/api/src/domains/**/*-service.ts"
       ],
       "outputs": []
+    },
+    "//#lint:check:tagged-errors": {
+      "inputs": [
+        "packages/lint/src/check-tagged-errors.ts",
+        "packages/lint/src/checks-types.ts",
+        "packages/api/src/domains/**/*-errors.ts"
+      ],
+      "outputs": []
     }
   }
 }
