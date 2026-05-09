@@ -347,6 +347,15 @@
         "!**/node_modules/**"
       ],
       "outputs": []
+    },
+    "//#lint:check:explicit-return-types": {
+      "inputs": [
+        "packages/lint/src/check-explicit-return-types.ts",
+        "packages/lint/src/checks-types.ts",
+        "packages/api/src/domains/**/*-contract.ts",
+        "packages/api/src/domains/**/*-service.ts"
+      ],
+      "outputs": []
     }
   }
 }

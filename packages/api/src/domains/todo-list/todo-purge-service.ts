@@ -1,3 +1,4 @@
+// lint-disable-file check-explicit-return-types — Day 3 retrofit (rewrite/contract-first plan)
 // Maintenance: delete completed todos older than N days. Called by the
 // repeatable `purge-stale-todos` cron registered on the maintenance
 // queue (apps/worker/src/schedule.ts).

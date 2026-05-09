@@ -1,3 +1,4 @@
+// lint-disable-file check-explicit-return-types — Day 3 retrofit (rewrite/contract-first plan)
 import { Effect } from "effect";
 import { ForbiddenError, NotFoundError } from "../../errors.ts";
 import { requireSession } from "../../runtime/auth-layer.ts";

@@ -10,6 +10,9 @@
     "./checks/domain-names": {
       "default": "./src/check-domain-names.ts"
     },
+    "./checks/explicit-return-types": {
+      "default": "./src/check-explicit-return-types.ts"
+    },
     "./checks/duplicate-names": {
       "default": "./src/check-duplicate-names.ts"
     },
