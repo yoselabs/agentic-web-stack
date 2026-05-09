@@ -1,13 +1,7 @@
 import type { Session } from "@project/auth";
 import { TRPCError } from "@trpc/server";
 import { Cause, Effect, Exit, Layer, Option } from "effect";
-import type {
-  DbError,
-  ForbiddenError,
-  NotFoundError,
-  UnauthorizedError,
-  ValidationError,
-} from "../errors.ts";
+import { TodoListService } from "../domains/todo-list/todo-contract.ts";
 import type {
   TodoListError,
   TodoListNotFoundError,
@@ -15,7 +9,13 @@ import type {
   TodoNotOwnedError,
   TodoSkippedError,
 } from "../domains/todo-list/todo-errors.ts";
-import { TodoListService } from "../domains/todo-list/todo-contract.ts";
+import type {
+  DbError,
+  ForbiddenError,
+  NotFoundError,
+  UnauthorizedError,
+  ValidationError,
+} from "../errors.ts";
 import { AppLayer } from "./app-layer.ts";
 import type { Auth } from "./auth-layer.ts";
 import { CurrentSession } from "./auth-layer.ts";
