@@ -14,7 +14,17 @@ import {
   PURGE_STALE_TODOS_JOB,
   type PurgeStaleTodosPayload,
 } from "@project/jobs/queues";
-import { Effect } from "effect";
+import { Effect, Schedule } from "effect";
+
+// In-process retry for transient failures (DB connection blips, etc.).
+// Layered with BullMQ: Effect.Schedule retries the handler cheaply
+// in-process before BullMQ's outer retry counter advances and a fresh
+// worker takes over. Cap kept short (3 attempts) so genuine failures
+// dead-letter to BullMQ promptly. Per ADR-0015 §Decision A.
+const purgeRetryPolicy = Schedule.exponential("100 millis", 2.0).pipe(
+  Schedule.intersect(Schedule.recurs(2)),
+  Schedule.jittered,
+);
 
 const purgeStaleTodos: JobHandler<Db> = (data, job) =>
   Effect.gen(function* () {
@@ -25,7 +35,10 @@ const purgeStaleTodos: JobHandler<Db> = (data, job) =>
       `[maintenance/${job.name}] removed ${report.deleted} stale completed todos (olderThanDays=${payload.olderThanDays})`,
     );
     return { deleted: report.deleted };
-  }).pipe(Effect.provide(TodoListService.Default));
+  }).pipe(
+    Effect.retry(purgeRetryPolicy),
+    Effect.provide(TodoListService.Default),
+  );
 
 export const maintenanceHandlers: Record<string, JobHandler<Db>> = {
   [PURGE_STALE_TODOS_JOB]: purgeStaleTodos,
