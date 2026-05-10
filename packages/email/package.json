@@ -15,13 +15,17 @@
     },
     "./service": {
       "default": "./src/email-service.ts"
+    },
+    "./enqueue": {
+      "default": "./src/email-enqueue.ts"
     }
   },
   "scripts": {
-    "test": "bun test src/__tests__/"
+    "test": "NODE_ENV=development bun test src/__tests__/"
   },
   "dependencies": {
     "@project/env": "workspace:*",
+    "@project/jobs": "workspace:*",
     "effect": "catalog:",
     "nodemailer": "^8.0.7"
   },

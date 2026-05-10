@@ -15,6 +15,7 @@ const parsedEnv = createEnv({
       .default("postgresql://postgres:postgres@localhost:5432/app"),
     REDIS_URL: z.url().default("redis://localhost:6379"),
     SMTP_URL: z.url().default("smtp://localhost:1025"),
+    MAIL_FROM: z.email().default("noreply@app.example.com"),
     MAILPIT_API_URL: z.url().default("http://localhost:8025"),
     CORS_ORIGIN: z.url().default("http://localhost:3000"),
     BETTER_AUTH_SECRET: z
