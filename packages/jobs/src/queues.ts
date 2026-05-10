@@ -26,8 +26,9 @@ export interface PurgeStaleTodosPayload {
 
 // --- Email queue payloads ---
 //
-// Empty until @project/email lands in Phase 4 capability #2. The shape
-// is owned by @project/email/service to avoid a circular dependency
-// (jobs would otherwise import email types just to declare them here).
-// Email handlers receive `unknown` at this layer and refine inside the
-// handler's own typed wrapper.
+// The full SendEmailInput Effect Schema lives in @project/email/schema —
+// this file declares only the job NAME constant. Handlers receive
+// `unknown` at the BullMQ layer (per process-job's contract) and refine
+// inside their own typed wrapper using the Effect Schema.
+
+export const SEND_EMAIL_JOB = "send-email" as const;

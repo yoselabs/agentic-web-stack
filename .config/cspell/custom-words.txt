@@ -216,3 +216,9 @@ jsdocs
 Finalizer
 millis
 uncompromised
+EENVELOPE
+EADDRESS
+ECONNECTION
+EAUTH
+ETIMEOUT
+EMESSAGE

@@ -1,10 +1,25 @@
 ---
-title: "ADR 0020 — Email send (proposed)"
-status: proposed
+title: "ADR 0020 — Email send"
+status: accepted
 date: 2026-04-29
+accepted_date: 2026-05-09
 deciders: [denis]
-draft_for_promotion_in_phase: 3
+verified_by:
+  - packages/email/src/email-contract.ts
+  - packages/email/src/email-service.ts
+  - packages/email/src/email-schema.ts
+  - packages/email/src/email-errors.ts
+  - apps/worker/src/handlers/email.ts
 ---
+
+> **Status: accepted** as Option A (Mailer Layer wrapping nodemailer).
+> Promoted on 2026-05-09 as part of Day 4 of the contract-first rewrite
+> — capability #2 (Email), the canonical from-scratch run validating
+> the spec D2 cadence on a non-retrofit capability. MailerService uses
+> the modern Effect.Service form. Tagged errors: MailerError (catch-all),
+> MailerTransportError (connection / auth / timeout), MailerInvalidAddressError
+> (envelope rejection). In-process retry composed via Effect.Schedule
+> at the worker handler level per ADR-0015 §Decision A.
 
 # ADR 0020 — Email Send
 

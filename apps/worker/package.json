@@ -10,6 +10,7 @@
   "dependencies": {
     "@effect/platform-node": "catalog:",
     "@project/api": "workspace:*",
+    "@project/email": "workspace:*",
     "@project/jobs": "workspace:*",
     "effect": "catalog:"
   },

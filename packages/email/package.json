@@ -1,0 +1,34 @@
+{
+  "name": "@project/email",
+  "version": "0.0.0",
+  "private": true,
+  "type": "module",
+  "exports": {
+    "./contract": {
+      "default": "./src/email-contract.ts"
+    },
+    "./schema": {
+      "default": "./src/email-schema.ts"
+    },
+    "./errors": {
+      "default": "./src/email-errors.ts"
+    },
+    "./service": {
+      "default": "./src/email-service.ts"
+    }
+  },
+  "scripts": {
+    "test": "bun test src/__tests__/"
+  },
+  "dependencies": {
+    "@project/env": "workspace:*",
+    "effect": "catalog:",
+    "nodemailer": "^8.0.7"
+  },
+  "devDependencies": {
+    "@types/bun": "^1.3.13",
+    "@types/node": "catalog:",
+    "@types/nodemailer": "^8.0.0",
+    "typescript": "catalog:"
+  }
+}
