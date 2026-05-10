@@ -18,6 +18,9 @@
     },
     "./enqueue": {
       "default": "./src/email-enqueue.ts"
+    },
+    "./templates": {
+      "default": "./src/templates.ts"
     }
   },
   "scripts": {
