@@ -1,9 +1,11 @@
 ---
-title: "ADR 0021 — Rate limiting (proposed)"
-status: proposed
+title: "ADR 0021 — Rate limiting"
+status: accepted
 date: 2026-04-29
 deciders: [denis]
-draft_for_promotion_in_phase: 3
+verified_by:
+  - packages/rate-limit/src/rate-limit-contract.ts
+  - packages/rate-limit/src/rate-limit-service.ts
 ---
 
 # ADR 0021 — Rate Limiting
@@ -61,7 +63,7 @@ re-implement the library's Lua scripts. This is the kind of
 "thin down with Effect" instinct that *doesn't* apply — the library
 isn't unnecessary; it's load-bearing primitives.
 
-## Decision (proposed)
+## Decision
 
 **Pick A — wrap `rate-limiter-flexible` behind a `RateLimiter`
 Layer.** Expose `RateLimiterMemoryLive` and `RateLimiterRedisLive`
@@ -94,13 +96,13 @@ return a 429 with a `Retry-After` header.
 - Redis dependency unchanged (already required for BullMQ per ADR
   slot 0015)
 
-## Promotion checklist (Phase 3)
+## Promotion (Phase 4)
 
-- [ ] Move file to `docs/adrs/0021-rate-limiting.md`
-- [ ] Flip `status: proposed` → `status: accepted`
-- [ ] Fill `verified_by:` with `packages/rate-limit/src/rate-limiter-layer.ts`
-      (or whatever the module is named)
-- [ ] Add `// ADR-0021` cite in that file
+- [x] Move file to `docs/adrs/0021-rate-limiting.md`
+- [x] Flip `status: proposed` → `status: accepted`
+- [x] Fill `verified_by:` with `packages/rate-limit/src/rate-limit-contract.ts`
+      and `packages/rate-limit/src/rate-limit-service.ts`
+- [x] `// ADR-0021` cite present in those files
 
 ## References
 

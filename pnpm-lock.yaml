@@ -526,6 +526,28 @@ importers:
         specifier: 'catalog:'
         version: 6.0.3
 
+  packages/rate-limit:
+    dependencies:
+      effect:
+        specifier: 'catalog:'
+        version: 3.21.2
+      ioredis:
+        specifier: ^5.10.1
+        version: 5.10.1
+      rate-limiter-flexible:
+        specifier: ^7.4.0
+        version: 7.4.0
+    devDependencies:
+      '@types/bun':
+        specifier: ^1.3.13
+        version: 1.3.13
+      '@types/node':
+        specifier: 'catalog:'
+        version: 25.6.0
+      typescript:
+        specifier: 'catalog:'
+        version: 6.0.3
+
   packages/test-infra:
     devDependencies:
       '@project/db':
@@ -5999,6 +6021,9 @@ packages:
   range-parser@1.2.0:
     resolution: {integrity: sha512-kA5WQoNVo4t9lNx2kQNFCxKeBl5IbbSNBl1M/tLkw9WCn+hxNBAW5Qh8gdhs63CJnhjJ2zQWFoqPJP2sK1AV5A==}
     engines: {node: '>= 0.6'}
+
+  rate-limiter-flexible@7.4.0:
+    resolution: {integrity: sha512-IJopePGO6HnMWVdeLCihnxXZ0WCW0mxXiU5LE3bZ00GHESsCaAvgD8hN/ATIJeZhnrVdU5cfRyS1uV63Vmc4zg==}
 
   rc-config-loader@4.1.4:
     resolution: {integrity: sha512-3GiwEzklkbXTDp52UR5nT8iXgYAx1V9ZG/kDZT7p60u2GCv2XTwQq4NzinMoMpNtXhmt3WkhYXcj6HH8HdwCEQ==}
@@ -12491,6 +12516,8 @@ snapshots:
   queue-microtask@1.2.3: {}
 
   range-parser@1.2.0: {}
+
+  rate-limiter-flexible@7.4.0: {}
 
   rc-config-loader@4.1.4:
     dependencies:

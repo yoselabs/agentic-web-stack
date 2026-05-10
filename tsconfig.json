@@ -7,6 +7,7 @@
     { "path": "packages/email" },
     { "path": "packages/env" },
     { "path": "packages/jobs" },
+    { "path": "packages/rate-limit" },
     { "path": "packages/test-infra" },
     { "path": "packages/ui" },
     { "path": "apps/server" },
