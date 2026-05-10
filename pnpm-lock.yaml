@@ -377,6 +377,9 @@ importers:
       '@project/env':
         specifier: workspace:*
         version: link:../env
+      '@project/rate-limit':
+        specifier: workspace:*
+        version: link:../rate-limit
       '@trpc/server':
         specifier: 'catalog:'
         version: 11.16.0(typescript@6.0.3)

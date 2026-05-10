@@ -54,6 +54,7 @@
     "@project/auth": "workspace:*",
     "@project/db": "workspace:*",
     "@project/env": "workspace:*",
+    "@project/rate-limit": "workspace:*",
     "@trpc/server": "catalog:",
     "effect": "catalog:"
   },

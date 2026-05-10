@@ -1,4 +1,6 @@
 import type { Session } from "@project/auth";
+import { RateLimiter } from "@project/rate-limit/contract";
+import type { RateLimitExceededError } from "@project/rate-limit/errors";
 import { TRPCError } from "@trpc/server";
 import { Cause, Effect, Exit, Layer, Option } from "effect";
 import { TodoListService } from "../domains/todo-list/todo-contract.ts";
@@ -30,12 +32,26 @@ import type { Db } from "./db-layer.ts";
 // service, then maps tagged errors to TRPCError codes. Unexpected
 // defects surface as INTERNAL_SERVER_ERROR.
 
-type AppRequirements = Db | Auth | CurrentSession | TodoListService;
+type AppRequirements =
+  | Db
+  | Auth
+  | CurrentSession
+  | TodoListService
+  | RateLimiter;
 
-// Full runtime layer: AppLayer (Db + Auth + Logger) merged with TodoListService.Default.
-// TodoListService uses succeed: so its layer has no requirements at composition time —
-// the Db + CurrentSession requirements live inside each method's returned Effect.
-const FullLayer = Layer.merge(AppLayer, TodoListService.Default);
+// Full runtime layer: AppLayer (Db + Auth + Logger) merged with
+// TodoListService.Default and RateLimiter.Default. Both Effect.Service
+// classes use sync:/succeed: so their layers have no requirements at
+// composition time — domain requirements live inside the Effect.
+//
+// ADR-0021 — RateLimiter.Default = in-memory limiter (30/60s). Prod
+// composition swaps in a Redis-backed Layer at the entrypoint when
+// horizontal scale demands distributed coordination.
+const FullLayer = Layer.mergeAll(
+  AppLayer,
+  TodoListService.Default,
+  RateLimiter.Default,
+);
 
 const tagToCode = (
   e:
@@ -48,7 +64,8 @@ const tagToCode = (
     | TodoListNotFoundError
     | TodoNotFoundError
     | TodoNotOwnedError
-    | TodoSkippedError,
+    | TodoSkippedError
+    | RateLimitExceededError,
 ): TRPCError => {
   switch (e._tag) {
     case "NotFoundError":
@@ -97,6 +114,15 @@ const tagToCode = (
         code: "INTERNAL_SERVER_ERROR",
         message: "todo skipped during processing",
       });
+    case "RateLimitExceededError":
+      // ADR-0021 — surface msBeforeNext so call sites can render the
+      // remaining wait. tRPC has no native Retry-After header
+      // primitive; the millisecond value travels in the message until
+      // a tRPC error formatter is added at the link boundary.
+      return new TRPCError({
+        code: "TOO_MANY_REQUESTS",
+        message: `rate limit exceeded; retry in ${e.msBeforeNext}ms`,
+      });
   }
 };
 
@@ -112,7 +138,8 @@ const isTaggedAppError = (
   | TodoListNotFoundError
   | TodoNotFoundError
   | TodoNotOwnedError
-  | TodoSkippedError =>
+  | TodoSkippedError
+  | RateLimitExceededError =>
   typeof err === "object" &&
   err !== null &&
   "_tag" in err &&
@@ -128,6 +155,7 @@ const isTaggedAppError = (
     "TodoNotFoundError",
     "TodoNotOwnedError",
     "TodoSkippedError",
+    "RateLimitExceededError",
   ].includes((err as { _tag: string })._tag);
 
 export const runEffect = async <A, E>(
