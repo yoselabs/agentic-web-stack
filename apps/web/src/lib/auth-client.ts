@@ -1,6 +1,9 @@
 import { env } from "@project/env/client";
 import type { BetterAuthClientOptions } from "better-auth/client";
-import { inferAdditionalFields } from "better-auth/client/plugins";
+import {
+  inferAdditionalFields,
+  magicLinkClient,
+} from "better-auth/client/plugins";
 import { createAuthClient } from "better-auth/react";
 
 // Schema literal mirrors packages/auth/src/index.ts additionalFields.
@@ -21,7 +24,21 @@ const additionalFieldsSchema = {
 type BaseAuthClient = ReturnType<
   typeof createAuthClient<BetterAuthClientOptions>
 >;
-type AuthClient = Omit<BaseAuthClient, "signUp"> & {
+// magicLinkClient adds `signIn.magicLink({ email, callbackURL, … })`.
+// The Better-Auth client's plugin-augmented type pulls in zod internals
+// that fail to name-portably under TS project references; we keep the
+// portable cast and hand-extend the magic-link surface alongside signUp.
+interface MagicLinkInput {
+  readonly email: string;
+  readonly callbackURL?: string;
+  readonly newUserCallbackURL?: string;
+}
+interface MagicLinkResult {
+  readonly data: { status: boolean } | null;
+  readonly error: { message?: string; status?: number } | null;
+}
+
+type AuthClient = Omit<BaseAuthClient, "signUp" | "signIn"> & {
   signUp: Omit<BaseAuthClient["signUp"], "email"> & {
     email: (
       data: Parameters<BaseAuthClient["signUp"]["email"]>[0] & {
@@ -30,11 +47,18 @@ type AuthClient = Omit<BaseAuthClient, "signUp"> & {
       options?: Parameters<BaseAuthClient["signUp"]["email"]>[1],
     ) => ReturnType<BaseAuthClient["signUp"]["email"]>;
   };
+  signIn: BaseAuthClient["signIn"] & {
+    magicLink: (input: MagicLinkInput) => Promise<MagicLinkResult>;
+  };
 };
 
+// magicLinkClient adds `authClient.signIn.magicLink({ email, callbackURL })`
+// and exposes the verify-URL surface. The server-side plugin in
+// @project/auth sends the email; the client-side plugin is just the
+// typed request helper.
 export const authClient = createAuthClient({
   baseURL: env.VITE_API_URL,
-  plugins: [inferAdditionalFields(additionalFieldsSchema)],
+  plugins: [inferAdditionalFields(additionalFieldsSchema), magicLinkClient()],
 }) as unknown as AuthClient;
 
 export const { useSession, signIn, signUp, signOut } = authClient;

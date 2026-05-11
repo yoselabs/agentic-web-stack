@@ -1,5 +1,10 @@
 import { MIN_PASSWORD_LENGTH } from "@project/auth/constants";
-import { createFileRoute, redirect, useRouter } from "@tanstack/react-router";
+import {
+  createFileRoute,
+  Link,
+  redirect,
+  useRouter,
+} from "@tanstack/react-router";
 import { useState } from "react";
 import { signIn } from "../lib/auth-client.ts";
 
@@ -67,6 +72,9 @@ function SignInPage() {
           {busy ? "Signing in…" : "Sign in"}
         </button>
       </form>
+      <p style={{ marginTop: "1.5rem" }}>
+        <Link to="/sign-in/magic-link">Sign in with link instead</Link>
+      </p>
     </main>
   );
 }
